@@ -44,7 +44,7 @@ export const reclaim = async (
   if (!correctUTxO)
     return {
       type: "error",
-      error: new Error("Signer is not authorized to cancel offer"),
+      error: new Error("Signer is not authorized to claim the UTxO"),
     };
 
   try {
