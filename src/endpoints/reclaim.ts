@@ -15,13 +15,13 @@ export const reclaim = async (
   lucid: Lucid,
   config: ReclaimConfig
 ): Promise<Result<TxComplete>> => {
-  const validatorCBOR = applyParamsToScript(config.spendingScript, [
+  const validatorScript = applyParamsToScript(config.spendingScript, [
     config.validatorFn,
   ]);
 
   const validator: SpendingValidator = {
     type: "PlutusV2",
-    script: validatorCBOR,
+    script: validatorScript,
   };
 
   const utxoToSpend = (await lucid.utxosByOutRef([config.utxoOutRef]))[0];
