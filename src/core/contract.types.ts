@@ -62,3 +62,9 @@ export const ValueSchema = Data.Map(
 );
 export type Value = Data.Static<typeof ValueSchema>;
 export const Value = ValueSchema as unknown as Value;
+
+export const SmartHandleDatumSchema = Data.Object({
+  owner: AddressSchema
+}); 
+export type SmartHandleDatum = Data.Static<typeof SmartHandleDatumSchema>;
+export const SmartHandleDatum = SmartHandleDatumSchema as unknown as SmartHandleDatum

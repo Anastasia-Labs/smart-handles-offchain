@@ -2,7 +2,7 @@
   description = "A Nix-flake-based Node.js development environment";
 
   nixConfig = {
-    bash-prompt = "\\[\\e[0;92m\\][\\[\\e[0;92m\\]nix (\\t): \\[\\e[0;92m\\]\\W\\[\\e[0;92m\\]]\\[\\e[0;92m\\]$ \\[\\e[0m\\]";
+    bash-prompt = "\\[\\e[0;92m\\][\\[\\e[0;92m\\]nix develop:\\[\\e[0;92m\\]\\w\\[\\e[0;92m\\]]\\[\\e[0;92m\\]$ \\[\\e[0m\\]";
   };
 
   inputs = {

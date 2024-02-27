@@ -23,3 +23,9 @@ export type ReadableUTxO<T> = {
   datum: T;
   assets: Assets;
 };
+
+export type ReclaimConfig = {
+  utxoOutRef : OutRef;
+  spendingScript: CborHex;
+  validatorFn: CborHex;
+}
