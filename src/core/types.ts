@@ -1,5 +1,4 @@
-import { Address, Assets, OutRef, Script, UTxO } from "@anastasia-labs/lucid-cardano-fork"
-import { Value } from "./contract.types.js";
+import { Address, Assets, OutRef } from "@anastasia-labs/lucid-cardano-fork";
 
 export type CborHex = string;
 export type RawHex = string;
@@ -25,7 +24,7 @@ export type ReadableUTxO<T> = {
 };
 
 export type ReclaimConfig = {
-  utxoOutRef : OutRef;
+  utxoOutRef: OutRef;
+  swapAddress: Address;
   spendingScript: CborHex;
-  validatorFn: CborHex;
-}
+};

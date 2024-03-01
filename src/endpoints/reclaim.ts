@@ -7,7 +7,7 @@ import {
   applyParamsToScript,
   paymentCredentialOf,
 } from "@anastasia-labs/lucid-cardano-fork";
-import { parseSafeDatum } from "../core/utils/index.js";
+import { fromAddressToData, parseSafeDatum } from "../core/utils/index.js";
 import { Result, ReclaimConfig } from "../core/types.js";
 import { SmartHandleDatum } from "../core/contract.types.js";
 
@@ -15,8 +15,13 @@ export const reclaim = async (
   lucid: Lucid,
   config: ReclaimConfig
 ): Promise<Result<TxComplete>> => {
+  const addressRes = fromAddressToData(config.swapAddress);
+
+  if (addressRes.type == "error")
+    return { type: "error", error: new Error("Invalid swap address") };
+
   const validatorScript = applyParamsToScript(config.spendingScript, [
-    config.validatorFn,
+    addressRes.data,
   ]);
 
   const validator: SpendingValidator = {
@@ -24,7 +29,7 @@ export const reclaim = async (
     script: validatorScript,
   };
 
-  const utxoToSpend = (await lucid.utxosByOutRef([config.utxoOutRef]))[0];
+  const [utxoToSpend] = await lucid.utxosByOutRef([config.utxoOutRef]);
 
   if (!utxoToSpend)
     return { type: "error", error: new Error("No UTxO with that TxOutRef") };
