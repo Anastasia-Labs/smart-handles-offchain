@@ -18,7 +18,7 @@ export const reclaim = async (
   const addressRes = fromAddressToData(config.swapAddress);
 
   if (addressRes.type == "error")
-    return { type: "error", error: new Error("Invalid swap address") };
+    return addressRes;
 
   const validatorScript = applyParamsToScript(config.spendingScript, [
     addressRes.data,
