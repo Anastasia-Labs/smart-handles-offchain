@@ -4,27 +4,30 @@ import {
   Lucid,
   SpendingValidator,
   TxComplete,
+  TxOutput,
   paymentCredentialOf,
 } from "@anastasia-labs/lucid-cardano-fork";
+import { ROUTER_FEE } from "../core/constants.js";
+import { SmartHandleDatum } from "../core/contract.types.js";
+import { Result, SwapConfig } from "../core/types.js";
 import {
   getSingleValidatorScript,
   parseSafeDatum,
 } from "../core/utils/index.js";
-import { Result, ReclaimConfig } from "../core/types.js";
-import { SmartHandleDatum } from "../core/contract.types.js";
 
-export const reclaim = async (
+export const swap = async (
   lucid: Lucid,
-  config: ReclaimConfig
+  config: SwapConfig
 ): Promise<Result<TxComplete>> => {
   const validatorRes = getSingleValidatorScript(
+    lucid,
     config.swapAddress,
     config.spendingScript
   );
 
   if (validatorRes.type == "error") return validatorRes;
 
-  const validator: SpendingValidator = validatorRes.data;
+  const validator: SpendingValidator = validatorRes.data.validator;
 
   const [utxoToSpend] = await lucid.utxosByOutRef([config.utxoOutRef]);
 
@@ -34,12 +37,23 @@ export const reclaim = async (
   if (!utxoToSpend.datum)
     return { type: "error", error: new Error("Missing Datum") };
 
+  if (utxoToSpend.address !== validatorRes.data.address)
+    return {
+      type: "error",
+      error: new Error("UTxO is not coming from the script address"),
+    };
+
   const datum = parseSafeDatum(lucid, utxoToSpend.datum, SmartHandleDatum);
   if (datum.type == "left")
     return { type: "error", error: new Error(datum.value) };
 
   const ownHash = paymentCredentialOf(await lucid.wallet.address()).hash;
 
+  const outputScriptUTxO: TxOutput = {
+    address: config.swapAddress,
+    datum: "",
+    assets: 
+  };
   const correctUTxO =
     "PublicKeyCredential" in datum.value.owner.paymentCredential &&
     datum.value.owner.paymentCredential.PublicKeyCredential[0] == ownHash;
@@ -57,6 +71,7 @@ export const reclaim = async (
       .collectFrom([utxoToSpend], PReclaimRedeemer)
       .addSignerKey(ownHash)
       .attachSpendingValidator(validator)
+      .payToAddress(config.routerAddress, {"lovelace": ROUTER_FEE})
       .complete();
     return { type: "ok", data: tx };
   } catch (error) {

@@ -34,7 +34,7 @@ export const utxosAtScript = async (
 };
 
 export const parseSafeDatum = <T>(
-  lucid: Lucid,
+  _lucid: Lucid,
   datum: string | null | undefined,
   datumType: T
 ): Either<string, T> => {
@@ -179,12 +179,12 @@ export const fromAddressToData = (address: Address): Result<Data> => {
 export const chunkArray = <T>(array: T[], chunkSize: number) => {
   const numberOfChunks = Math.ceil(array.length / chunkSize);
 
-  return [...Array(numberOfChunks)].map((value, index) => {
+  return [...Array(numberOfChunks)].map((_value, index) => {
     return array.slice(index * chunkSize, (index + 1) * chunkSize);
   });
 };
 
-export const replacer = (key: unknown, value: unknown) =>
+export const replacer = (_key: unknown, value: unknown) =>
   typeof value === "bigint" ? value.toString() : value;
 
 export const divCeil = (a: bigint, b: bigint) => {

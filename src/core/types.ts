@@ -28,3 +28,10 @@ export type ReclaimConfig = {
   swapAddress: Address;
   spendingScript: CborHex;
 };
+
+export type SwapConfig = {
+  utxoOutRef: OutRef;
+  routerAddress: Address;
+  swapAddress: Address;
+  spendingScript: CborHex;
+};
