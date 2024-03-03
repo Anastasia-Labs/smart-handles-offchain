@@ -8,7 +8,11 @@ import {
   paymentCredentialOf,
 } from "@anastasia-labs/lucid-cardano-fork";
 import { ROUTER_FEE } from "../core/constants.js";
-import { SmartHandleDatum } from "../core/contract.types.js";
+import {
+  AdaMinOutputDatum,
+  OrderType,
+  SmartHandleDatum,
+} from "../core/contract.types.js";
 import { Result, SwapConfig } from "../core/types.js";
 import {
   getSingleValidatorScript,
@@ -49,11 +53,32 @@ export const swap = async (
 
   const ownHash = paymentCredentialOf(await lucid.wallet.address()).hash;
 
-  const outputScriptUTxO: TxOutput = {
-    address: config.swapAddress,
-    datum: "",
-    assets: 
+  const routerAddress = await lucid.wallet.address();
+
+  const ownerAddress = datum.value.owner;
+
+  const outputOrderType: OrderType = {
+    desiredAsset: {
+      symbol: "e16c2dc8ae937e8d3790c7fd7168d7b994621ba14ca11415f39fed72",
+      name: "4d494e",
+    },
+    minReceive: 2000000n,
   };
+
+  const outputDatum: AdaMinOutputDatum = {
+    sender: ownerAddress,
+    receiver: ownerAddress,
+    receiverDatumHash: null,
+    step: outputOrderType,
+    batcherFee: 2000000n,
+    outputAda: 2000000n,
+  };
+
+  const outputDatumData = Data.to<AdaMinOutputDatum>(
+    outputDatum,
+    AdaMinOutputDatum
+  );
+
   const correctUTxO =
     "PublicKeyCredential" in datum.value.owner.paymentCredential &&
     datum.value.owner.paymentCredential.PublicKeyCredential[0] == ownHash;
@@ -71,7 +96,12 @@ export const swap = async (
       .collectFrom([utxoToSpend], PReclaimRedeemer)
       .addSignerKey(ownHash)
       .attachSpendingValidator(validator)
-      .payToAddress(config.routerAddress, {"lovelace": ROUTER_FEE})
+      .payToContract(
+        config.swapAddress,
+        { inline: outputDatumData },
+        { lovelace: 2000000n }
+      )
+      .payToAddress(routerAddress, { lovelace: ROUTER_FEE })
       .complete();
     return { type: "ok", data: tx };
   } catch (error) {
