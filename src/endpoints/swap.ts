@@ -7,7 +7,7 @@ import {
   TxComplete,
   paymentCredentialOf,
 } from "@anastasia-labs/lucid-cardano-fork";
-import { ROUTER_FEE } from "../core/constants.js";
+import { LOVELACE_MARGIN, ROUTER_FEE } from "../core/constants.js";
 import {
   AdaMinOutputDatum,
   OrderType,
@@ -53,6 +53,7 @@ export const swap = async (
 
   const ownHash = paymentCredentialOf(await lucid.wallet.address()).hash;
 
+  // Implicit assumption that who creates the transaction is the routing agent.
   const routerAddress = await lucid.wallet.address();
 
   const ownerAddress = datum.value.owner;
@@ -79,18 +80,24 @@ export const swap = async (
     AdaMinOutputDatum
   );
 
+  // Hashed since `SingleValidator` expects as such for the swap address
+  // output UTxO.
   const outputDatumHash: OutputData = {
     asHash: outputDatumData,
   };
 
-  const correctUTxO =
-    "PublicKeyCredential" in datum.value.owner.paymentCredential &&
-    datum.value.owner.paymentCredential.PublicKeyCredential[0] == ownHash;
-  if (!correctUTxO)
+  const inputLovelaces = utxoToSpend.assets["lovelace"];
+
+  if (inputLovelaces < ROUTER_FEE + LOVELACE_MARGIN)
     return {
       type: "error",
-      error: new Error("Signer is not authorized to claim the UTxO"),
+      error: new Error("Not enough Lovelaces are present in the UTxO"),
     };
+
+  const outputAssets = {
+    ...utxoToSpend.assets,
+    lovelace: inputLovelaces - ROUTER_FEE,
+  };
 
   try {
     const PReclaimRedeemer = Data.to(new Constr(1, []));
@@ -98,11 +105,12 @@ export const swap = async (
     const tx = await lucid
       .newTx()
       .collectFrom([utxoToSpend], PReclaimRedeemer)
-      .addSignerKey(ownHash)
+      .addSignerKey(ownHash) // For collateral UTxO
       .attachSpendingValidator(validator)
-      .payToContract(config.swapAddress, outputDatumHash, {
-        lovelace: 2000000n,
-      })
+      .payToContract(config.swapAddress, outputDatumHash, outputAssets)
+      // TODO: Explicit UTxO creation for the router fee is probably redundant
+      //       (and potentially undesirable) as it should already get handled
+      //       by the change output.
       .payToAddress(routerAddress, { lovelace: ROUTER_FEE })
       .complete();
     return { type: "ok", data: tx };
