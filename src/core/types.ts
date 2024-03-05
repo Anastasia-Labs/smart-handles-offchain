@@ -23,12 +23,15 @@ export type ReadableUTxO<T> = {
   assets: Assets;
 };
 
-export type SingleValidatorConfig = {
+export type ReclaimConfig = {
   utxoOutRef: OutRef;
   swapAddress: Address;
   spendingScript: CborHex;
 };
 
-export type ReclaimConfig = SingleValidatorConfig;
-
-export type SwapConfig = SingleValidatorConfig;
+export type SwapConfig = {
+  utxoOutRef: OutRef;
+  minReceive: bigint;
+  swapAddress: Address;
+  spendingScript: CborHex;
+};

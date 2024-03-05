@@ -1,10 +1,10 @@
 import {
   Constr,
   Data,
+  OutputData,
   Lucid,
   SpendingValidator,
   TxComplete,
-  TxOutput,
   paymentCredentialOf,
 } from "@anastasia-labs/lucid-cardano-fork";
 import { ROUTER_FEE } from "../core/constants.js";
@@ -62,7 +62,7 @@ export const swap = async (
       symbol: "e16c2dc8ae937e8d3790c7fd7168d7b994621ba14ca11415f39fed72",
       name: "4d494e",
     },
-    minReceive: 2000000n,
+    minReceive: config.minReceive,
   };
 
   const outputDatum: AdaMinOutputDatum = {
@@ -78,6 +78,10 @@ export const swap = async (
     outputDatum,
     AdaMinOutputDatum
   );
+
+  const outputDatumHash: OutputData = {
+    asHash: outputDatumData,
+  };
 
   const correctUTxO =
     "PublicKeyCredential" in datum.value.owner.paymentCredential &&
@@ -96,11 +100,9 @@ export const swap = async (
       .collectFrom([utxoToSpend], PReclaimRedeemer)
       .addSignerKey(ownHash)
       .attachSpendingValidator(validator)
-      .payToContract(
-        config.swapAddress,
-        { inline: outputDatumData },
-        { lovelace: 2000000n }
-      )
+      .payToContract(config.swapAddress, outputDatumHash, {
+        lovelace: 2000000n,
+      })
       .payToAddress(routerAddress, { lovelace: ROUTER_FEE })
       .complete();
     return { type: "ok", data: tx };
