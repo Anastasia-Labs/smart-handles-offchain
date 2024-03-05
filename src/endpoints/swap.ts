@@ -53,9 +53,6 @@ export const swap = async (
 
   const ownHash = paymentCredentialOf(await lucid.wallet.address()).hash;
 
-  // Implicit assumption that who creates the transaction is the routing agent.
-  const routerAddress = await lucid.wallet.address();
-
   const ownerAddress = datum.value.owner;
 
   const outputOrderType: OrderType = {
@@ -102,16 +99,14 @@ export const swap = async (
   try {
     const PReclaimRedeemer = Data.to(new Constr(1, []));
 
+    // Implicit assumption that who creates the transaction is the routing
+    // agent.
     const tx = await lucid
       .newTx()
       .collectFrom([utxoToSpend], PReclaimRedeemer)
       .addSignerKey(ownHash) // For collateral UTxO
       .attachSpendingValidator(validator)
       .payToContract(config.swapAddress, outputDatumHash, outputAssets)
-      // TODO: Explicit UTxO creation for the router fee is probably redundant
-      //       (and potentially undesirable) as it should already get handled
-      //       by the change output.
-      .payToAddress(routerAddress, { lovelace: ROUTER_FEE })
       .complete();
     return { type: "ok", data: tx };
   } catch (error) {
