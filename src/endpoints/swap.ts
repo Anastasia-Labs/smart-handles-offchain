@@ -97,13 +97,13 @@ export const swap = async (
   };
 
   try {
-    const PReclaimRedeemer = Data.to(new Constr(1, []));
+    const PSwapRedeemer = Data.to(new Constr(0, []));
 
     // Implicit assumption that who creates the transaction is the routing
     // agent.
     const tx = await lucid
       .newTx()
-      .collectFrom([utxoToSpend], PReclaimRedeemer)
+      .collectFrom([utxoToSpend], PSwapRedeemer)
       .addSignerKey(ownHash) // For collateral UTxO
       .attachSpendingValidator(validator)
       .payToContract(config.swapAddress, outputDatumHash, outputAssets)
