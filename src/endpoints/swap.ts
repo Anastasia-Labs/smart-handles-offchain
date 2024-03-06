@@ -1,10 +1,12 @@
 import {
+  Assets,
   Constr,
   Data,
   OutputData,
   Lucid,
   SpendingValidator,
   TxComplete,
+  UTxO,
   paymentCredentialOf,
 } from "@anastasia-labs/lucid-cardano-fork";
 import { LOVELACE_MARGIN, ROUTER_FEE } from "../core/constants.js";
@@ -15,8 +17,10 @@ import {
 } from "../core/contract.types.js";
 import { Result, SwapConfig } from "../core/types.js";
 import {
+  getInputUtxoIndices,
   getSingleValidatorScript,
   parseSafeDatum,
+  selectUtxos,
 } from "../core/utils/index.js";
 
 export const swap = async (
@@ -48,10 +52,9 @@ export const swap = async (
     };
 
   const datum = parseSafeDatum(lucid, utxoToSpend.datum, SmartHandleDatum);
+
   if (datum.type == "left")
     return { type: "error", error: new Error(datum.value) };
-
-  const ownHash = paymentCredentialOf(await lucid.wallet.address()).hash;
 
   const ownerAddress = datum.value.owner;
 
@@ -95,15 +98,35 @@ export const swap = async (
     ...utxoToSpend.assets,
     lovelace: inputLovelaces - ROUTER_FEE,
   };
-
   try {
-    const PSwapRedeemer = Data.to(new Constr(0, []));
+    const ownHash = paymentCredentialOf(await lucid.wallet.address()).hash;
+
+    const walletUTxOs = await lucid.wallet.getUtxos();
+
+    // Using `LOVELACE_MARGIN` as the minimum required Lovelaces so that the
+    // collected routing fee minus the transaction fee doesn't go below the min
+    // required Lovelaces for a UTxO. TODO?
+    const requiredAssets: Assets = { lovelace: LOVELACE_MARGIN };
+
+    const selectedUtxos = selectUtxos(walletUTxOs, requiredAssets);
+
+    if (selectedUtxos.type == "error") return selectedUtxos;
+
+    const inputIndices = getInputUtxoIndices([utxoToSpend], selectedUtxos.data);
+
+    if (inputIndices.length !== 1)
+      return { type: "error", error: new Error("Something went wrong") };
+
+    const PSwapRedeemer = Data.to(new Constr(0, [inputIndices[0], 0n]));
 
     // Implicit assumption that who creates the transaction is the routing
-    // agent.
+    // agent. Therefore the change output from the spent UTxO (which is getting
+    // reproduced at the swap address with `ROUTER_FEE` less Lovelaces), is
+    // going to be collected by the routing agent.
     const tx = await lucid
       .newTx()
       .collectFrom([utxoToSpend], PSwapRedeemer)
+      .collectFrom(selectedUtxos.data)
       .addSignerKey(ownHash) // For collateral UTxO
       .attachSpendingValidator(validator)
       .payToContract(config.swapAddress, outputDatumHash, outputAssets)

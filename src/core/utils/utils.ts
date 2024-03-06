@@ -9,7 +9,8 @@ import {
   Lucid,
   SpendingValidator,
   UTxO,
-  addAssets} from "@anastasia-labs/lucid-cardano-fork"
+  addAssets,
+} from "@anastasia-labs/lucid-cardano-fork";
 import { AddressD, Value } from "../contract.types.js";
 import { Either, ReadableUTxO, Result } from "../types.js";
 
@@ -191,10 +192,7 @@ export const divCeil = (a: bigint, b: bigint) => {
   return 1n + (a - 1n) / b;
 };
 
-export function union (
-  a1: Assets,
-  a2: Assets
-) {
+export function union(a1: Assets, a2: Assets) {
   const a2Entries = Object.entries(a2);
 
   // initialize with clone of a1
@@ -202,11 +200,11 @@ export function union (
 
   // add or append entries from a2
   a2Entries.forEach(([key, quantity]) => {
-      if (result[key]) {
-          result[key] += quantity;
-      } else {
-          result[key] = quantity;
-      }
+    if (result[key]) {
+      result[key] += quantity;
+    } else {
+      result[key] = quantity;
+    }
   });
 
   return result;
@@ -218,22 +216,19 @@ export function fromAssets(assets: Assets): Value {
 
   const units = Object.keys(assets);
   const policies = Array.from(
-      new Set(
+    new Set(
       units
-          .filter((unit) => unit !== "lovelace")
-          .map((unit) => unit.slice(0, 56)),
-      ),
+        .filter((unit) => unit !== "lovelace")
+        .map((unit) => unit.slice(0, 56))
+    )
   );
   policies.sort().forEach((policyId) => {
-      const policyUnits = units.filter((unit) => unit.slice(0, 56) === policyId);
-      const assetsMap = new Map<string, bigint>();
-      policyUnits.sort().forEach((unit) => {
-          assetsMap.set(
-              unit.slice(56),
-              assets[unit],
-          );
-      });
-      value.set(policyId, assetsMap);
+    const policyUnits = units.filter((unit) => unit.slice(0, 56) === policyId);
+    const assetsMap = new Map<string, bigint>();
+    policyUnits.sort().forEach((unit) => {
+      assetsMap.set(unit.slice(56), assets[unit]);
+    });
+    value.set(policyId, assetsMap);
   });
   return value;
 }
@@ -242,17 +237,18 @@ export function toAssets(value: Value): Assets {
   const result: Assets = { lovelace: value.get("")?.get("") || BigInt(0) };
 
   for (const [policyId, assets] of value) {
-      if (policyId === "") continue;
-      for (const [assetName, amount] of assets) {
+    if (policyId === "") continue;
+    for (const [assetName, amount] of assets) {
       result[policyId + assetName] = amount;
-      }
+    }
   }
   return result;
 }
 
 /**
- * Returns a list of UTxOs whose total assets are equal to or greater than the asset value provided
- * @param utxos list of available utxos 
+ * Returns a list of UTxOs whose total assets are equal to or greater than the
+ * asset value provided.
+ * @param utxos list of available utxos
  * @param minAssets minimum total assets required
  */
 export function selectUtxos(utxos: UTxO[], minAssets: Assets): Result<UTxO[]> {
@@ -261,7 +257,8 @@ export function selectUtxos(utxos: UTxO[], minAssets: Assets): Result<UTxO[]> {
   const assetsRequired = new Map<string, bigint>(Object.entries(minAssets));
 
   for (const utxo of utxos) {
-    if (utxo.scriptRef) { // not selecting utxos with scriptRef
+    if (utxo.scriptRef) {
+      // not selecting utxos with scriptRef
       continue;
     }
 
@@ -290,50 +287,47 @@ export function selectUtxos(utxos: UTxO[], minAssets: Assets): Result<UTxO[]> {
   }
 
   if (assetsRequired.size > 0) {
-    return { type : "error", error : new Error(`Insufficient funds`) }
+    return { type: "error", error: new Error(`Insufficient funds`) };
   }
 
-  return { type: "ok", data : selectedUtxos };
+  return { type: "ok", data: selectedUtxos };
 }
 
-export function getInputUtxoIndices(indexInputs: UTxO[], remainingInputs: UTxO[]) : bigint[] {
+export function getInputUtxoIndices(
+  indexInputs: UTxO[],
+  remainingInputs: UTxO[]
+): bigint[] {
   const allInputs = indexInputs.concat(remainingInputs);
 
   const sortedInputs = sortByOutRefWithIndex(allInputs);
   const indicesMap = new Map<string, bigint>();
-  
-  sortedInputs.forEach((value, index) =>{
+
+  sortedInputs.forEach((value, index) => {
     indicesMap.set(value.txHash + value.outputIndex, BigInt(index));
-  })
+  });
 
   return indexInputs.flatMap((value) => {
     const index = indicesMap.get(value.txHash + value.outputIndex);
-    if(index !== undefined)
-      return index
-    else
-      return []
+    if (index !== undefined) return index;
+    else return [];
   });
 }
 
 export function sortByOutRefWithIndex(utxos: UTxO[]): UTxO[] {
+  return utxos.sort(compareUtxos);
+}
 
-  return utxos
-    .sort((a, b) => {
-      if (a.txHash < b.txHash) {
-        return -1;
-
-      } else if (a.txHash > b.txHash) {
-        return 1;
-
-      } else if (a.txHash == b.txHash) {
-        if (a.outputIndex < b.outputIndex) {
-          return -1;
-        } 
-        else return 1;
-
-      } else return 0;
-    });
-};
+export function compareUtxos(u0: UTxO, u1: UTxO): number {
+  if (u0.txHash < u1.txHash) {
+    return -1;
+  } else if (u0.txHash > u1.txHash) {
+    return 1;
+  } else {
+    if (u0.outputIndex < u1.outputIndex) {
+      return -1;
+    } else return 1;
+  }
+}
 
 export function sumUtxoAssets(utxos: UTxO[]): Assets {
   return utxos
@@ -344,21 +338,17 @@ export function sumUtxoAssets(utxos: UTxO[]): Assets {
 /** Remove the intersection of a & b asset quantities from a
  * @param a assets to be removed from
  * @param b assets to remove
- * For e.g. 
- * a = {[x] : 5n, [y] : 10n} 
+ * For e.g.
+ * a = {[x] : 5n, [y] : 10n}
  * b = {[x] : 3n, [y] : 15n, [z] : 4n}
  * remove(a, b) = {[x] : 2n}
- */  
+ */
 export function remove(a: Assets, b: Assets): Assets {
-  
-  for(const [key, value] of Object.entries(b)) {
-    if(Object.hasOwn(a, key)){
-      if(a[key] < value)
-        delete a[key]
-      else if(a[key] > value)
-        a[key] -= value;
-      else
-        delete a[key];
+  for (const [key, value] of Object.entries(b)) {
+    if (Object.hasOwn(a, key)) {
+      if (a[key] < value) delete a[key];
+      else if (a[key] > value) a[key] -= value;
+      else delete a[key];
     }
   }
 
