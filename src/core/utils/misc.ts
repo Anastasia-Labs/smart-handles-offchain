@@ -8,7 +8,7 @@ import {
 import { fromAddressToData } from "../utils/index.js";
 import { CborHex, Result } from "../types.js";
 
-type ValidatorAndAddress = {
+export type ValidatorAndAddress = {
   validator: Script;
   address: Address;
 };
@@ -16,7 +16,7 @@ type ValidatorAndAddress = {
 /**
  * Given the swap address and a non-applied validator parametrized by the swap
  * address, attempts to decode the address into a `Data`, applies it, and
- * returns the acquired `Script`.
+ * returns the acquired `Script` along with its corresponding address.
  * @param Lucid API object
  * @param The swap address in Bech32
  * @param The parametrized spending script that needs an `Address`

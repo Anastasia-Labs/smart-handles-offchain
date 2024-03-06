@@ -2,11 +2,11 @@ import {
   Constr,
   Data,
   Lucid,
-  SpendingValidator,
   TxComplete,
   paymentCredentialOf,
 } from "@anastasia-labs/lucid-cardano-fork";
 import {
+  ValidatorAndAddress,
   getSingleValidatorScript,
   parseSafeDatum,
 } from "../core/utils/index.js";
@@ -18,13 +18,14 @@ export const reclaim = async (
   config: ReclaimConfig
 ): Promise<Result<TxComplete>> => {
   const validatorRes = getSingleValidatorScript(
+    lucid,
     config.swapAddress,
     config.spendingScript
   );
 
   if (validatorRes.type == "error") return validatorRes;
 
-  const validator: SpendingValidator = validatorRes.data;
+  const validatorAndAddr: ValidatorAndAddress = validatorRes.data;
 
   const [utxoToSpend] = await lucid.utxosByOutRef([config.utxoOutRef]);
 
@@ -56,7 +57,7 @@ export const reclaim = async (
       .newTx()
       .collectFrom([utxoToSpend], PReclaimRedeemer)
       .addSignerKey(ownHash)
-      .attachSpendingValidator(validator)
+      .attachSpendingValidator(validatorAndAddr.script)
       .complete();
     return { type: "ok", data: tx };
   } catch (error) {

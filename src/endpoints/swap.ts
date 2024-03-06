@@ -6,7 +6,6 @@ import {
   Lucid,
   SpendingValidator,
   TxComplete,
-  UTxO,
   paymentCredentialOf,
 } from "@anastasia-labs/lucid-cardano-fork";
 import { LOVELACE_MARGIN, ROUTER_FEE } from "../core/constants.js";

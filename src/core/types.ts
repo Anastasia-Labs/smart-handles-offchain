@@ -35,3 +35,9 @@ export type SwapConfig = {
   swapAddress: Address;
   spendingScript: CborHex;
 };
+
+export type RequestConfig = {
+  swapAddress: Address;
+  spendingScript: CborHex;
+  lovelace: bigint;
+};
