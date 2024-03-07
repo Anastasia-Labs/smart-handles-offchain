@@ -23,14 +23,23 @@ export type ReadableUTxO<T> = {
   assets: Assets;
 };
 
-export type ReclaimConfig = {
-  utxoOutRef: OutRef;
+export type SingleReclaimConfig = {
+  requestOutRef: OutRef;
   swapAddress: Address;
   spendingScript: CborHex;
 };
 
+export type BatchReclaimConfig = {
+  requestOutRefs: OutRef[];
+  swapAddress: Address;
+  scripts: {
+    spending: CborHex;
+    staking: CborHex;
+  };
+};
+
 export type SwapConfig = {
-  utxoOutRef: OutRef;
+  requestOutRef: OutRef;
   minReceive: bigint;
   swapAddress: Address;
   spendingScript: CborHex;

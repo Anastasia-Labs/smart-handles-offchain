@@ -11,22 +11,22 @@ import {
 import { Result, RequestConfig } from "../core/types.js";
 import {
   fromAddress,
-  getSingleValidatorScript,
+  getSingleValidatorVA,
 } from "../core/utils/index.js";
 
 export const swap = async (
   lucid: Lucid,
   config: RequestConfig
 ): Promise<Result<TxComplete>> => {
-  const validatorRes = getSingleValidatorScript(
+  const vaRes = getSingleValidatorVA(
     lucid,
     config.swapAddress,
     config.spendingScript
   );
 
-  if (validatorRes.type == "error") return validatorRes;
+  if (vaRes.type == "error") return vaRes;
 
-  const validatorAddress: Address = validatorRes.data.address;
+  const validatorAddress: Address = vaRes.data.address;
 
   if (config.lovelace < ROUTER_FEE + LOVELACE_MARGIN)
     return {

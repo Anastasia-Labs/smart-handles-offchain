@@ -5,35 +5,33 @@ import {
   TxComplete,
   paymentCredentialOf,
 } from "@anastasia-labs/lucid-cardano-fork";
-import {
-  ValidatorAndAddress,
-  getSingleValidatorScript,
-  parseSafeDatum,
-} from "../core/utils/index.js";
-import { Result, ReclaimConfig } from "../core/types.js";
+import { BatchVAs, getBatchVAs, parseSafeDatum } from "../core/utils/index.js";
+import { Result, BatchReclaimConfig } from "../core/types.js";
 import { SmartHandleDatum } from "../core/contract.types.js";
 
 export const reclaim = async (
   lucid: Lucid,
-  config: ReclaimConfig
+  config: BatchReclaimConfig
 ): Promise<Result<TxComplete>> => {
-  const validatorRes = getSingleValidatorScript(
-    lucid,
-    config.swapAddress,
-    config.spendingScript
-  );
+  const batchVAsRes = getBatchVAs(lucid, config.swapAddress, {
+    spending: config.scripts.spending,
+    staking: config.scripts.staking,
+  });
 
-  if (validatorRes.type == "error") return validatorRes;
+  if (batchVAsRes.type == "error") return batchVAsRes;
 
-  const validatorAndAddr: ValidatorAndAddress = validatorRes.data;
+  const batchVAs: BatchVAs = batchVAsRes.data;
 
-  const [utxoToSpend] = await lucid.utxosByOutRef([config.utxoOutRef]);
+  const utxosToSpend = await lucid.utxosByOutRef(config.requestOutRefs);
 
-  if (!utxoToSpend)
+  if (!utxosToSpend || utxosToSpend.length < 1)
     return { type: "error", error: new Error("No UTxO with that TxOutRef") };
 
-  if (!utxoToSpend.datum)
-    return { type: "error", error: new Error("Missing Datum") };
+  if (utxosToSpend.some((u) => !u.datum))
+    return {
+      type: "error",
+      error: new Error("One or more UTxO(s) with missing datum encountered"),
+    };
 
   const datum = parseSafeDatum(lucid, utxoToSpend.datum, SmartHandleDatum);
   if (datum.type == "left")
@@ -57,7 +55,7 @@ export const reclaim = async (
       .newTx()
       .collectFrom([utxoToSpend], PReclaimRedeemer)
       .addSignerKey(ownHash)
-      .attachSpendingValidator(validatorAndAddr.script)
+      .attachSpendingValidator(va.validator)
       .complete();
     return { type: "ok", data: tx };
   } catch (error) {

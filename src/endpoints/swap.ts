@@ -17,7 +17,7 @@ import {
 import { Result, SwapConfig } from "../core/types.js";
 import {
   getInputUtxoIndices,
-  getSingleValidatorScript,
+  getSingleValidatorVA,
   parseSafeDatum,
   selectUtxos,
 } from "../core/utils/index.js";
@@ -26,17 +26,17 @@ export const swap = async (
   lucid: Lucid,
   config: SwapConfig
 ): Promise<Result<TxComplete>> => {
-  const validatorRes = getSingleValidatorScript(
+  const vaRes = getSingleValidatorVA(
     lucid,
     config.swapAddress,
     config.spendingScript
   );
 
-  if (validatorRes.type == "error") return validatorRes;
+  if (vaRes.type == "error") return vaRes;
 
-  const validator: SpendingValidator = validatorRes.data.validator;
+  const validator: SpendingValidator = vaRes.data.validator;
 
-  const [utxoToSpend] = await lucid.utxosByOutRef([config.utxoOutRef]);
+  const [utxoToSpend] = await lucid.utxosByOutRef([config.requestOutRef]);
 
   if (!utxoToSpend)
     return { type: "error", error: new Error("No UTxO with that TxOutRef") };
@@ -44,7 +44,7 @@ export const swap = async (
   if (!utxoToSpend.datum)
     return { type: "error", error: new Error("Missing Datum") };
 
-  if (utxoToSpend.address !== validatorRes.data.address)
+  if (utxoToSpend.address !== vaRes.data.address)
     return {
       type: "error",
       error: new Error("UTxO is not coming from the script address"),
