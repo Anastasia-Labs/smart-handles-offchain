@@ -5,18 +5,21 @@ import {
   TxComplete,
 } from "@anastasia-labs/lucid-cardano-fork";
 import { LOVELACE_MARGIN, ROUTER_FEE } from "../core/constants.js";
+import { SmartHandleDatum } from "../core/contract.types.js";
 import {
-  SmartHandleDatum,
-} from "../core/contract.types.js";
-import { Result, RequestConfig } from "../core/types.js";
+  Result,
+  BatchRequestConfig,
+  SingleRequestConfig,
+} from "../core/types.js";
 import {
   fromAddress,
+  getBatchVAs,
   getSingleValidatorVA,
 } from "../core/utils/index.js";
 
 export const singleRequest = async (
   lucid: Lucid,
-  config: RequestConfig
+  config: SingleRequestConfig
 ): Promise<Result<TxComplete>> => {
   const vaRes = getSingleValidatorVA(
     lucid,
@@ -35,7 +38,7 @@ export const singleRequest = async (
     };
 
   const outputAssets = {
-    lovelace: config.lovelace
+    lovelace: config.lovelace,
   };
   try {
     const ownAddress = await lucid.wallet.address();
@@ -47,7 +50,7 @@ export const singleRequest = async (
 
     const outputDatumData = Data.to<SmartHandleDatum>(
       outputDatum,
-      SmartHandleDatum,
+      SmartHandleDatum
     );
 
     const tx = await lucid
@@ -61,3 +64,48 @@ export const singleRequest = async (
   }
 };
 
+export const batchRequest = async (
+  lucid: Lucid,
+  config: BatchRequestConfig
+): Promise<Result<TxComplete>> => {
+  const batchVAsRes = getBatchVAs(lucid, config.swapAddress, {
+    spending: config.scripts.spending,
+    staking: config.scripts.staking,
+  });
+
+  if (batchVAsRes.type == "error") return batchVAsRes;
+
+  const validatorAddress: Address = batchVAsRes.data.address;
+
+  if (config.lovelace < ROUTER_FEE + LOVELACE_MARGIN)
+    return {
+      type: "error",
+      error: new Error("Not enough Lovelaces are getting locked"),
+    };
+
+  const outputAssets = {
+    lovelace: config.lovelace,
+  };
+  try {
+    const ownAddress = await lucid.wallet.address();
+
+    // Implicit assumption that who creates the transaction is the owner.
+    const outputDatum: SmartHandleDatum = {
+      owner: fromAddress(ownAddress),
+    };
+
+    const outputDatumData = Data.to<SmartHandleDatum>(
+      outputDatum,
+      SmartHandleDatum
+    );
+
+    const tx = await lucid
+      .newTx()
+      .payToContract(validatorAddress, outputDatumData, outputAssets)
+      .complete();
+    return { type: "ok", data: tx };
+  } catch (error) {
+    if (error instanceof Error) return { type: "error", error: error };
+    return { type: "error", error: new Error(`${JSON.stringify(error)}`) };
+  }
+};

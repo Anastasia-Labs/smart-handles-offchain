@@ -45,8 +45,17 @@ export type SwapConfig = {
   spendingScript: CborHex;
 };
 
-export type RequestConfig = {
+export type SingleRequestConfig = {
   swapAddress: Address;
   spendingScript: CborHex;
   lovelace: bigint;
+};
+
+export type BatchRequestConfig = {
+  swapAddress: Address;
+  lovelaces: bigint[];
+  scripts: {
+    spending: CborHex;
+    staking: CborHex;
+  };
 };

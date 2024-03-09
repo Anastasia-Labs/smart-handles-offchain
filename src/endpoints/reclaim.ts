@@ -14,7 +14,7 @@ import {
   getSingleValidatorVA,
   parseSafeDatum,
   printUTxOOutRef,
-  sumUtxoAssets,
+  validateItems,
 } from "../core/utils/index.js";
 import {
   Result,
@@ -86,18 +86,19 @@ export const batchReclaim = async (
   try {
     const ownHash = paymentCredentialOf(await lucid.wallet.address()).hash;
 
-    const badUTxOErrorMsgs: string[] = [];
-
-    utxosToSpend.forEach((u: UTxO) => {
-      const datum = parseSafeDatum(lucid, u.datum, SmartHandleDatum);
-      if (datum.type == "left") {
-        badUTxOErrorMsgs.push(`${printUTxOOutRef(u)}: ${datum.value}`);
-      } else if (!datumBelongsToOwner(datum.value, ownHash)) {
-        badUTxOErrorMsgs.push(
-          `${printUTxOOutRef(u)}: ${UNAUTHORIZED_OWNER_ERROR_MSG}`
-        );
+    const badUTxOErrorMsgs: string[] = validateItems(
+      utxosToSpend,
+      (u: UTxO) => {
+        const datum = parseSafeDatum(lucid, u.datum, SmartHandleDatum);
+        if (datum.type == "left") {
+          return `${printUTxOOutRef(u)}: ${datum.value}`;
+        } else if (!datumBelongsToOwner(datum.value, ownHash)) {
+          return `${printUTxOOutRef(u)}: ${UNAUTHORIZED_OWNER_ERROR_MSG}`;
+        } else {
+          return undefined;
+        }
       }
-    });
+    );
 
     if (badUTxOErrorMsgs.length > 0)
       return {

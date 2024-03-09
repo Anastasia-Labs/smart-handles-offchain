@@ -362,3 +362,16 @@ export function remove(a: Assets, b: Assets): Assets {
 export function printUTxOOutRef(u: UTxO): `${string}#${string}` {
   return `${u.txHash}#${u.outputIndex.toString()}`;
 }
+
+/** Applies the validator function to each element of the list to collect
+ * potential failur messages.
+ * @param A validation function that if failed, returns a failure
+ *        message, otherwise returns and `undefined`
+ */
+export function validateItems<T>(
+  items: T[],
+  validator: (x: T) => undefined | string
+): string[] {
+  // @ts-ignore
+  return items.map(validator).filter((x) => typeof x === "string");
+}
