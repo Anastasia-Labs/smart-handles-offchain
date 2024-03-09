@@ -14,7 +14,7 @@ import {
   getSingleValidatorVA,
 } from "../core/utils/index.js";
 
-export const swap = async (
+export const singleRequest = async (
   lucid: Lucid,
   config: RequestConfig
 ): Promise<Result<TxComplete>> => {
