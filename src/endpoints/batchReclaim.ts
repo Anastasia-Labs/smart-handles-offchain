@@ -78,7 +78,6 @@ export const reclaim = async (
     const tx = await lucid
       .newTx()
       .collectFrom(utxosToSpend, PReclaimRedeemer)
-      .withdraw(batchVAs.stakeVA.address, 0n)
       .addSignerKey(ownHash)
       .attachSpendingValidator(batchVAs.spendVA.validator)
       .attachWithdrawalValidator(batchVAs.stakeVA.validator)
