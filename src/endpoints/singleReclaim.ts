@@ -39,18 +39,17 @@ export const reclaim = async (
   if (datum.type == "left")
     return { type: "error", error: new Error(datum.value) };
 
-  const ownHash = paymentCredentialOf(await lucid.wallet.address()).hash;
-
-  const correctUTxO =
-    "PublicKeyCredential" in datum.value.owner.paymentCredential &&
-    datum.value.owner.paymentCredential.PublicKeyCredential[0] == ownHash;
-  if (!correctUTxO)
-    return {
-      type: "error",
-      error: new Error("Signer is not authorized to claim the UTxO"),
-    };
-
   try {
+    const ownHash = paymentCredentialOf(await lucid.wallet.address()).hash;
+
+    const correctUTxO =
+      "PublicKeyCredential" in datum.value.owner.paymentCredential &&
+      datum.value.owner.paymentCredential.PublicKeyCredential[0] == ownHash;
+    if (!correctUTxO)
+      return {
+        type: "error",
+        error: new Error("Signer is not authorized to claim the UTxO"),
+      };
     const PReclaimRedeemer = Data.to(new Constr(1, []));
 
     const tx = await lucid

@@ -3,9 +3,16 @@ import {
   Data,
   Lucid,
   TxComplete,
+  UTxO,
   paymentCredentialOf,
 } from "@anastasia-labs/lucid-cardano-fork";
-import { BatchVAs, getBatchVAs, parseSafeDatum } from "../core/utils/index.js";
+import {
+  BatchVAs,
+  getBatchVAs,
+  parseSafeDatum,
+  printUTxOOutRef,
+  sumUtxoAssets,
+} from "../core/utils/index.js";
 import { Result, BatchReclaimConfig } from "../core/types.js";
 import { SmartHandleDatum } from "../core/contract.types.js";
 
@@ -25,37 +32,56 @@ export const reclaim = async (
   const utxosToSpend = await lucid.utxosByOutRef(config.requestOutRefs);
 
   if (!utxosToSpend || utxosToSpend.length < 1)
-    return { type: "error", error: new Error("No UTxO with that TxOutRef") };
-
-  if (utxosToSpend.some((u) => !u.datum))
     return {
       type: "error",
-      error: new Error("One or more UTxO(s) with missing datum encountered"),
+      error: new Error("None of the specified UTxOs could be found"),
     };
 
-  const datum = parseSafeDatum(lucid, utxoToSpend.datum, SmartHandleDatum);
-  if (datum.type == "left")
-    return { type: "error", error: new Error(datum.value) };
+  const inputAssets = sumUtxoAssets(utxosToSpend);
 
-  const ownHash = paymentCredentialOf(await lucid.wallet.address()).hash;
-
-  const correctUTxO =
-    "PublicKeyCredential" in datum.value.owner.paymentCredential &&
-    datum.value.owner.paymentCredential.PublicKeyCredential[0] == ownHash;
-  if (!correctUTxO)
+  if (!inputAssets["lovelace"])
     return {
       type: "error",
-      error: new Error("Signer is not authorized to claim the UTxO"),
+      error: new Error("Not enough Lovelaces found in script inputs"),
     };
 
   try {
+    const ownHash = paymentCredentialOf(await lucid.wallet.address()).hash;
+
+    const badUTxOErrorMsgs: string[] = [];
+
+    utxosToSpend.forEach((u: UTxO) => {
+      const datum = parseSafeDatum(lucid, u.datum, SmartHandleDatum);
+      if (datum.type == "left") {
+        badUTxOErrorMsgs.push(`${printUTxOOutRef(u)}: ${datum.value}`);
+      } else {
+        const correctUTxO =
+          "PublicKeyCredential" in datum.value.owner.paymentCredential &&
+          datum.value.owner.paymentCredential.PublicKeyCredential[0] == ownHash;
+        if (!correctUTxO)
+          badUTxOErrorMsgs.push(
+            `${printUTxOOutRef(u)}: This UTxO does not belong to the signer`
+          );
+      }
+    });
+
+    if (badUTxOErrorMsgs.length > 0)
+      return {
+        type: "error",
+        error: new Error(
+          `Bad UTxOs encountered: ${badUTxOErrorMsgs.join(", ")}`
+        ),
+      };
+
     const PReclaimRedeemer = Data.to(new Constr(1, []));
 
     const tx = await lucid
       .newTx()
-      .collectFrom([utxoToSpend], PReclaimRedeemer)
+      .collectFrom(utxosToSpend, PReclaimRedeemer)
+      .withdraw(batchVAs.stakeVA.address, 0n)
       .addSignerKey(ownHash)
-      .attachSpendingValidator(va.validator)
+      .attachSpendingValidator(batchVAs.spendVA.validator)
+      .attachWithdrawalValidator(batchVAs.stakeVA.validator)
       .complete();
     return { type: "ok", data: tx };
   } catch (error) {

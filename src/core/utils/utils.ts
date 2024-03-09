@@ -354,3 +354,11 @@ export function remove(a: Assets, b: Assets): Assets {
 
   return a;
 }
+
+/** Returns the transaction hash and output index of a given UTxO formatted as
+ * `${txHash}#${outputIndex}`.
+ * @param u the UTxO
+ */
+export function printUTxOOutRef(u: UTxO): `${string}#${string}` {
+  return `${u.txHash}#${u.outputIndex.toString()}`;
+}
