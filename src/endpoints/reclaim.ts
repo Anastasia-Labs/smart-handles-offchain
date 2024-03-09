@@ -16,7 +16,11 @@ import {
   printUTxOOutRef,
   sumUtxoAssets,
 } from "../core/utils/index.js";
-import { Result, BatchReclaimConfig, SingleReclaimConfig } from "../core/types.js";
+import {
+  Result,
+  BatchReclaimConfig,
+  SingleReclaimConfig,
+} from "../core/types.js";
 import { SmartHandleDatum } from "../core/contract.types.js";
 
 export const singleReclaim = async (
@@ -45,20 +49,13 @@ export const singleReclaim = async (
   try {
     const ownHash = paymentCredentialOf(await lucid.wallet.address()).hash;
 
-    const correctUTxO =
-      "PublicKeyCredential" in datum.value.owner.paymentCredential &&
-      datum.value.owner.paymentCredential.PublicKeyCredential[0] == ownHash;
+    const correctUTxO = datumBelongsToOwner(datum.value, ownHash);
     if (!correctUTxO)
       return {
         type: "error",
-        error: new Error("Signer is not authorized to claim the UTxO"),
+        error: new Error(UNAUTHORIZED_OWNER_ERROR_MSG),
       };
-    return await helper(
-      lucid,
-      [utxoToSpend],
-      ownHash,
-      va.validator
-    );
+    return await buildTx(lucid, [utxoToSpend], ownHash, va.validator);
   } catch (error) {
     if (error instanceof Error) return { type: "error", error: error };
     return { type: "error", error: new Error(`${JSON.stringify(error)}`) };
@@ -86,14 +83,6 @@ export const batchReclaim = async (
       error: new Error("None of the specified UTxOs could be found"),
     };
 
-  const inputAssets = sumUtxoAssets(utxosToSpend);
-
-  if (!inputAssets["lovelace"])
-    return {
-      type: "error",
-      error: new Error("Not enough Lovelaces found in script inputs"),
-    };
-
   try {
     const ownHash = paymentCredentialOf(await lucid.wallet.address()).hash;
 
@@ -103,14 +92,10 @@ export const batchReclaim = async (
       const datum = parseSafeDatum(lucid, u.datum, SmartHandleDatum);
       if (datum.type == "left") {
         badUTxOErrorMsgs.push(`${printUTxOOutRef(u)}: ${datum.value}`);
-      } else {
-        const correctUTxO =
-          "PublicKeyCredential" in datum.value.owner.paymentCredential &&
-          datum.value.owner.paymentCredential.PublicKeyCredential[0] == ownHash;
-        if (!correctUTxO)
-          badUTxOErrorMsgs.push(
-            `${printUTxOOutRef(u)}: This UTxO does not belong to the signer`
-          );
+      } else if (!datumBelongsToOwner(datum.value, ownHash)) {
+        badUTxOErrorMsgs.push(
+          `${printUTxOOutRef(u)}: ${UNAUTHORIZED_OWNER_ERROR_MSG}`
+        );
       }
     });
 
@@ -122,7 +107,7 @@ export const batchReclaim = async (
         ),
       };
 
-    return await helper(
+    return await buildTx(
       lucid,
       utxosToSpend,
       ownHash,
@@ -134,7 +119,7 @@ export const batchReclaim = async (
   }
 };
 
-export const helper = async (
+const buildTx = async (
   lucid: Lucid,
   utxosToSpend: UTxO[],
   ownHash: string,
@@ -155,3 +140,16 @@ export const helper = async (
     return { type: "error", error: new Error(`${JSON.stringify(error)}`) };
   }
 };
+
+const datumBelongsToOwner = (
+  d: SmartHandleDatum,
+  ownerHash: string
+): boolean => {
+  return (
+    "PublicKeyCredential" in d.owner.paymentCredential &&
+    d.owner.paymentCredential.PublicKeyCredential[0] == ownerHash
+  );
+};
+
+const UNAUTHORIZED_OWNER_ERROR_MSG: string =
+  "Signer is not authorized to claim the UTxO";
