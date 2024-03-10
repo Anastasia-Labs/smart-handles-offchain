@@ -335,7 +335,8 @@ export function sumUtxoAssets(utxos: UTxO[]): Assets {
     .reduce((acc, assets) => addAssets(acc, assets), {});
 }
 
-/** Remove the intersection of a & b asset quantities from a
+/**
+ * Remove the intersection of a & b asset quantities from a
  * @param a assets to be removed from
  * @param b assets to remove
  * For e.g.
@@ -355,23 +356,46 @@ export function remove(a: Assets, b: Assets): Assets {
   return a;
 }
 
-/** Returns the transaction hash and output index of a given UTxO formatted as
+/**
+ * Returns the transaction hash and output index of a given UTxO formatted as
  * `${txHash}#${outputIndex}`.
- * @param u the UTxO
+ * @param u - the UTxO
  */
 export function printUTxOOutRef(u: UTxO): `${string}#${string}` {
   return `${u.txHash}#${u.outputIndex.toString()}`;
 }
 
-/** Applies the validator function to each element of the list to collect
+/**
+ * Applies the validator function to each element of the list to collect
  * potential failur messages.
- * @param A validation function that if failed, returns a failure
- *        message, otherwise returns and `undefined`
+ * @param items - Items to perform validation for each.
+ * @param validator - A validation function that if failed, returns a failure
+ * message, otherwise returns and `undefined`.
+ * @param prependIndex - An optional flag to indicate whether error messages
+ * should be prepended with the index of the failed item.
  */
 export function validateItems<T>(
   items: T[],
-  validator: (x: T) => undefined | string
+  validator: (x: T) => undefined | string,
+  prependIndex?: boolean
 ): string[] {
   // @ts-ignore
-  return items.map(validator).filter((x) => typeof x === "string");
+  return items
+    .map((x, i) => {
+      if (prependIndex) {
+        return `(bad entry at index ${i}) ${validator(x)}`;
+      } else {
+        return validator(x);
+      }
+    })
+    .filter((x) => typeof x === "string");
+}
+
+export function collectErrorMsgs(msgs: string[], label: string): Error {
+  return new Error(`${label}: ${msgs.join(", ")}`);
+}
+
+export function genericCatch(error: any): Result<any> {
+  if (error instanceof Error) return { type: "error", error: error };
+  return { type: "error", error: new Error(`${JSON.stringify(error)}`) };
 }

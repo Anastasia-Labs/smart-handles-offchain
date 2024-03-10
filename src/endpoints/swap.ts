@@ -16,6 +16,7 @@ import {
 } from "../core/contract.types.js";
 import { Result, SwapConfig } from "../core/types.js";
 import {
+  genericCatch,
   getInputUtxoIndices,
   getSingleValidatorVA,
   parseSafeDatum,
@@ -132,7 +133,6 @@ export const swap = async (
       .complete();
     return { type: "ok", data: tx };
   } catch (error) {
-    if (error instanceof Error) return { type: "error", error: error };
-    return { type: "error", error: new Error(`${JSON.stringify(error)}`) };
+    genericCatch(error);
   }
 };

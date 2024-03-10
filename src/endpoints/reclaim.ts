@@ -10,6 +10,8 @@ import {
 import {
   BatchVAs,
   ValidatorAndAddress,
+  collectErrorMsgs,
+  genericCatch,
   getBatchVAs,
   getSingleValidatorVA,
   parseSafeDatum,
@@ -57,8 +59,7 @@ export const singleReclaim = async (
       };
     return await buildTx(lucid, [utxoToSpend], ownHash, va.validator);
   } catch (error) {
-    if (error instanceof Error) return { type: "error", error: error };
-    return { type: "error", error: new Error(`${JSON.stringify(error)}`) };
+    return genericCatch(error)
   }
 };
 
@@ -103,9 +104,7 @@ export const batchReclaim = async (
     if (badUTxOErrorMsgs.length > 0)
       return {
         type: "error",
-        error: new Error(
-          `Bad UTxO(s) encountered: ${badUTxOErrorMsgs.join(", ")}`
-        ),
+        error: collectErrorMsgs(badUTxOErrorMsgs, "Bad UTxO(s) encountered"),
       };
 
     return await buildTx(
@@ -115,8 +114,7 @@ export const batchReclaim = async (
       batchVAs.spendVA.validator
     );
   } catch (error) {
-    if (error instanceof Error) return { type: "error", error: error };
-    return { type: "error", error: new Error(`${JSON.stringify(error)}`) };
+    return genericCatch(error)
   }
 };
 

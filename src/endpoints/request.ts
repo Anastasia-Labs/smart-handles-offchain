@@ -12,9 +12,12 @@ import {
   SingleRequestConfig,
 } from "../core/types.js";
 import {
+  collectErrorMsgs,
   fromAddress,
+  genericCatch,
   getBatchVAs,
   getSingleValidatorVA,
+  validateItems,
 } from "../core/utils/index.js";
 
 export const singleRequest = async (
@@ -34,7 +37,7 @@ export const singleRequest = async (
   if (config.lovelace < ROUTER_FEE + LOVELACE_MARGIN)
     return {
       type: "error",
-      error: new Error("Not enough Lovelaces are getting locked"),
+      error: new Error(INSUFFICIENT_LOVELACES_ERROR_MSG),
     };
 
   const outputAssets = {
@@ -75,37 +78,50 @@ export const batchRequest = async (
 
   if (batchVAsRes.type == "error") return batchVAsRes;
 
-  const validatorAddress: Address = batchVAsRes.data.address;
+  const validatorSpendAddr: Address = batchVAsRes.data.spendVA.address;
 
-  if (config.lovelace < ROUTER_FEE + LOVELACE_MARGIN)
+  // TODO: Should the UTxOs be locked at an address with its staking part equal
+  // to the staking validator's?
+  // const validatorStakeAddr: Address = batchVAsRes.data.stakeVA.address;
+
+  const initTx = lucid.newTx();
+
+  const badLovelaceErrorMsgs = validateItems(
+    config.ownersAndLovelaces,
+    (onl) => {
+      if (onl.lovelace < ROUTER_FEE + LOVELACE_MARGIN) {
+        return `${onl.owner}: ${INSUFFICIENT_LOVELACES_ERROR_MSG}`;
+      } else {
+        const outputDatum: SmartHandleDatum = {
+          owner: fromAddress(onl.owner),
+        };
+        const outputDatumData = Data.to<SmartHandleDatum>(
+          outputDatum,
+          SmartHandleDatum
+        );
+        const outputAssets = {
+          lovelace: onl.lovelace,
+        };
+        initTx.payToContract(validatorSpendAddr, outputDatumData, outputAssets);
+        return undefined;
+      }
+    },
+    true
+  );
+
+  if (badLovelaceErrorMsgs.length > 0)
     return {
       type: "error",
-      error: new Error("Not enough Lovelaces are getting locked"),
+      error: collectErrorMsgs(badLovelaceErrorMsgs, "Bad config encountered"),
     };
 
-  const outputAssets = {
-    lovelace: config.lovelace,
-  };
   try {
-    const ownAddress = await lucid.wallet.address();
-
-    // Implicit assumption that who creates the transaction is the owner.
-    const outputDatum: SmartHandleDatum = {
-      owner: fromAddress(ownAddress),
-    };
-
-    const outputDatumData = Data.to<SmartHandleDatum>(
-      outputDatum,
-      SmartHandleDatum
-    );
-
-    const tx = await lucid
-      .newTx()
-      .payToContract(validatorAddress, outputDatumData, outputAssets)
-      .complete();
+    const tx = await initTx.complete();
     return { type: "ok", data: tx };
   } catch (error) {
-    if (error instanceof Error) return { type: "error", error: error };
-    return { type: "error", error: new Error(`${JSON.stringify(error)}`) };
+    return genericCatch(error);
   }
 };
+
+const INSUFFICIENT_LOVELACES_ERROR_MSG =
+  "Not enough Lovelaces are getting locked";
