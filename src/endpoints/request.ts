@@ -62,8 +62,7 @@ export const singleRequest = async (
       .complete();
     return { type: "ok", data: tx };
   } catch (error) {
-    if (error instanceof Error) return { type: "error", error: error };
-    return { type: "error", error: new Error(`${JSON.stringify(error)}`) };
+    return genericCatch(error);
   }
 };
 
@@ -71,10 +70,7 @@ export const batchRequest = async (
   lucid: Lucid,
   config: BatchRequestConfig
 ): Promise<Result<TxComplete>> => {
-  const batchVAsRes = getBatchVAs(lucid, config.swapAddress, {
-    spending: config.scripts.spending,
-    staking: config.scripts.staking,
-  });
+  const batchVAsRes = getBatchVAs(lucid, config.swapAddress, config.scripts);
 
   if (batchVAsRes.type == "error") return batchVAsRes;
 

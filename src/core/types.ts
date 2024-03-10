@@ -38,11 +38,23 @@ export type BatchReclaimConfig = {
   };
 };
 
-export type SwapConfig = {
+export type SingleSwapConfig = {
   requestOutRef: OutRef;
   minReceive: bigint;
   swapAddress: Address;
   spendingScript: CborHex;
+};
+
+export type BatchSwapConfig = {
+  requestInfos: {
+    requestOutRef: OutRef;
+    minReceive: bigint;
+  }[];
+  swapAddress: Address;
+  scripts: {
+    spending: CborHex;
+    staking: CborHex;
+  };
 };
 
 export type SingleRequestConfig = {

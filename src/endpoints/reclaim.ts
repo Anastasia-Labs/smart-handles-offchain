@@ -39,16 +39,15 @@ export const singleReclaim = async (
 
   const va: ValidatorAndAddress = vaRes.data;
 
-  const [utxoToSpend] = await lucid.utxosByOutRef([config.requestOutRef]);
-
-  if (!utxoToSpend)
-    return { type: "error", error: new Error("No UTxO with that TxOutRef") };
-
-  const datum = parseSafeDatum(lucid, utxoToSpend.datum, SmartHandleDatum);
-  if (datum.type == "left")
-    return { type: "error", error: new Error(datum.value) };
-
   try {
+    const [utxoToSpend] = await lucid.utxosByOutRef([config.requestOutRef]);
+
+    if (!utxoToSpend)
+      return { type: "error", error: new Error("No UTxO with that TxOutRef") };
+
+    const datum = parseSafeDatum(lucid, utxoToSpend.datum, SmartHandleDatum);
+    if (datum.type == "left")
+      return { type: "error", error: new Error(datum.value) };
     const ownHash = paymentCredentialOf(await lucid.wallet.address()).hash;
 
     const correctUTxO = datumBelongsToOwner(datum.value, ownHash);
@@ -59,7 +58,7 @@ export const singleReclaim = async (
       };
     return await buildTx(lucid, [utxoToSpend], ownHash, va.validator);
   } catch (error) {
-    return genericCatch(error)
+    return genericCatch(error);
   }
 };
 
@@ -67,24 +66,20 @@ export const batchReclaim = async (
   lucid: Lucid,
   config: BatchReclaimConfig
 ): Promise<Result<TxComplete>> => {
-  const batchVAsRes = getBatchVAs(lucid, config.swapAddress, {
-    spending: config.scripts.spending,
-    staking: config.scripts.staking,
-  });
+  const batchVAsRes = getBatchVAs(lucid, config.swapAddress, config.scripts);
 
   if (batchVAsRes.type == "error") return batchVAsRes;
 
   const batchVAs: BatchVAs = batchVAsRes.data;
 
-  const utxosToSpend = await lucid.utxosByOutRef(config.requestOutRefs);
-
-  if (!utxosToSpend || utxosToSpend.length < 1)
-    return {
-      type: "error",
-      error: new Error("None of the specified UTxOs could be found"),
-    };
-
   try {
+    const utxosToSpend = await lucid.utxosByOutRef(config.requestOutRefs);
+
+    if (!utxosToSpend || utxosToSpend.length < 1)
+      return {
+        type: "error",
+        error: new Error("None of the specified UTxOs could be found"),
+      };
     const ownHash = paymentCredentialOf(await lucid.wallet.address()).hash;
 
     const badUTxOErrorMsgs: string[] = validateItems(
@@ -114,7 +109,7 @@ export const batchReclaim = async (
       batchVAs.spendVA.validator
     );
   } catch (error) {
-    return genericCatch(error)
+    return genericCatch(error);
   }
 };
 

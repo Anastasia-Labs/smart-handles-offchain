@@ -8,24 +8,31 @@ import {
   TxComplete,
   paymentCredentialOf,
 } from "@anastasia-labs/lucid-cardano-fork";
-import { LOVELACE_MARGIN, ROUTER_FEE } from "../core/constants.js";
+import {
+  LOVELACE_MARGIN,
+  MIN_SYMBOL,
+  MIN_TOKEN_NAME,
+  ROUTER_FEE,
+} from "../core/constants.js";
 import {
   AdaMinOutputDatum,
   OrderType,
   SmartHandleDatum,
 } from "../core/contract.types.js";
-import { Result, SwapConfig } from "../core/types.js";
+import { BatchSwapConfig, Result, SingleSwapConfig } from "../core/types.js";
 import {
+  BatchVAs,
   genericCatch,
+  getBatchVAs,
   getInputUtxoIndices,
   getSingleValidatorVA,
   parseSafeDatum,
   selectUtxos,
 } from "../core/utils/index.js";
 
-export const swap = async (
+export const singleSwap = async (
   lucid: Lucid,
-  config: SwapConfig
+  config: SingleSwapConfig
 ): Promise<Result<TxComplete>> => {
   const vaRes = getSingleValidatorVA(
     lucid,
@@ -35,70 +42,70 @@ export const swap = async (
 
   if (vaRes.type == "error") return vaRes;
 
-  const validator: SpendingValidator = vaRes.data.validator;
-
-  const [utxoToSpend] = await lucid.utxosByOutRef([config.requestOutRef]);
-
-  if (!utxoToSpend)
-    return { type: "error", error: new Error("No UTxO with that TxOutRef") };
-
-  if (!utxoToSpend.datum)
-    return { type: "error", error: new Error("Missing Datum") };
-
-  if (utxoToSpend.address !== vaRes.data.address)
-    return {
-      type: "error",
-      error: new Error("UTxO is not coming from the script address"),
-    };
-
-  const datum = parseSafeDatum(lucid, utxoToSpend.datum, SmartHandleDatum);
-
-  if (datum.type == "left")
-    return { type: "error", error: new Error(datum.value) };
-
-  const ownerAddress = datum.value.owner;
-
-  const outputOrderType: OrderType = {
-    desiredAsset: {
-      symbol: "e16c2dc8ae937e8d3790c7fd7168d7b994621ba14ca11415f39fed72",
-      name: "4d494e",
-    },
-    minReceive: config.minReceive,
-  };
-
-  const outputDatum: AdaMinOutputDatum = {
-    sender: ownerAddress,
-    receiver: ownerAddress,
-    receiverDatumHash: null,
-    step: outputOrderType,
-    batcherFee: 2000000n,
-    outputAda: 2000000n,
-  };
-
-  const outputDatumData = Data.to<AdaMinOutputDatum>(
-    outputDatum,
-    AdaMinOutputDatum
-  );
-
-  // Hashed since `SingleValidator` expects as such for the swap address
-  // output UTxO.
-  const outputDatumHash: OutputData = {
-    asHash: outputDatumData,
-  };
-
-  const inputLovelaces = utxoToSpend.assets["lovelace"];
-
-  if (inputLovelaces < ROUTER_FEE + LOVELACE_MARGIN)
-    return {
-      type: "error",
-      error: new Error("Not enough Lovelaces are present in the UTxO"),
-    };
-
-  const outputAssets = {
-    ...utxoToSpend.assets,
-    lovelace: inputLovelaces - ROUTER_FEE,
-  };
   try {
+    const validator: SpendingValidator = vaRes.data.validator;
+
+    const [utxoToSpend] = await lucid.utxosByOutRef([config.requestOutRef]);
+
+    if (!utxoToSpend)
+      return { type: "error", error: new Error("No UTxO with that TxOutRef") };
+
+    if (!utxoToSpend.datum)
+      return { type: "error", error: new Error("Missing Datum") };
+
+    if (utxoToSpend.address !== vaRes.data.address)
+      return {
+        type: "error",
+        error: new Error("UTxO is not coming from the script address"),
+      };
+
+    const datum = parseSafeDatum(lucid, utxoToSpend.datum, SmartHandleDatum);
+
+    if (datum.type == "left")
+      return { type: "error", error: new Error(datum.value) };
+
+    const ownerAddress = datum.value.owner;
+
+    const outputOrderType: OrderType = {
+      desiredAsset: {
+        symbol: MIN_SYMBOL,
+        name: MIN_TOKEN_NAME,
+      },
+      minReceive: config.minReceive,
+    };
+
+    const outputDatum: AdaMinOutputDatum = {
+      sender: ownerAddress,
+      receiver: ownerAddress,
+      receiverDatumHash: null,
+      step: outputOrderType,
+      batcherFee: 2000000n,
+      outputAda: 2000000n,
+    };
+
+    const outputDatumData = Data.to<AdaMinOutputDatum>(
+      outputDatum,
+      AdaMinOutputDatum
+    );
+
+    // Hashed since `SingleValidator` expects as such for the swap address
+    // output UTxO.
+    const outputDatumHash: OutputData = {
+      asHash: outputDatumData,
+    };
+
+    const inputLovelaces = utxoToSpend.assets["lovelace"];
+
+    if (inputLovelaces < ROUTER_FEE + LOVELACE_MARGIN)
+      return {
+        type: "error",
+        error: new Error("Not enough Lovelaces are present in the UTxO"),
+      };
+
+    const outputAssets = {
+      ...utxoToSpend.assets,
+      lovelace: inputLovelaces - ROUTER_FEE,
+    };
     const ownHash = paymentCredentialOf(await lucid.wallet.address()).hash;
 
     const walletUTxOs = await lucid.wallet.getUtxos();
@@ -133,6 +140,17 @@ export const swap = async (
       .complete();
     return { type: "ok", data: tx };
   } catch (error) {
-    genericCatch(error);
+    return genericCatch(error);
   }
+};
+
+export const batchSwap = async (
+  lucid: Lucid,
+  config: BatchSwapConfig
+): Promise<Result<TxComplete>> => {
+  const batchVAsRes = getBatchVAs(lucid, config.swapAddress, config.scripts);
+
+  if (batchVAsRes.type == "error") return batchVAsRes;
+
+  const batchVAs: BatchVAs = batchVAsRes.data;
 };
