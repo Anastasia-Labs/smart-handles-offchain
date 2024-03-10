@@ -382,13 +382,52 @@ export function validateItems<T>(
   // @ts-ignore
   return items
     .map((x, i) => {
-      if (prependIndex) {
-        return `(bad entry at index ${i}) ${validator(x)}`;
-      } else {
-        return validator(x);
-      }
+      return validateItemsHelper(validator(x), i, prependIndex);
     })
     .filter((x) => typeof x === "string");
+}
+
+/**
+ * Same as `validateItems`, but for an async validator function.
+ * @param items - Items to perform validation for each.
+ * @param validator - An async validation function that if failed, returns a
+ * failure message, otherwise returns and `undefined`.
+ * @param prependIndex - An optional flag to indicate whether error messages
+ * should be prepended with the index of the failed item.
+ */
+export async function asyncValidateItems<T>(
+  items: T[],
+  validator: (x: T) => Promise<undefined | string>,
+  prependIndex?: boolean
+): Promise<string[]> {
+  const initErrorMsgs = await Promise.all(
+    items.map(async (x, i) => {
+      const res = await validator(x);
+      return validateItemsHelper(res, i, prependIndex);
+    })
+  );
+  // @ts-ignore
+  return initErrorMsgs.filter((x) => typeof x === "string");
+}
+
+/**
+ * Helper function for implementing a consistent formatting of validation
+ * functions of `validateItems` and `asyncValidateItems`.
+ * @param res - The result from applying the provided validation function.
+ * @param i - The item's index.
+ * @param prependIndex - An optional flag to indicate whether the index should
+ * be automatically prepended to the error message.
+ */
+function validateItemsHelper(
+  res: string | undefined,
+  i: number,
+  prependIndex?: boolean
+) {
+  if (prependIndex) {
+    return `(bad entry at index ${i}) ${res}`;
+  } else {
+    return res;
+  }
 }
 
 export function collectErrorMsgs(msgs: string[], label: string): Error {

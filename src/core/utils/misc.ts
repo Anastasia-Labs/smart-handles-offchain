@@ -1,6 +1,7 @@
 import {
   Address,
   Constr,
+  Credential,
   Lucid,
   SpendingValidator,
   Script,
@@ -18,6 +19,7 @@ export type ValidatorAndAddress = {
 export type BatchVAs = {
   spendVA: ValidatorAndAddress;
   stakeVA: ValidatorAndAddress;
+  fullAddress: Address;
 };
 
 /**
@@ -73,13 +75,15 @@ export const getBatchVAs = (
 
   const rewardAddress = lucid.utils.validatorToRewardAddress(stakingVal);
 
-  const stakingCred = new Constr(0, [
+  const stakingCred: Credential = lucid.utils.stakeCredentialOf(rewardAddress);
+
+  const stakingCredData = new Constr(0, [
     new Constr(1, [lucid.utils.validatorToScriptHash(stakingVal)]),
   ]);
 
   const spendingVal: SpendingValidator = {
     type: "PlutusV2",
-    script: applyParamsToScript(unAppliedScripts.spending, [stakingCred]),
+    script: applyParamsToScript(unAppliedScripts.spending, [stakingCredData]),
   };
   const spendingAddress = lucid.utils.validatorToAddress(spendingVal);
 
@@ -94,6 +98,7 @@ export const getBatchVAs = (
         validator: stakingVal,
         address: rewardAddress,
       },
+      fullAddress: lucid.utils.validatorToAddress(spendingVal, stakingCred),
     },
   };
 };

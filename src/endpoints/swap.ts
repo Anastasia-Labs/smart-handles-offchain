@@ -7,6 +7,9 @@ import {
   SpendingValidator,
   TxComplete,
   paymentCredentialOf,
+  OutRef,
+  Address,
+  UTxO,
 } from "@anastasia-labs/lucid-cardano-fork";
 import {
   LOVELACE_MARGIN,
@@ -22,12 +25,16 @@ import {
 import { BatchSwapConfig, Result, SingleSwapConfig } from "../core/types.js";
 import {
   BatchVAs,
+  asyncValidateItems,
+  collectErrorMsgs,
   genericCatch,
   getBatchVAs,
   getInputUtxoIndices,
   getSingleValidatorVA,
   parseSafeDatum,
+  printUTxOOutRef,
   selectUtxos,
+  validateItems,
 } from "../core/utils/index.js";
 
 export const singleSwap = async (
@@ -45,7 +52,146 @@ export const singleSwap = async (
   try {
     const validator: SpendingValidator = vaRes.data.validator;
 
-    const [utxoToSpend] = await lucid.utxosByOutRef([config.requestOutRef]);
+    const outputInfoRes = await getOutputInfo(
+      lucid,
+      vaRes.data.address,
+      config.requestOutRef,
+      config.minReceive
+    );
+
+    if (outputInfoRes.type == "error") return outputInfoRes;
+
+    const [utxoToSpend, outputDatumHash, outputAssets] = outputInfoRes.data;
+
+    const ownHash = paymentCredentialOf(await lucid.wallet.address()).hash;
+
+    const redeemerIndicesAndFeeUTxOsRes = await getRedeemerIndicesAndFeeUTxOs(
+      lucid,
+      [utxoToSpend]
+    );
+
+    if (redeemerIndicesAndFeeUTxOsRes.type == "error")
+      return redeemerIndicesAndFeeUTxOsRes;
+
+    const [inputIndices, feeUTxOs] = redeemerIndicesAndFeeUTxOsRes.data;
+
+    if (inputIndices.length !== 1)
+      return { type: "error", error: new Error("Something went wrong") };
+
+    const PSwapRedeemer = Data.to(new Constr(0, [inputIndices[0], 0n]));
+
+    // Implicit assumption that who creates the transaction is the routing
+    // agent. Therefore the change output from the spent UTxO (which is getting
+    // reproduced at the swap address with `ROUTER_FEE` less Lovelaces), is
+    // going to be collected by the routing agent.
+    const tx = await lucid
+      .newTx()
+      .collectFrom([utxoToSpend], PSwapRedeemer)
+      .collectFrom(feeUTxOs)
+      .addSignerKey(ownHash) // For collateral UTxO
+      .attachSpendingValidator(validator)
+      .payToContract(config.swapAddress, outputDatumHash, outputAssets)
+      .complete();
+    return { type: "ok", data: tx };
+  } catch (error) {
+    return genericCatch(error);
+  }
+};
+
+export const batchSwap = async (
+  lucid: Lucid,
+  config: BatchSwapConfig
+): Promise<Result<TxComplete>> => {
+  const batchVAsRes = getBatchVAs(lucid, config.swapAddress, config.scripts);
+
+  if (batchVAsRes.type == "error") return batchVAsRes;
+
+  const batchVAs: BatchVAs = batchVAsRes.data;
+
+  try {
+    const ownHash = paymentCredentialOf(await lucid.wallet.address()).hash;
+
+    const swapUTxOs: UTxO[] = [];
+
+    const initTx = lucid
+      .newTx()
+      .addSignerKey(ownHash) // For collateral UTxO
+      .attachSpendingValidator(batchVAs.spendVA.validator);
+
+    // TODO: SORT `config.swapInfos` FIRST!!
+
+    // There are 3 things happening as we traverse `config.swapInfos`:
+    // - Swap's UTxO gets validated to make sure its coming from the script
+    //   address and has a proper datum attached to it. In case of failure, the
+    //   issue gets recorded into the list as a string and the other steps are
+    //   skipped.
+    // - The UTxO gets incorporated into the initiated transaction for spending.
+    // - The resolved UTxO gets pushed into `swapUTxOs` so that we can find
+    //   appropriated indices for the withdrawal redeemer.
+    const swapErrorMsgs = await asyncValidateItems(
+      config.swapInfos, // TODO: SORT FIRST!
+      async ({ requestOutRef, minReceive }) => {
+        const outputInfoRes = await getOutputInfo(
+          lucid,
+          batchVAs.fullAddress,
+          requestOutRef,
+          minReceive
+        );
+        if (outputInfoRes.type == "error") {
+          return `${requestOutRef}: ${JSON.stringify(outputInfoRes.error)}`;
+        } else {
+          const [utxoToSpend, outputDatumHash, outputAssets] =
+            outputInfoRes.data;
+          swapUTxOs.push(utxoToSpend);
+          initTx.payToContract(
+            config.swapAddress,
+            outputDatumHash,
+            outputAssets
+          );
+          return undefined;
+        }
+      }
+    );
+
+    if (swapErrorMsgs.length > 0)
+      return {
+        type: "error",
+        error: collectErrorMsgs(swapErrorMsgs, "Bad swaps encountered"),
+      };
+
+    const redeemerIndicesAndFeeUTxOsRes = await getRedeemerIndicesAndFeeUTxOs(
+      lucid,
+      swapUTxOs
+    );
+
+    if (redeemerIndicesAndFeeUTxOsRes.type == "error")
+      return redeemerIndicesAndFeeUTxOsRes;
+
+    const [inputIndices, feeUTxOs] = redeemerIndicesAndFeeUTxOsRes.data;
+
+    const PSwapRedeemerSpend = Data.to(new Constr(0, []));
+    const PSwapRedeemerWdrl = Data.to(
+      new Constr(
+        0,
+        inputIndices.map((inputIndex, outputIndex) => [
+          inputIndex,
+          BigInt(outputIndex),
+        ])
+      )
+    );
+  } catch (error) {
+    return genericCatch(error);
+  }
+};
+
+const getOutputInfo = async (
+  lucid: Lucid,
+  validatorAddress: Address,
+  requestOutRef: OutRef,
+  minReceive: bigint
+): Promise<Result<[UTxO, OutputData, Assets]>> => {
+  try {
+    const [utxoToSpend] = await lucid.utxosByOutRef([requestOutRef]);
 
     if (!utxoToSpend)
       return { type: "error", error: new Error("No UTxO with that TxOutRef") };
@@ -53,7 +199,7 @@ export const singleSwap = async (
     if (!utxoToSpend.datum)
       return { type: "error", error: new Error("Missing Datum") };
 
-    if (utxoToSpend.address !== vaRes.data.address)
+    if (utxoToSpend.address !== validatorAddress)
       return {
         type: "error",
         error: new Error("UTxO is not coming from the script address"),
@@ -71,7 +217,7 @@ export const singleSwap = async (
         symbol: MIN_SYMBOL,
         name: MIN_TOKEN_NAME,
       },
-      minReceive: config.minReceive,
+      minReceive,
     };
 
     const outputDatum: AdaMinOutputDatum = {
@@ -106,8 +252,20 @@ export const singleSwap = async (
       ...utxoToSpend.assets,
       lovelace: inputLovelaces - ROUTER_FEE,
     };
-    const ownHash = paymentCredentialOf(await lucid.wallet.address()).hash;
+    return {
+      type: "ok",
+      data: [utxoToSpend, outputDatumHash, outputAssets],
+    };
+  } catch (error) {
+    return genericCatch(error);
+  }
+};
 
+const getRedeemerIndicesAndFeeUTxOs = async (
+  lucid: Lucid,
+  utxosToSpend: UTxO[]
+): Promise<Result<[bigint[], UTxO[]]>> => {
+  try {
     const walletUTxOs = await lucid.wallet.getUtxos();
 
     // Using `LOVELACE_MARGIN` as the minimum required Lovelaces so that the
@@ -119,38 +277,12 @@ export const singleSwap = async (
 
     if (selectedUtxos.type == "error") return selectedUtxos;
 
-    const inputIndices = getInputUtxoIndices([utxoToSpend], selectedUtxos.data);
-
-    if (inputIndices.length !== 1)
-      return { type: "error", error: new Error("Something went wrong") };
-
-    const PSwapRedeemer = Data.to(new Constr(0, [inputIndices[0], 0n]));
-
-    // Implicit assumption that who creates the transaction is the routing
-    // agent. Therefore the change output from the spent UTxO (which is getting
-    // reproduced at the swap address with `ROUTER_FEE` less Lovelaces), is
-    // going to be collected by the routing agent.
-    const tx = await lucid
-      .newTx()
-      .collectFrom([utxoToSpend], PSwapRedeemer)
-      .collectFrom(selectedUtxos.data)
-      .addSignerKey(ownHash) // For collateral UTxO
-      .attachSpendingValidator(validator)
-      .payToContract(config.swapAddress, outputDatumHash, outputAssets)
-      .complete();
-    return { type: "ok", data: tx };
+    const inputIndices = getInputUtxoIndices(utxosToSpend, selectedUtxos.data);
+    return {
+      type: "ok",
+      data: [inputIndices, selectedUtxos.data],
+    };
   } catch (error) {
     return genericCatch(error);
   }
-};
-
-export const batchSwap = async (
-  lucid: Lucid,
-  config: BatchSwapConfig
-): Promise<Result<TxComplete>> => {
-  const batchVAsRes = getBatchVAs(lucid, config.swapAddress, config.scripts);
-
-  if (batchVAsRes.type == "error") return batchVAsRes;
-
-  const batchVAs: BatchVAs = batchVAsRes.data;
 };

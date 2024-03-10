@@ -46,7 +46,7 @@ export type SingleSwapConfig = {
 };
 
 export type BatchSwapConfig = {
-  requestInfos: {
+  swapInfos: {
     requestOutRef: OutRef;
     minReceive: bigint;
   }[];
