@@ -27,6 +27,7 @@ import {
   BatchVAs,
   asyncValidateItems,
   collectErrorMsgs,
+  compareOutRefs,
   genericCatch,
   getBatchVAs,
   getInputUtxoIndices,
@@ -116,11 +117,15 @@ export const batchSwap = async (
     const initTx = lucid
       .newTx()
       .addSignerKey(ownHash) // For collateral UTxO
-      .attachSpendingValidator(batchVAs.spendVA.validator);
+      .attachSpendingValidator(batchVAs.spendVA.validator)
+      .attachWithdrawalValidator(batchVAs.stakeVA.validator);
 
-    // TODO: SORT `config.swapInfos` FIRST!!
+    // Prior sorting needed as the traversal also adds corresponding outputs.
+    const sortedSwaps = config.swapInfos.sort((a, b) =>
+      compareOutRefs(a.requestOutRef, b.requestOutRef)
+    );
 
-    // There are 3 things happening as we traverse `config.swapInfos`:
+    // There are 3 things happening as we traverse `sortedSwaps`:
     // - Swap's UTxO gets validated to make sure its coming from the script
     //   address and has a proper datum attached to it. In case of failure, the
     //   issue gets recorded into the list as a string and the other steps are
@@ -129,7 +134,7 @@ export const batchSwap = async (
     // - The resolved UTxO gets pushed into `swapUTxOs` so that we can find
     //   appropriated indices for the withdrawal redeemer.
     const swapErrorMsgs = await asyncValidateItems(
-      config.swapInfos, // TODO: SORT FIRST!
+      sortedSwaps,
       async ({ requestOutRef, minReceive }) => {
         const outputInfoRes = await getOutputInfo(
           lucid,
@@ -179,6 +184,12 @@ export const batchSwap = async (
         ])
       )
     );
+    const tx = await initTx
+      .collectFrom(swapUTxOs, PSwapRedeemerSpend)
+      .collectFrom(feeUTxOs)
+      .withdraw(batchVAs.stakeVA.address, 0n, PSwapRedeemerWdrl)
+      .complete();
+    return { type: "ok", data: tx };
   } catch (error) {
     return genericCatch(error);
   }

@@ -10,6 +10,7 @@ import {
   SpendingValidator,
   UTxO,
   addAssets,
+  OutRef,
 } from "@anastasia-labs/lucid-cardano-fork";
 import { AddressD, Value } from "../contract.types.js";
 import { Either, ReadableUTxO, Result } from "../types.js";
@@ -299,7 +300,7 @@ export function getInputUtxoIndices(
 ): bigint[] {
   const allInputs = indexInputs.concat(remainingInputs);
 
-  const sortedInputs = sortByOutRefWithIndex(allInputs);
+  const sortedInputs = sortByOutRef(allInputs);
   const indicesMap = new Map<string, bigint>();
 
   sortedInputs.forEach((value, index) => {
@@ -313,11 +314,11 @@ export function getInputUtxoIndices(
   });
 }
 
-export function sortByOutRefWithIndex(utxos: UTxO[]): UTxO[] {
-  return utxos.sort(compareUtxos);
+export function sortByOutRef(utxos: OutRef[]): OutRef[] {
+  return utxos.sort(compareOutRefs);
 }
 
-export function compareUtxos(u0: UTxO, u1: UTxO): number {
+export function compareOutRefs(u0: OutRef, u1: OutRef): -1 | 0 | 1 {
   if (u0.txHash < u1.txHash) {
     return -1;
   } else if (u0.txHash > u1.txHash) {
@@ -325,7 +326,11 @@ export function compareUtxos(u0: UTxO, u1: UTxO): number {
   } else {
     if (u0.outputIndex < u1.outputIndex) {
       return -1;
-    } else return 1;
+    } else if (u0.outputIndex > u1.outputIndex) {
+      return 1;
+    } else {
+      return 0;
+    }
   }
 }
 
