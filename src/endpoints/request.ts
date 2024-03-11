@@ -74,11 +74,7 @@ export const batchRequest = async (
 
   if (batchVAsRes.type == "error") return batchVAsRes;
 
-  const validatorSpendAddr: Address = batchVAsRes.data.spendVA.address;
-
-  // TODO: Should the UTxOs be locked at an address with its staking part equal
-  // to the staking validator's?
-  // const validatorStakeAddr: Address = batchVAsRes.data.stakeVA.address;
+  const targetAddress: Address = batchVAsRes.data.fullAddress;
 
   const initTx = lucid.newTx();
 
@@ -98,7 +94,7 @@ export const batchRequest = async (
         const outputAssets = {
           lovelace: onl.lovelace,
         };
-        initTx.payToContract(validatorSpendAddr, outputDatumData, outputAssets);
+        initTx.payToContract(targetAddress, outputDatumData, outputAssets);
         return undefined;
       }
     },
