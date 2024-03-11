@@ -26,7 +26,7 @@ export type BatchVAs = {
  * Given the swap address and a non-applied validator parametrized by the swap
  * address, attempts to decode the address into a `Data`, applies it, and
  * returns the acquired `Script` along with its corresponding address. "VA" is
- * short for "validator and script."
+ * short for "validator and address."
  * @param Lucid API object
  * @param The swap address in Bech32
  * @param The parametrized spending script that needs an `Address`
