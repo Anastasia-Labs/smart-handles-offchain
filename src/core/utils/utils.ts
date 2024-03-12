@@ -428,7 +428,7 @@ function validateItemsHelper(
   i: number,
   prependIndex?: boolean
 ) {
-  if (prependIndex) {
+  if (prependIndex && res) {
     return `(bad entry at index ${i}) ${res}`;
   } else {
     return res;

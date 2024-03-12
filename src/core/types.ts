@@ -23,6 +23,25 @@ export type ReadableUTxO<T> = {
   assets: Assets;
 };
 
+export type FetchSingleRequestConfig = {
+  swapAddress: Address;
+  spendingScript: CborHex;
+};
+
+export type FetchUsersSingleRequestConfig = {
+  owner: Address;
+  swapAddress: Address;
+  spendingScript: CborHex;
+};
+
+export type FetchBatchRequestConfig = {
+  swapAddress: Address;
+  scripts: {
+    spending: CborHex;
+    staking: CborHex;
+  };
+};
+
 export type SingleReclaimConfig = {
   requestOutRef: OutRef;
   swapAddress: Address;
