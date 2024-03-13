@@ -33,9 +33,7 @@ import {
   getInputUtxoIndices,
   getSingleValidatorVA,
   parseSafeDatum,
-  printUTxOOutRef,
   selectUtxos,
-  validateItems,
 } from "../core/utils/index.js";
 
 export const singleSwap = async (
@@ -138,7 +136,7 @@ export const batchSwap = async (
       async ({ requestOutRef, minReceive }) => {
         const outputInfoRes = await getOutputInfo(
           lucid,
-          batchVAs.fullAddress,
+          batchVAs.spendVA.address,
           requestOutRef,
           minReceive
         );

@@ -74,7 +74,7 @@ export const batchRequest = async (
 
   if (batchVAsRes.type == "error") return batchVAsRes;
 
-  const targetAddress: Address = batchVAsRes.data.fullAddress;
+  const targetAddress: Address = batchVAsRes.data.spendVA.address;
 
   const initTx = lucid.newTx();
 
