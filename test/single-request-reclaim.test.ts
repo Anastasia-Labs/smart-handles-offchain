@@ -12,9 +12,6 @@ import {
 import { beforeEach, expect, test } from "vitest";
 import spendingValidator from "./smartHandleRouter.json" assert { type : "json" };
 
-const SWAP_ADDRESS =
-  "addr_test1qrulv5azp0eq32newd39hcc6htx4zl8c9enk7zg9gr764smxj4zxzax9afmadg234euqgutn0zfaacfw3hzhnltu2xdqf6wjz2";
-
 type LucidContext = {
   lucid: Lucid;
   users: any;
@@ -24,6 +21,8 @@ type LucidContext = {
 //NOTE: INITIALIZE EMULATOR + ACCOUNTS
 beforeEach<LucidContext>(async (context) => {
   context.users = {
+    swapAccount: await generateAccountSeedPhrase({
+    }),
     creator1: await generateAccountSeedPhrase({
       lovelace: BigInt(100_000_000),
     }),
@@ -33,6 +32,7 @@ beforeEach<LucidContext>(async (context) => {
   };
 
   context.emulator = new Emulator([
+    context.users.swapAccount,
     context.users.creator1,
     context.users.creator2,
   ]);
@@ -46,7 +46,7 @@ test<LucidContext>("Test - Request Single Swap, Reclaim", async ({
   emulator,
 }) => {
   const requestConfig: SingleRequestConfig = {
-    swapAddress: SWAP_ADDRESS,
+    swapAddress: users.swapAccount.address,
     spendingScript: spendingValidator.cborHex,
     lovelace: BigInt(50_000_000),
   };
@@ -69,7 +69,7 @@ test<LucidContext>("Test - Request Single Swap, Reclaim", async ({
   // NOTE: Swap Request 1
   const usersSingleRequestConfig: FetchUsersSingleRequestConfig = {
     owner: users.creator1.address,
-    swapAddress: SWAP_ADDRESS,
+    swapAddress: users.swapAccount.address,
     spendingScript: spendingValidator.cborHex,
   };
 
@@ -87,7 +87,7 @@ test<LucidContext>("Test - Request Single Swap, Reclaim", async ({
 
   const reclaimConfig: SingleReclaimConfig = {
     requestOutRef: userRequests1[0].outRef,
-    swapAddress: SWAP_ADDRESS,
+    swapAddress: users.swapAccount.address,
     spendingScript: spendingValidator.cborHex,
   };
 
