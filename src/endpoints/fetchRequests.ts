@@ -14,10 +14,12 @@ import {
 } from "../core/types.js";
 import { SmartHandleDatum } from "../core/contract.types.js";
 
+type SmartUTxO = ReadableUTxO<SmartHandleDatum>
+
 export const getSingleRequestUTxOs = async (
   lucid: Lucid,
   config: FetchSingleRequestConfig
-): Promise<ReadableUTxO<SmartHandleDatum>[]> => {
+): Promise<SmartUTxO[]> => {
   const vaRes = getSingleValidatorVA(
     lucid,
     config.swapAddress,
@@ -36,13 +38,13 @@ export const getSingleRequestUTxOs = async (
 export const userSingleRequestUTxOs = async (
   lucid: Lucid,
   config: FetchUsersSingleRequestConfig
-): Promise<ReadableUTxO<SmartHandleDatum>[]> => {
+): Promise<SmartUTxO[]> => {
   try {
     const allUTxOs = await getSingleRequestUTxOs(
       lucid,
       singleUsersConfigToGenerigConfig(config)
     );
-    return allUTxOs.flatMap((utxo: ReadableUTxO<SmartHandleDatum>) => {
+    return allUTxOs.flatMap((utxo: SmartUTxO) => {
       const ownerAddress: Address = toAddress(utxo.datum.owner, lucid);
       if (ownerAddress == config.owner) {
         return {
@@ -65,7 +67,7 @@ export const userSingleRequestUTxOs = async (
 export const getBatchRequestUTxOs = async (
   lucid: Lucid,
   config: FetchBatchRequestConfig
-): Promise<ReadableUTxO<SmartHandleDatum>[]> => {
+): Promise<SmartUTxO[]> => {
   const batchVAsRes = getBatchVAs(lucid, config.swapAddress, config.scripts);
 
   if (batchVAsRes.type === "error") return [];
@@ -80,7 +82,7 @@ export const getBatchRequestUTxOs = async (
 export const userBatchRequestUTxOs = async (
   lucid: Lucid,
   config: FetchUsersBatchRequestConfig,
-): Promise<ReadableUTxO<SmartHandleDatum>[]> => {
+): Promise<SmartUTxO[]> => {
   try {
     const allUTxOs = await getBatchRequestUTxOs(
       lucid,
@@ -95,7 +97,7 @@ export const userBatchRequestUTxOs = async (
 const getUTxOsAt = async (
   lucid: Lucid,
   addr: Address
-): Promise<ReadableUTxO<SmartHandleDatum>[]> => {
+): Promise<SmartUTxO[]> => {
   try {
     const requestUTxOs: UTxO[] = await lucid.utxosAt(addr);
 
@@ -126,10 +128,10 @@ const getUTxOsAt = async (
 
 const keepUsersUTxOs = (
   lucid: Lucid,
-  allUTxOs: ReadableUTxO<SmartHandleDatum>[],
+  allUTxOs: SmartUTxO[],
   user: Address
-): ReadableUTxO<SmartHandleDatum>[] => {
-  return allUTxOs.flatMap((utxo: ReadableUTxO<SmartHandleDatum>) => {
+): SmartUTxO[] => {
+  return allUTxOs.flatMap((utxo: SmartUTxO) => {
     const ownerAddress: Address = toAddress(utxo.datum.owner, lucid);
     if (ownerAddress == user) {
       return {
