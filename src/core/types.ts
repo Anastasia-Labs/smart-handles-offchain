@@ -42,6 +42,15 @@ export type FetchBatchRequestConfig = {
   };
 };
 
+export type FetchUsersBatchRequestConfig = {
+  owner: Address;
+  swapAddress: Address;
+  scripts: {
+    spending: CborHex;
+    staking: CborHex;
+  };
+};
+
 export type SingleReclaimConfig = {
   requestOutRef: OutRef;
   swapAddress: Address;
