@@ -83,20 +83,20 @@ export const batchRequest = async (
   const initTx = lucid.newTx();
 
   const badLovelaceErrorMsgs = validateItems(
-    config.ownersAndLovelaces,
-    (onl) => {
-      if (onl.lovelace < ROUTER_FEE + LOVELACE_MARGIN) {
-        return `${onl.owner}: ${INSUFFICIENT_LOVELACES_ERROR_MSG}`;
+    config.lovelaces,
+    (l) => {
+      if (l < ROUTER_FEE + LOVELACE_MARGIN) {
+        return `${config.owner}: ${INSUFFICIENT_LOVELACES_ERROR_MSG}`;
       } else {
         const outputDatum: SmartHandleDatum = {
-          owner: fromAddress(onl.owner),
+          owner: fromAddress(config.owner),
         };
         const outputDatumData = Data.to<SmartHandleDatum>(
           outputDatum,
           SmartHandleDatum
         );
         const outputAssets = {
-          lovelace: onl.lovelace,
+          lovelace: l,
         };
         initTx.payToContract(
           targetAddress,

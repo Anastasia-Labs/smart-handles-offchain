@@ -93,10 +93,8 @@ export type SingleRequestConfig = {
 
 export type BatchRequestConfig = {
   swapAddress: Address;
-  ownersAndLovelaces: {
-    owner: Address;
-    lovelace: bigint;
-  }[];
+  owner: Address;
+  lovelaces: bigint[];
   scripts: {
     spending: CborHex;
     staking: CborHex;
