@@ -16,6 +16,7 @@ import {
   getSingleValidatorVA,
   parseSafeDatum,
   printUTxOOutRef,
+  toAddress,
   validateItems,
 } from "../core/utils/index.js";
 import {
@@ -51,11 +52,12 @@ export const singleReclaim = async (
     const ownHash = paymentCredentialOf(await lucid.wallet.address()).hash;
 
     const correctUTxO = datumBelongsToOwner(datum.value, ownHash);
-    if (!correctUTxO)
+    if (!correctUTxO) {
       return {
         type: "error",
         error: new Error(UNAUTHORIZED_OWNER_ERROR_MSG),
       };
+    }
     return await buildTx(lucid, [utxoToSpend], ownHash, va.validator);
   } catch (error) {
     return genericCatch(error);

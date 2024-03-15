@@ -58,7 +58,11 @@ export const singleRequest = async (
 
     const tx = await lucid
       .newTx()
-      .payToContract(validatorAddress, outputDatumData, outputAssets)
+      .payToContract(
+        validatorAddress,
+        { inline: outputDatumData },
+        outputAssets
+      )
       .complete();
     return { type: "ok", data: tx };
   } catch (error) {
@@ -94,7 +98,11 @@ export const batchRequest = async (
         const outputAssets = {
           lovelace: onl.lovelace,
         };
-        initTx.payToContract(targetAddress, outputDatumData, outputAssets);
+        initTx.payToContract(
+          targetAddress,
+          { inline: outputDatumData },
+          outputAssets
+        );
         return undefined;
       }
     },
