@@ -99,7 +99,7 @@ test<LucidContext>("Test - Batch Swap Request, Reclaim", async ({
   if (requestUnsigned1.type == "ok") {
     const requestSigned1 = await requestUnsigned1.data.sign().complete();
     const requestTxHash1 = await requestSigned1.submit();
-    console.log("BATCH REQUEST 1 TX HASH", requestTxHash1);
+    // console.log("BATCH REQUEST 1 TX HASH", requestTxHash1);
   }
 
   emulator.awaitBlock(100);
@@ -118,7 +118,7 @@ test<LucidContext>("Test - Batch Swap Request, Reclaim", async ({
   if (reclaimUnsigned1.type == "ok") {
     const reclaimSigned1 = await reclaimUnsigned1.data.sign().complete();
     const reclaimSignedHash1 = await reclaimSigned1.submit();
-    console.log("BATCH RECLAIM 1 TX HASH", reclaimSignedHash1);
+    // console.log("BATCH RECLAIM 1 TX HASH", reclaimSignedHash1);
   }
 
   emulator.awaitBlock(100);
@@ -131,7 +131,7 @@ test<LucidContext>("Test - Batch Swap Request, Reclaim", async ({
   if (requestUnsigned2.type == "ok") {
     const requestSigned2 = await requestUnsigned2.data.sign().complete();
     const requestTxHash2 = await requestSigned2.submit();
-    console.log("BATCH REQUEST 2 TX HASH", requestTxHash2);
+    // console.log("BATCH REQUEST 2 TX HASH", requestTxHash2);
   }
 
   emulator.awaitBlock(100);
