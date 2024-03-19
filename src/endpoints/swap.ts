@@ -173,15 +173,24 @@ export const batchSwap = async (
     const [inputIndices, feeUTxOs] = redeemerIndicesAndFeeUTxOsRes.data;
 
     const PSwapRedeemerSpend = Data.to(new Constr(0, []));
+
+    // const sampleRedeemer = Data.to(
+    //   new Constr(
+    //     0,
+    //     [[0n, 1n, 2n], [0n, 1n, 2n]]
+    //   )
+    // );
+    // console.log("SAMPLE REDEEMER", sampleRedeemer);
+
     const PSwapRedeemerWdrl = Data.to(
-      new Constr(
-        0,
-        inputIndices.map((inputIndex, outputIndex) => [
-          inputIndex,
-          BigInt(outputIndex),
-        ])
-      )
+      new Constr(0, [
+        inputIndices,
+        Array.from({ length: inputIndices.length }, (_, index) => index).map(
+          BigInt
+        ),
+      ])
     );
+    console.log("REWARD ADDRESS A", batchVAs.stakeVA.address);
     const tx = await initTx
       .collectFrom(swapUTxOs, PSwapRedeemerSpend)
       .collectFrom(feeUTxOs)
@@ -229,6 +238,34 @@ const getOutputInfo = async (
       minReceive,
     };
 
+    // const minSwapAddress: AddressD = {
+    //   paymentCredential: {
+    //     ScriptCredential: ["a65ca58a4e9c755fa830173d2a5caed458ac0c73f97db7faae2e7e3b"]
+    //   },
+    //   stakeCredential: {
+    //     Inline: [
+    //       { PublicKeyCredential: ["52563c5410bff6a0d43ccebb7c37e1f69f5eb260552521adff33b9c2"]
+    //       }
+    //     ]
+    //   }
+    // };
+
+    // const sampleDatum: AdaMinOutputDatum = {
+    //   sender: minSwapAddress,
+    //   receiver: minSwapAddress,
+    //   receiverDatumHash: null,
+    //   step: outputOrderType,
+    //   batcherFee: 2000000n,
+    //   outputAda: 2000000n,
+    // };
+
+    // const sampleDatumCBOR = Data.to<AdaMinOutputDatum>(
+    //   sampleDatum,
+    //   AdaMinOutputDatum
+    // );
+
+    // console.log("SAMPLE DATUM", sampleDatumCBOR);
+
     const outputDatum: AdaMinOutputDatum = {
       sender: ownerAddress,
       receiver: ownerAddress,
@@ -246,7 +283,7 @@ const getOutputInfo = async (
     // Hashed since `SingleValidator` expects as such for the swap address
     // output UTxO.
     const outputDatumHash: OutputData = {
-      asHash: outputDatumData,
+      inline: outputDatumData,
     };
 
     const inputLovelaces = utxoToSpend.assets["lovelace"];
