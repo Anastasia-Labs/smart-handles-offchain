@@ -9,8 +9,6 @@ import {
   FetchUsersBatchRequestConfig,
   userBatchRequestUTxOs,
   batchReclaim,
-  FetchBatchRequestConfig,
-  getBatchRequestUTxOs,
 } from "../src/index.js";
 import { beforeEach, expect, test } from "vitest";
 import spendingValidator from "./smartHandleRouter.json" assert { type : "json" };
@@ -63,7 +61,7 @@ const makeRequestConfig = (
 const makeReclaimConfig = async (
   lucid: Lucid,
   swapAddr: Address,
-  ownerAddr: Address,
+  ownerAddr: Address
 ): Promise<BatchReclaimConfig> => {
   const batchRequestConfig: FetchUsersBatchRequestConfig = {
     owner: ownerAddr,
@@ -108,10 +106,14 @@ test<LucidContext>("Test - Batch Swap Request, Reclaim", async ({
   const reclaimConfig1: BatchReclaimConfig = await makeReclaimConfig(
     lucid,
     users.swapAccount.address,
-    users.user1.address,
+    users.user1.address
   );
 
   const reclaimUnsigned1 = await batchReclaim(lucid, reclaimConfig1);
+
+  if (reclaimUnsigned1.type == "error") {
+    console.log("FAILED", reclaimUnsigned1.error);
+  }
 
   expect(reclaimUnsigned1.type).toBe("ok");
 
@@ -141,7 +143,7 @@ test<LucidContext>("Test - Batch Swap Request, Reclaim", async ({
   const reclaimConfig2: BatchReclaimConfig = await makeReclaimConfig(
     lucid,
     users.swapAccount.address,
-    users.user1.address,
+    users.user1.address
   );
 
   const reclaimUnsigned2 = await batchReclaim(lucid, reclaimConfig2);
