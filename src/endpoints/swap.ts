@@ -12,7 +12,6 @@ import {
   OutRef,
   Address,
   UTxO,
-  Network,
 } from "@anastasia-labs/lucid-cardano-fork";
 import {
   Asset,
@@ -337,6 +336,7 @@ export const singleSwap = async (
       .addSignerKey(ownHash) // For collateral UTxO
       .attachSpendingValidator(validator)
       .payToContract(minConstants.address, outputDatumHash, outputAssets)
+      .attachMetadata(674, { msg: [MetadataMessage.SWAP_EXACT_IN_ORDER] })
       .complete();
     return { type: "ok", data: tx };
   } catch (error) {
@@ -362,6 +362,7 @@ export const batchSwap = async (
   try {
     const ownHash = paymentCredentialOf(await lucid.wallet.address()).hash;
 
+    // NOTE: No metadata is getting attached unlike the single variant. TODO?
     const initTx = lucid
       .newTx()
       .addSignerKey(ownHash) // For collateral UTxO
