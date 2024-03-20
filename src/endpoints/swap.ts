@@ -18,7 +18,6 @@ import {
   BlockfrostAdapter,
   calculateSwapExactIn,
   MetadataMessage,
-  OrderDatum,
   OrderStepType,
   PoolState,
 } from "@minswap/sdk";
@@ -31,7 +30,7 @@ import {
   MINSWAP_BATCHER_FEE,
   MINSWAP_DEPOSIT,
 } from "../core/constants.js";
-import { SmartHandleDatum } from "../core/contract.types.js";
+import { OrderDatum, OrderType, SmartHandleDatum } from "../core/contract.types.js";
 import {
   BatchSwapConfig,
   Result,
@@ -41,6 +40,7 @@ import {
 import {
   BatchVAs,
   compareOutRefs,
+  fromAddress,
   genericCatch,
   getBatchVAs,
   getInputUtxoIndices,
@@ -95,15 +95,19 @@ const makeOrderDatum = (
   minimumReceived: bigint
 ): OrderDatum => {
   // {{{
-  return {
-    sender: ownerAddress,
-    receiver: ownerAddress,
-    receiverDatumHash: undefined,
-    step: {
-      type: OrderStepType.SWAP_EXACT_IN,
-      desiredAsset: minAsset,
-      minimumReceived,
+  const addr = fromAddress(ownerAddress);
+  const orderType: OrderType = {
+    desiredAsset: {
+      symbol: minAsset.policyId,
+      name: minAsset.tokenName,
     },
+    minReceive: minimumReceived,
+  };
+  return {
+    sender: addr,
+    receiver: addr,
+    receiverDatumHash: null,
+    step: orderType,
     batcherFee: MINSWAP_BATCHER_FEE,
     depositADA: MINSWAP_DEPOSIT,
   };
@@ -167,6 +171,7 @@ const fetchUTxOsAndTheirCorrespondingOutputInfos = async (
 
     if (poolStateRes.type == "error") return poolStateRes;
 
+
     const poolState = poolStateRes.data;
 
     const utxos = await lucid.utxosByOutRef(requestOutRefs);
@@ -211,10 +216,12 @@ const fetchUTxOsAndTheirCorrespondingOutputInfos = async (
           (amountOut * (100n - config.slippageTolerance)) / 100n,
         );
 
+        const outputDatumCBOR = Data.to<OrderDatum>(outputDatum, OrderDatum);
+
         // Hashed since `SingleValidator` expects as such for the swap address
         // output UTxO.
         const outputDatumHash: OutputData = {
-          asHash: Data.to(OrderDatum.toPlutusData(outputDatum)),
+          asHash: outputDatumCBOR,
         };
 
         const outputAssets = {
@@ -281,7 +288,7 @@ export const singleSwap = async (
 
   const vaRes = getSingleValidatorVA(
     lucid,
-    minConstants.address,
+    config.swapConfig.network,
     config.spendingScript
   );
 
@@ -348,7 +355,7 @@ export const batchSwap = async (
   const minConstants =
     config.swapConfig.network == "Mainnet" ? ADA_MIN_MAINNET : ADA_MIN_PREPROD;
 
-  const batchVAsRes = getBatchVAs(lucid, minConstants.address, config.scripts);
+  const batchVAsRes = getBatchVAs(lucid, config.swapConfig.network, config.scripts);
 
   if (batchVAsRes.type == "error") return batchVAsRes;
 

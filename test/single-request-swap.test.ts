@@ -108,7 +108,12 @@ test<LucidContext>("Test - Single Request, Swap", async ({
     requestOutRef: userRequests[0].outRef,
     spendingScript: spendingValidator.cborHex,
   };
+
   const swapTxUnsigned = await singleSwap(lucid, swapConfig);
+
+  if (swapTxUnsigned.type == "error") {
+    console.log("SINGLE SWAP FAILED", swapTxUnsigned.error);
+  }
 
   expect(swapTxUnsigned.type).toBe("ok");
 
