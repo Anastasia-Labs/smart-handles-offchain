@@ -24,19 +24,20 @@ export type BatchVAs = {
 };
 
 /**
- * Given the swap address and a non-applied validator parametrized by the swap
- * address, attempts to decode the address into a `Data`, applies it, and
- * returns the acquired `Script` along with its corresponding address. "VA" is
- * short for "validator and address."
+ * Given the network and a non-applied validator parametrized by the swap
+ * address, attempts to decode the Minswap's address (corresponding to the
+ * provided network) into a `Data`, applies it, and returns the acquired
+ * `Script` along with its corresponding address. "VA" is short for "validator
+ * and address."
  * @param lucid - Lucid API object
  * @param network - Currently only supports "Mainnet" and "Testnet"
- * @param spendingScript - The parametrized spending script that needs an
- * `Address`
+ * @param unAppliedSpendingScript - The parametrized spending script that needs
+ * an `Address`
  */
 export const getSingleValidatorVA = (
   lucid: Lucid,
   network: LimitedNetwork,
-  spendingScript: CborHex
+  unAppliedSpendingScript: CborHex
 ): Result<ValidatorAndAddress> => {
   const swapAddress =
     network == "Mainnet" ? ADA_MIN_MAINNET.address : ADA_MIN_PREPROD.address;
@@ -45,7 +46,7 @@ export const getSingleValidatorVA = (
 
   if (addressRes.type == "error") return addressRes;
 
-  const validatorScript = applyParamsToScript(spendingScript, [
+  const validatorScript = applyParamsToScript(unAppliedSpendingScript, [
     addressRes.data,
   ]);
 

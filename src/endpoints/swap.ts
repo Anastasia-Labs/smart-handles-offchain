@@ -112,7 +112,7 @@ const makeOrderDatum = (
 
 /**
  * Intermediary datatype for mapping an input UTxO to its corresponding output
- * datum at the swap address.
+ * datum and output assets at the swap address.
  */
 type InputUTxOAndItsOutputInfo = {
   utxo: UTxO;
@@ -208,7 +208,7 @@ const fetchUTxOsAndTheirCorrespondingOutputInfos = async (
         const outputDatum = makeOrderDatum(
           minConstants.minAsset,
           ownerAddress,
-          amountOut
+          (amountOut * (100n - config.slippageTolerance)) / 100n,
         );
 
         // Hashed since `SingleValidator` expects as such for the swap address
