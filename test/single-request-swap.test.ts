@@ -97,7 +97,7 @@ test<LucidContext>("Test - Single Request, Swap", async ({
 
   const blockfrostKey = process.env.BLOCKFROST_KEY;
 
-  if (!blockfrostKey) return new Error("No Blockfrost API key was found");
+  if (!blockfrostKey) throw new Error("No Blockfrost API key was found");
 
   const swapConfig: SingleSwapConfig = {
     swapConfig: {
