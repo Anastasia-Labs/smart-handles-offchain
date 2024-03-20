@@ -26,14 +26,12 @@ beforeEach<LucidContext>(async (context) => {
     return await generateAccountSeedPhrase({ lovelace: BigInt(100_000_000) });
   };
   context.users = {
-    swapAccount: await createUser(),
     router: await createUser(),
     user: await createUser(),
     adversary: await createUser(),
   };
 
   context.emulator = new Emulator([
-    context.users.swapAccount,
     context.users.router,
     context.users.user,
     context.users.adversary,
@@ -48,7 +46,7 @@ test<LucidContext>("Test - Single Request, Swap", async ({
   emulator,
 }) => {
   const requestConfig: SingleRequestConfig = {
-    swapAddress: users.swapAccount.address,
+    network: "Testnet",
     spendingScript: spendingValidator.cborHex,
     lovelace: BigInt(50_000_000),
   };
@@ -68,7 +66,7 @@ test<LucidContext>("Test - Single Request, Swap", async ({
 
   const usersSingleRequestConfig: FetchUsersSingleRequestConfig = {
     owner: users.user.address,
-    swapAddress: users.swapAccount.address,
+    network: "Testnet",
     spendingScript: spendingValidator.cborHex,
   };
 
@@ -82,7 +80,7 @@ test<LucidContext>("Test - Single Request, Swap", async ({
 
   const reclaimConfig: SingleReclaimConfig = {
     requestOutRef: userRequests[0].outRef,
-    swapAddress: users.swapAccount.address,
+    network: "Testnet",
     spendingScript: spendingValidator.cborHex,
   };
   const invalidReclaim = await singleReclaim(lucid, reclaimConfig);
@@ -97,10 +95,17 @@ test<LucidContext>("Test - Single Request, Swap", async ({
   // Valid Swap
   lucid.selectWalletFromSeed(users.router.seedPhrase);
 
+  const blockfrostKey = process.env.BLOCKFROST_KEY;
+
+  if (!blockfrostKey) return new Error("No Blockfrost API key was found");
+
   const swapConfig: SingleSwapConfig = {
+    swapConfig: {
+      blockfrostKey,
+      network: "Testnet",
+      slippageTolerance: BigInt(20), // TODO?
+    },
     requestOutRef: userRequests[0].outRef,
-    minReceive: BigInt(100_000_000),
-    swapAddress: users.swapAccount.address,
     spendingScript: spendingValidator.cborHex,
   };
   const swapTxUnsigned = await singleSwap(lucid, swapConfig);

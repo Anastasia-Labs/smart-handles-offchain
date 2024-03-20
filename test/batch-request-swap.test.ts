@@ -13,11 +13,11 @@ import {
   PROTOCOL_PARAMETERS_DEFAULT,
   getBatchVAs,
   BatchVAs,
+  LimitedNetwork,
 } from "../src/index.js";
 import { beforeEach, expect, test } from "vitest";
 import spendingValidator from "./smartHandleRouter.json" assert { type : "json" };
 import stakingValidator from "./smartHandleStake.json" assert { type : "json" };
-import {Script} from "vm";
 
 type LucidContext = {
   lucid: Lucid;
@@ -31,7 +31,6 @@ beforeEach<LucidContext>(async (context) => {
     return await generateAccountSeedPhrase({ lovelace: BigInt(100_000_000) });
   };
   context.users = {
-    swapAccount: await createUser(),
     router: await createUser(),
     user1: await createUser(),
     user2: await createUser(),
@@ -42,7 +41,6 @@ beforeEach<LucidContext>(async (context) => {
 
   context.emulator = new Emulator(
     [
-      context.users.swapAccount,
       context.users.router,
       context.users.user1,
       context.users.user2,
@@ -67,12 +65,12 @@ const unAppliedScripts = {
 };
 
 const makeRequestConfig = (
-  swapAddr: Address,
+  network: LimitedNetwork,
   ownerAddr: Address,
-  lovelaces: number[],
+  lovelaces: number[]
 ): BatchRequestConfig => {
   return {
-    swapAddress: swapAddr,
+    network,
     owner: ownerAddr,
     lovelaces: lovelaces.map(BigInt),
     scripts: unAppliedScripts,
@@ -82,7 +80,7 @@ const makeRequestConfig = (
 const makeAndSubmitRequest = async (
   lucid: Lucid,
   emulator: Emulator,
-  swapAddress: Address,
+  network: LimitedNetwork,
   userSeedPhrase: string,
   userAddress: Address,
   lovelaces: number[]
@@ -91,7 +89,7 @@ const makeAndSubmitRequest = async (
   lucid.selectWalletFromSeed(userSeedPhrase);
 
   const requestConfig: BatchRequestConfig = makeRequestConfig(
-    swapAddress,
+    network,
     userAddress,
     lovelaces
   );
@@ -113,7 +111,10 @@ const makeAndSubmitRequest = async (
   emulator.awaitBlock(100);
 };
 
-async function registerRewardAddress(lucid: Lucid, rewardAddress: string): Promise<void> {
+async function registerRewardAddress(
+  lucid: Lucid,
+  rewardAddress: string
+): Promise<void> {
   const tx = await lucid.newTx().registerStake(rewardAddress).complete();
   const signedTx = await tx.sign().complete();
   await signedTx.submit();
@@ -128,7 +129,7 @@ test<LucidContext>("Test - Batch Request, Swap", async ({
   console.log("MAX MEM", emulator.protocolParameters.maxTxExMem);
   const batchVAsRes = getBatchVAs(
     lucid,
-    users.swapAccount.address,
+    "Testnet",
     unAppliedScripts
   );
 
@@ -140,7 +141,7 @@ test<LucidContext>("Test - Batch Request, Swap", async ({
   await makeAndSubmitRequest(
     lucid,
     emulator,
-    users.swapAccount.address,
+    "Testnet",
     users.user1.seedPhrase,
     users.user1.address,
     [5_000_000, 20_000_000, 30_000_000, 40_000_000]
@@ -149,7 +150,7 @@ test<LucidContext>("Test - Batch Request, Swap", async ({
   await makeAndSubmitRequest(
     lucid,
     emulator,
-    users.swapAccount.address,
+    "Testnet",
     users.user2.seedPhrase,
     users.user2.address,
     [30_000_000, 36_000_000, 24_000_000]
@@ -158,7 +159,7 @@ test<LucidContext>("Test - Batch Request, Swap", async ({
   // await makeAndSubmitRequest(
   //   lucid,
   //   emulator,
-  //   users.swapAccount.address,
+  //   "Testnet",
   //   users.user3.seedPhrase,
   //   users.user3.address,
   //   [10_000_000, 72_000_000]
@@ -167,7 +168,7 @@ test<LucidContext>("Test - Batch Request, Swap", async ({
   // await makeAndSubmitRequest(
   //   lucid,
   //   emulator,
-  //   users.swapAccount.address,
+  //   "Testnet",
   //   users.user4.seedPhrase,
   //   users.user4.address,
   //   [
@@ -177,7 +178,7 @@ test<LucidContext>("Test - Batch Request, Swap", async ({
   // );
 
   const batchRequestConfig: FetchBatchRequestConfig = {
-    swapAddress: users.swapAccount.address,
+    network: "Testnet",
     scripts: unAppliedScripts,
   };
 
@@ -192,19 +193,21 @@ test<LucidContext>("Test - Batch Request, Swap", async ({
 
   emulator.awaitBlock(100);
 
+  const blockfrostKey = process.env.BLOCKFROST_KEY;
+
+  if (!blockfrostKey) return new Error("No Blockfrost API key was found");
+
   // Specifying constant `minReceive` for all requests. TODO.
   const swapConfig: BatchSwapConfig = {
-    swapInfos: allRequests.map((u) => ({
-      requestOutRef: u.outRef,
-      minReceive: BigInt(100_000_000),
-    })),
-    swapAddress: users.swapAccount.address,
+    swapConfig: {
+      blockfrostKey,
+      network: "Testnet",
+      slippageTolerance: BigInt(20), // TODO?
+    },
+    requestOutRefs: allRequests.map(u => u.outRef),
     scripts: unAppliedScripts,
   };
-  //
-  console.log("DELEGATION", emulator.getDelegation(rewardAddress))
-  console.log("REWARD ADDRESS B", rewardAddress);
-  //
+
   const swapTxUnsigned = await batchSwap(lucid, swapConfig);
 
   if (swapTxUnsigned.type == "error") {
