@@ -9,7 +9,8 @@ import {
   applyParamsToScript,
 } from "@anastasia-labs/lucid-cardano-fork";
 import { fromAddressToData } from "../utils/index.js";
-import { CborHex, Result } from "../types.js";
+import { CborHex, LimitedNetwork, Result } from "../types.js";
+import { ADA_MIN_MAINNET, ADA_MIN_PREPROD } from "../constants.js";
 
 export type ValidatorAndAddress = {
   validator: Script;
@@ -27,15 +28,19 @@ export type BatchVAs = {
  * address, attempts to decode the address into a `Data`, applies it, and
  * returns the acquired `Script` along with its corresponding address. "VA" is
  * short for "validator and address."
- * @param Lucid API object
- * @param The swap address in Bech32
- * @param The parametrized spending script that needs an `Address`
+ * @param lucid - Lucid API object
+ * @param network - Currently only supports "Mainnet" and "Testnet"
+ * @param spendingScript - The parametrized spending script that needs an
+ * `Address`
  */
 export const getSingleValidatorVA = (
   lucid: Lucid,
-  swapAddress: Address,
+  network: LimitedNetwork,
   spendingScript: CborHex
 ): Result<ValidatorAndAddress> => {
+  const swapAddress =
+    network == "Mainnet" ? ADA_MIN_MAINNET.address : ADA_MIN_PREPROD.address;
+
   const addressRes = fromAddressToData(swapAddress);
 
   if (addressRes.type == "error") return addressRes;
@@ -57,9 +62,12 @@ export const getSingleValidatorVA = (
 
 export const getBatchVAs = (
   lucid: Lucid,
-  swapAddress: Address,
+  network: "Mainnet" | "Testnet",
   unAppliedScripts: { spending: CborHex; staking: CborHex }
 ): Result<BatchVAs> => {
+  const swapAddress =
+    network == "Mainnet" ? ADA_MIN_MAINNET.address : ADA_MIN_PREPROD.address;
+
   const addressRes = fromAddressToData(swapAddress);
 
   if (addressRes.type == "error") return addressRes;

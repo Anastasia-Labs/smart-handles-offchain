@@ -23,19 +23,21 @@ export type ReadableUTxO<T> = {
   assets: Assets;
 };
 
+export type LimitedNetwork = "Mainnet" | "Testnet";
+
 export type FetchSingleRequestConfig = {
-  swapAddress: Address;
+  network: LimitedNetwork;
   spendingScript: CborHex;
 };
 
 export type FetchUsersSingleRequestConfig = {
   owner: Address;
-  swapAddress: Address;
+  network: LimitedNetwork;
   spendingScript: CborHex;
 };
 
 export type FetchBatchRequestConfig = {
-  swapAddress: Address;
+  network: LimitedNetwork;
   scripts: {
     spending: CborHex;
     staking: CborHex;
@@ -44,7 +46,7 @@ export type FetchBatchRequestConfig = {
 
 export type FetchUsersBatchRequestConfig = {
   owner: Address;
-  swapAddress: Address;
+  network: LimitedNetwork;
   scripts: {
     spending: CborHex;
     staking: CborHex;
@@ -53,13 +55,13 @@ export type FetchUsersBatchRequestConfig = {
 
 export type SingleReclaimConfig = {
   requestOutRef: OutRef;
-  swapAddress: Address;
+  network: LimitedNetwork;
   spendingScript: CborHex;
 };
 
 export type BatchReclaimConfig = {
   requestOutRefs: OutRef[];
-  swapAddress: Address;
+  network: LimitedNetwork;
   scripts: {
     spending: CborHex;
     staking: CborHex;
@@ -68,7 +70,7 @@ export type BatchReclaimConfig = {
 
 export type SwapConfig = {
   blockfrostKey: string;
-  network: "Mainnet" | "Testnet";
+  network: LimitedNetwork;
   slippageTolerance: bigint;
 };
 
@@ -89,13 +91,13 @@ export type BatchSwapConfig = {
 };
 
 export type SingleRequestConfig = {
-  swapAddress: Address;
+  network: LimitedNetwork;
   spendingScript: CborHex;
   lovelace: bigint;
 };
 
 export type BatchRequestConfig = {
-  swapAddress: Address;
+  network: LimitedNetwork;
   owner: Address;
   lovelaces: bigint[];
   scripts: {

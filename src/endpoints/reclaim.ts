@@ -16,7 +16,6 @@ import {
   getSingleValidatorVA,
   parseSafeDatum,
   printUTxOOutRef,
-  toAddress,
   validateItems,
 } from "../core/utils/index.js";
 import {
@@ -32,7 +31,7 @@ export const singleReclaim = async (
 ): Promise<Result<TxComplete>> => {
   const vaRes = getSingleValidatorVA(
     lucid,
-    config.swapAddress,
+    config.network,
     config.spendingScript
   );
 
@@ -68,7 +67,7 @@ export const batchReclaim = async (
   lucid: Lucid,
   config: BatchReclaimConfig
 ): Promise<Result<TxComplete>> => {
-  const batchVAsRes = getBatchVAs(lucid, config.swapAddress, config.scripts);
+  const batchVAsRes = getBatchVAs(lucid, config.network, config.scripts);
 
   if (batchVAsRes.type == "error") return batchVAsRes;
 

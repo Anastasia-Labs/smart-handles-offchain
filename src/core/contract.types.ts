@@ -71,22 +71,3 @@ export const SmartHandleDatumSchema = Data.Object({
 export type SmartHandleDatum = Data.Static<typeof SmartHandleDatumSchema>;
 export const SmartHandleDatum =
   SmartHandleDatumSchema as unknown as SmartHandleDatum;
-
-export const OrderTypeSchema = Data.Object({
-  desiredAsset: AssetClassSchema,
-  minReceive: Data.Integer(),
-});
-export type OrderType = Data.Static<typeof OrderTypeSchema>;
-export const OrderType = OrderTypeSchema as unknown as OrderType;
-
-export const AdaMinOutputDatumSchema = Data.Object({
-  sender: AddressSchema,
-  receiver: AddressSchema,
-  receiverDatumHash: Data.Nullable(Data.Bytes()),
-  step: OrderTypeSchema,
-  batcherFee: Data.Integer(),
-  outputAda: Data.Integer(),
-});
-export type AdaMinOutputDatum = Data.Static<typeof AdaMinOutputDatumSchema>;
-export const AdaMinOutputDatum =
-  AdaMinOutputDatumSchema as unknown as AdaMinOutputDatum;

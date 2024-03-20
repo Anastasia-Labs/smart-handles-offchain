@@ -22,7 +22,7 @@ export const getSingleRequestUTxOs = async (
 ): Promise<SmartUTxO[]> => {
   const vaRes = getSingleValidatorVA(
     lucid,
-    config.swapAddress,
+    config.network,
     config.spendingScript
   );
 
@@ -68,7 +68,7 @@ export const getBatchRequestUTxOs = async (
   lucid: Lucid,
   config: FetchBatchRequestConfig
 ): Promise<SmartUTxO[]> => {
-  const batchVAsRes = getBatchVAs(lucid, config.swapAddress, config.scripts);
+  const batchVAsRes = getBatchVAs(lucid, config.network, config.scripts);
 
   if (batchVAsRes.type === "error") return [];
 
@@ -152,7 +152,7 @@ const singleUsersConfigToGenerigConfig = (
   config: FetchUsersSingleRequestConfig
 ): FetchSingleRequestConfig => {
   return {
-    swapAddress: config.swapAddress,
+    network: config.network,
     spendingScript: config.spendingScript,
   };
 };
@@ -161,7 +161,7 @@ const batchUsersConfigToGenerigConfig = (
   config: FetchUsersBatchRequestConfig
 ): FetchBatchRequestConfig => {
   return {
-    swapAddress: config.swapAddress,
+    network: config.network,
     scripts: config.scripts,
   };
 };

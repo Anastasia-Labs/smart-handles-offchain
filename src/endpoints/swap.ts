@@ -1,4 +1,4 @@
-// IMPORTS
+// IMPORTS --------------------------------------------------------------------
 // {{{
 import {
   Assets,
@@ -18,11 +18,8 @@ import {
   BlockfrostAdapter,
   calculateSwapExactIn,
   MetadataMessage,
-  NetworkId,
   OrderDatum,
-  OrderStep,
   OrderStepType,
-  PoolDatum,
   PoolState,
 } from "@minswap/sdk";
 import { BlockFrostAPI } from "@blockfrost/blockfrost-js";
@@ -31,15 +28,10 @@ import {
   ROUTER_FEE,
   ADA_MIN_PREPROD,
   ADA_MIN_MAINNET,
-  AdaMinConstants,
   MINSWAP_BATCHER_FEE,
   MINSWAP_DEPOSIT,
 } from "../core/constants.js";
-import {
-  AdaMinOutputDatum,
-  OrderType,
-  SmartHandleDatum,
-} from "../core/contract.types.js";
+import { SmartHandleDatum } from "../core/contract.types.js";
 import {
   BatchSwapConfig,
   Result,
@@ -48,8 +40,6 @@ import {
 } from "../core/types.js";
 import {
   BatchVAs,
-  asyncValidateItems,
-  collectErrorMsgs,
   compareOutRefs,
   genericCatch,
   getBatchVAs,
@@ -60,7 +50,10 @@ import {
   toAddress,
 } from "../core/utils/index.js";
 // }}}
+// ----------------------------------------------------------------------------
 
+// UTILITY FUNCTIONS ----------------------------------------------------------
+// {{{
 const getPoolStateById = async (
   blockfrostAdapter: BlockfrostAdapter,
   poolId: string
@@ -275,6 +268,8 @@ const getRedeemerIndicesAndFeeUTxOs = async (
   }
   // }}}
 };
+// }}}
+// ----------------------------------------------------------------------------
 
 export const singleSwap = async (
   lucid: Lucid,
@@ -385,7 +380,7 @@ export const batchSwap = async (
 
     const swapUTxOs: UTxO[] = [];
 
-    utxosAndTheirOutputInfos.forEach(inUTxOAndOutInfo => {
+    utxosAndTheirOutputInfos.forEach((inUTxOAndOutInfo) => {
       swapUTxOs.push(inUTxOAndOutInfo.utxo);
       initTx.payToContract(
         minConstants.address,

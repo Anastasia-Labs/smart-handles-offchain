@@ -26,7 +26,7 @@ export const singleRequest = async (
 ): Promise<Result<TxComplete>> => {
   const vaRes = getSingleValidatorVA(
     lucid,
-    config.swapAddress,
+    config.network,
     config.spendingScript
   );
 
@@ -74,7 +74,7 @@ export const batchRequest = async (
   lucid: Lucid,
   config: BatchRequestConfig
 ): Promise<Result<TxComplete>> => {
-  const batchVAsRes = getBatchVAs(lucid, config.swapAddress, config.scripts);
+  const batchVAsRes = getBatchVAs(lucid, config.network, config.scripts);
 
   if (batchVAsRes.type == "error") return batchVAsRes;
 
