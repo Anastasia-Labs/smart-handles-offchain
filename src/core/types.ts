@@ -66,19 +66,22 @@ export type BatchReclaimConfig = {
   };
 };
 
+export type SwapConfig = {
+  blockfrostKey: string;
+  network: "Mainnet" | "Testnet";
+  slippageTolerance: bigint;
+};
+
 export type SingleSwapConfig = {
+  swapConfig: SwapConfig;
   requestOutRef: OutRef;
-  minReceive: bigint;
-  swapAddress: Address;
   spendingScript: CborHex;
 };
 
+// Same `slippageTolerance` for all request outrefs. TODO?
 export type BatchSwapConfig = {
-  swapInfos: {
-    requestOutRef: OutRef;
-    minReceive: bigint;
-  }[];
-  swapAddress: Address;
+  swapConfig: SwapConfig;
+  requestOutRefs: OutRef[];
   scripts: {
     spending: CborHex;
     staking: CborHex;
