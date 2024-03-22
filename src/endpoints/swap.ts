@@ -364,12 +364,12 @@ export const batchSwap = async (
   try {
     const ownHash = paymentCredentialOf(await lucid.wallet.address()).hash;
 
-    // NOTE: No metadata is getting attached unlike the single variant. TODO?
     const initTx = lucid
       .newTx()
       .addSignerKey(ownHash) // For collateral UTxO
       .attachSpendingValidator(batchVAs.spendVA.validator)
-      .attachWithdrawalValidator(batchVAs.stakeVA.validator);
+      .attachWithdrawalValidator(batchVAs.stakeVA.validator)
+      .attachMetadata(674, { msg: [MetadataMessage.SWAP_EXACT_IN_ORDER] });
 
     // Prior sorting needed as the traversal also adds corresponding outputs.
     const sortedOutRefs = config.requestOutRefs.sort(compareOutRefs);
