@@ -1,4 +1,4 @@
-import { Data } from "@anastasia-labs/lucid-cardano-fork"
+import { Data } from "@anastasia-labs/lucid-cardano-fork";
 
 export const OutputReferenceSchema = Data.Object({
   txHash: Data.Object({ hash: Data.Bytes({ minLength: 32, maxLength: 32 }) }),
@@ -43,13 +43,15 @@ export const AddressSchema = Data.Object({
 export type AddressD = Data.Static<typeof AddressSchema>;
 export const AddressD = AddressSchema as unknown as AddressD;
 
-//NOTE: liqwid-plutarch-extra AssetClass version, not PlutusLedgerApi.V1.Value
+// NOTE: liqwid-plutarch-extra AssetClass version, not PlutusLedgerApi.V1.Value
+// TODO: ^ This comment doesn't seem true for this contract (as opposed to the
+//       direct-offer-offchain repo).
 export const AssetClassSchema = Data.Object(
   {
     symbol: Data.Bytes(),
     name: Data.Bytes(),
   },
-  { hasConstr: false }
+  { hasConstr: true } // Explicit `true` because of the TODO above.
 );
 export type AssetClassD = Data.Static<typeof AssetClassSchema>;
 export const AssetClassD = AssetClassSchema as unknown as AssetClassD;
@@ -64,7 +66,27 @@ export type Value = Data.Static<typeof ValueSchema>;
 export const Value = ValueSchema as unknown as Value;
 
 export const SmartHandleDatumSchema = Data.Object({
-  owner: AddressSchema
-}); 
+  owner: AddressSchema,
+});
 export type SmartHandleDatum = Data.Static<typeof SmartHandleDatumSchema>;
-export const SmartHandleDatum = SmartHandleDatumSchema as unknown as SmartHandleDatum
+export const SmartHandleDatum =
+  SmartHandleDatumSchema as unknown as SmartHandleDatum;
+
+export const OrderTypeSchema = Data.Object({
+  desiredAsset: AssetClassSchema,
+  minReceive: Data.Integer(),
+});
+export type OrderType = Data.Static<typeof OrderTypeSchema>;
+export const OrderType = OrderTypeSchema as unknown as OrderType;
+
+export const OrderDatumSchema = Data.Object({
+  sender: AddressSchema,
+  receiver: AddressSchema,
+  receiverDatumHash: Data.Nullable(Data.Bytes()),
+  step: OrderTypeSchema,
+  batcherFee: Data.Integer(),
+  depositADA: Data.Integer(),
+});
+export type OrderDatum = Data.Static<typeof OrderDatumSchema>;
+export const OrderDatum =
+  OrderDatumSchema as unknown as OrderDatum;

@@ -23,8 +23,85 @@ export type ReadableUTxO<T> = {
   assets: Assets;
 };
 
-export type ReclaimConfig = {
-  utxoOutRef: OutRef;
-  swapAddress: Address;
+export type LimitedNetwork = "Mainnet" | "Testnet";
+
+export type FetchSingleRequestConfig = {
+  network: LimitedNetwork;
   spendingScript: CborHex;
+};
+
+export type FetchUsersSingleRequestConfig = {
+  owner: Address;
+  network: LimitedNetwork;
+  spendingScript: CborHex;
+};
+
+export type FetchBatchRequestConfig = {
+  network: LimitedNetwork;
+  scripts: {
+    spending: CborHex;
+    staking: CborHex;
+  };
+};
+
+export type FetchUsersBatchRequestConfig = {
+  owner: Address;
+  network: LimitedNetwork;
+  scripts: {
+    spending: CborHex;
+    staking: CborHex;
+  };
+};
+
+export type SingleReclaimConfig = {
+  requestOutRef: OutRef;
+  network: LimitedNetwork;
+  spendingScript: CborHex;
+};
+
+export type BatchReclaimConfig = {
+  requestOutRefs: OutRef[];
+  network: LimitedNetwork;
+  scripts: {
+    spending: CborHex;
+    staking: CborHex;
+  };
+};
+
+export type SwapConfig = {
+  blockfrostKey: string;
+  network: LimitedNetwork;
+  slippageTolerance: bigint;
+};
+
+export type SingleSwapConfig = {
+  swapConfig: SwapConfig;
+  requestOutRef: OutRef;
+  spendingScript: CborHex;
+};
+
+// Same `slippageTolerance` for all request outrefs. TODO?
+export type BatchSwapConfig = {
+  swapConfig: SwapConfig;
+  requestOutRefs: OutRef[];
+  scripts: {
+    spending: CborHex;
+    staking: CborHex;
+  };
+};
+
+export type SingleRequestConfig = {
+  network: LimitedNetwork;
+  spendingScript: CborHex;
+  lovelace: bigint;
+};
+
+export type BatchRequestConfig = {
+  network: LimitedNetwork;
+  owner: Address;
+  lovelaces: bigint[];
+  scripts: {
+    spending: CborHex;
+    staking: CborHex;
+  };
 };

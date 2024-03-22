@@ -2,62 +2,130 @@ import {
   Constr,
   Data,
   Lucid,
-  SpendingValidator,
+  Script,
   TxComplete,
-  applyParamsToScript,
+  UTxO,
   paymentCredentialOf,
 } from "@anastasia-labs/lucid-cardano-fork";
-import { fromAddressToData, parseSafeDatum } from "../core/utils/index.js";
-import { Result, ReclaimConfig } from "../core/types.js";
+import {
+  BatchVAs,
+  ValidatorAndAddress,
+  collectErrorMsgs,
+  genericCatch,
+  getBatchVAs,
+  getSingleValidatorVA,
+  parseSafeDatum,
+  printUTxOOutRef,
+  validateItems,
+} from "../core/utils/index.js";
+import {
+  Result,
+  BatchReclaimConfig,
+  SingleReclaimConfig,
+} from "../core/types.js";
 import { SmartHandleDatum } from "../core/contract.types.js";
 
-export const reclaim = async (
+export const singleReclaim = async (
   lucid: Lucid,
-  config: ReclaimConfig
+  config: SingleReclaimConfig
 ): Promise<Result<TxComplete>> => {
-  const addressRes = fromAddressToData(config.swapAddress);
+  const vaRes = getSingleValidatorVA(
+    lucid,
+    config.network,
+    config.spendingScript
+  );
 
-  if (addressRes.type == "error")
-    return addressRes;
+  if (vaRes.type == "error") return vaRes;
 
-  const validatorScript = applyParamsToScript(config.spendingScript, [
-    addressRes.data,
-  ]);
+  const va: ValidatorAndAddress = vaRes.data;
 
-  const validator: SpendingValidator = {
-    type: "PlutusV2",
-    script: validatorScript,
-  };
+  try {
+    const [utxoToSpend] = await lucid.utxosByOutRef([config.requestOutRef]);
 
-  const [utxoToSpend] = await lucid.utxosByOutRef([config.utxoOutRef]);
+    if (!utxoToSpend)
+      return { type: "error", error: new Error("No UTxO with that TxOutRef") };
 
-  if (!utxoToSpend)
-    return { type: "error", error: new Error("No UTxO with that TxOutRef") };
+    const datum = parseSafeDatum(lucid, utxoToSpend.datum, SmartHandleDatum);
+    if (datum.type == "left")
+      return { type: "error", error: new Error(datum.value) };
+    const ownHash = paymentCredentialOf(await lucid.wallet.address()).hash;
 
-  if (!utxoToSpend.datum)
-    return { type: "error", error: new Error("Missing Datum") };
+    const correctUTxO = datumBelongsToOwner(datum.value, ownHash);
+    if (!correctUTxO) {
+      return {
+        type: "error",
+        error: new Error(UNAUTHORIZED_OWNER_ERROR_MSG),
+      };
+    }
+    return await buildTx(lucid, [utxoToSpend], ownHash, va.validator);
+  } catch (error) {
+    return genericCatch(error);
+  }
+};
 
-  const datum = parseSafeDatum(lucid, utxoToSpend.datum, SmartHandleDatum);
-  if (datum.type == "left")
-    return { type: "error", error: new Error(datum.value) };
+export const batchReclaim = async (
+  lucid: Lucid,
+  config: BatchReclaimConfig
+): Promise<Result<TxComplete>> => {
+  const batchVAsRes = getBatchVAs(lucid, config.network, config.scripts);
 
-  const ownHash = paymentCredentialOf(await lucid.wallet.address()).hash;
+  if (batchVAsRes.type == "error") return batchVAsRes;
 
-  const correctUTxO =
-    "PublicKeyCredential" in datum.value.owner.paymentCredential &&
-    datum.value.owner.paymentCredential.PublicKeyCredential[0] == ownHash;
-  if (!correctUTxO)
-    return {
-      type: "error",
-      error: new Error("Signer is not authorized to claim the UTxO"),
-    };
+  const batchVAs: BatchVAs = batchVAsRes.data;
 
+  try {
+    const utxosToSpend = await lucid.utxosByOutRef(config.requestOutRefs);
+
+    if (!utxosToSpend || utxosToSpend.length < 1)
+      return {
+        type: "error",
+        error: new Error("None of the specified UTxOs could be found"),
+      };
+    const ownHash = paymentCredentialOf(await lucid.wallet.address()).hash;
+
+    const badUTxOErrorMsgs: string[] = validateItems(
+      utxosToSpend,
+      (u: UTxO) => {
+        const datum = parseSafeDatum(lucid, u.datum, SmartHandleDatum);
+        if (datum.type == "left") {
+          return `${printUTxOOutRef(u)}: ${datum.value}`;
+        } else if (!datumBelongsToOwner(datum.value, ownHash)) {
+          return `${printUTxOOutRef(u)}: ${UNAUTHORIZED_OWNER_ERROR_MSG}`;
+        } else {
+          return undefined;
+        }
+      }
+    );
+
+    if (badUTxOErrorMsgs.length > 0)
+      return {
+        type: "error",
+        error: collectErrorMsgs(badUTxOErrorMsgs, "Bad UTxO(s) encountered"),
+      };
+
+    return await buildTx(
+      lucid,
+      utxosToSpend,
+      ownHash,
+      batchVAs.spendVA.validator
+    );
+  } catch (error) {
+    return genericCatch(error);
+  }
+};
+
+const buildTx = async (
+  lucid: Lucid,
+  utxosToSpend: UTxO[],
+  ownHash: string,
+  validator: Script
+): Promise<Result<TxComplete>> => {
   try {
     const PReclaimRedeemer = Data.to(new Constr(1, []));
 
     const tx = await lucid
       .newTx()
-      .collectFrom([utxoToSpend], PReclaimRedeemer)
+      .collectFrom(utxosToSpend, PReclaimRedeemer)
       .addSignerKey(ownHash)
       .attachSpendingValidator(validator)
       .complete();
@@ -67,3 +135,16 @@ export const reclaim = async (
     return { type: "error", error: new Error(`${JSON.stringify(error)}`) };
   }
 };
+
+const datumBelongsToOwner = (
+  d: SmartHandleDatum,
+  ownerHash: string
+): boolean => {
+  return (
+    "PublicKeyCredential" in d.owner.paymentCredential &&
+    d.owner.paymentCredential.PublicKeyCredential[0] == ownerHash
+  );
+};
+
+const UNAUTHORIZED_OWNER_ERROR_MSG: string =
+  "Signer is not authorized to claim the UTxO";
