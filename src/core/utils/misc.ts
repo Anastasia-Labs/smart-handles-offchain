@@ -10,7 +10,7 @@ import {
 } from "@anastasia-labs/lucid-cardano-fork";
 import { fromAddressToData } from "../utils/index.js";
 import { Result } from "../types.js";
-import { ADA_MIN_MAINNET, ADA_MIN_PREPROD } from "../constants.js";
+import { MINSWAP_ADDRESS_MAINNET, MINSWAP_ADDRESS_PREPROD } from "../constants.js";
 import singleSpendingValidator from "./smartHandleSimple.json" assert { type : "json" };
 import batchSpendingValidator from "./smartHandleRouter.json" assert { type : "json" };
 import stakingValidator from "./smartHandleStake.json" assert { type : "json" };
@@ -37,8 +37,8 @@ export const getSingleValidatorVA = (
   testnet?: boolean
 ): Result<ValidatorAndAddress> => {
   const swapAddress = testnet
-    ? ADA_MIN_MAINNET.address
-    : ADA_MIN_PREPROD.address;
+    ? MINSWAP_ADDRESS_PREPROD
+    : MINSWAP_ADDRESS_MAINNET;
 
   const addressRes = fromAddressToData(swapAddress);
 
@@ -70,8 +70,8 @@ export const getBatchVAs = (
   testnet?: boolean
 ): Result<BatchVAs> => {
   const swapAddress = testnet
-    ? ADA_MIN_MAINNET.address
-    : ADA_MIN_PREPROD.address;
+    ? MINSWAP_ADDRESS_PREPROD
+    : MINSWAP_ADDRESS_MAINNET;
 
   const addressRes = fromAddressToData(swapAddress);
 

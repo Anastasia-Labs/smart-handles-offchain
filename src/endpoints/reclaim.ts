@@ -29,11 +29,7 @@ export const singleReclaim = async (
   lucid: Lucid,
   config: SingleReclaimConfig
 ): Promise<Result<TxComplete>> => {
-  const vaRes = getSingleValidatorVA(
-    lucid,
-    config.network,
-    config.spendingScript
-  );
+  const vaRes = getSingleValidatorVA(lucid, config.testnet);
 
   if (vaRes.type == "error") return vaRes;
 
@@ -67,7 +63,7 @@ export const batchReclaim = async (
   lucid: Lucid,
   config: BatchReclaimConfig
 ): Promise<Result<TxComplete>> => {
-  const batchVAsRes = getBatchVAs(lucid, config.network, config.scripts);
+  const batchVAsRes = getBatchVAs(lucid, config.testnet);
 
   if (batchVAsRes.type == "error") return batchVAsRes;
 

@@ -29,8 +29,14 @@ import {
   ADA_MIN_MAINNET,
   MINSWAP_BATCHER_FEE,
   MINSWAP_DEPOSIT,
+  MINSWAP_ADDRESS_PREPROD,
+  MINSWAP_ADDRESS_MAINNET,
 } from "../core/constants.js";
-import { OrderDatum, OrderType, SmartHandleDatum } from "../core/contract.types.js";
+import {
+  OrderDatum,
+  OrderType,
+  SmartHandleDatum,
+} from "../core/contract.types.js";
 import {
   BatchSwapConfig,
   Result,
@@ -82,15 +88,12 @@ const getPoolStateById = async (
 /**
  * Helper function for constructing the proper datum expected by Minswap's
  * script address.
- * @param minAsset - Policy ID and token name of the $MIN token. This can vary
- * based on the chosen network (mainnet or preprod)
- * @param ownerAddress - Address of the owner extracted from the input
- * `SmartHandleDatum`
- * @param minimumReceived - Minimum amount of $MIN tokens the owner should
- * receive
+ * @param asset - Policy ID and token name of the desired token
+ * @param ownerAddress - Address of the owner extracted from the input `SmartHandleDatum`
+ * @param minimumReceived - Minimum amount of tokens the owner should receive
  */
 const makeOrderDatum = (
-  minAsset: Asset,
+  asset: Asset,
   ownerAddress: Address,
   minimumReceived: bigint
 ): OrderDatum => {
@@ -98,8 +101,8 @@ const makeOrderDatum = (
   const addr = fromAddress(ownerAddress);
   const orderType: OrderType = {
     desiredAsset: {
-      symbol: minAsset.policyId,
-      name: minAsset.tokenName,
+      symbol: asset.policyId,
+      name: asset.tokenName,
     },
     minReceive: minimumReceived,
   };
@@ -142,35 +145,33 @@ type InputUTxOAndItsOutputInfo = {
  * - Don't have a proper datum
  * - Don't have enough Lovelaces
  * @param lucid - Lucid API object
- * @param config - Swap configurations (BF key, network, and slippage tolerance)
+ * @param config - Swap configurations (BF key, desired asset, pool ID of the asset, and slippage tolerance)
  * @param validatorAddress - Address of the smart handle script
  * @param requestOutRefs - `OutRef`s of the desired UTxOs to be spent
+ * @param testnet? - Optional flag for preprod network
  */
 const fetchUTxOsAndTheirCorrespondingOutputInfos = async (
   lucid: Lucid,
   config: SwapConfig,
   validatorAddress: Address,
-  requestOutRefs: OutRef[]
+  requestOutRefs: OutRef[],
+  testnet?: boolean
 ): Promise<Result<InputUTxOAndItsOutputInfo[]>> => {
   // {{{
-  const minConstants =
-    config.network == "Mainnet" ? ADA_MIN_MAINNET : ADA_MIN_PREPROD;
-
   const blockfrostAdapter = new BlockfrostAdapter({
     blockFrost: new BlockFrostAPI({
       projectId: config.blockfrostKey,
-      network: config.network == "Mainnet" ? "mainnet" : "preprod",
+      network: testnet ? "preprod" : "mainnet",
     }),
   });
 
   try {
     const poolStateRes = await getPoolStateById(
       blockfrostAdapter,
-      minConstants.poolId
+      config.poolId
     );
 
     if (poolStateRes.type == "error") return poolStateRes;
-
 
     const poolState = poolStateRes.data;
 
@@ -211,9 +212,9 @@ const fetchUTxOsAndTheirCorrespondingOutputInfos = async (
         });
 
         const outputDatum = makeOrderDatum(
-          minConstants.minAsset,
+          config.asset,
           ownerAddress,
-          (amountOut * (100n - config.slippageTolerance)) / 100n,
+          (amountOut * (100n - config.slippageTolerance)) / 100n
         );
 
         const outputDatumCBOR = Data.to<OrderDatum>(outputDatum, OrderDatum);
@@ -283,14 +284,7 @@ export const singleSwap = async (
   config: SingleSwapConfig
 ): Promise<Result<TxComplete>> => {
   // {{{
-  const minConstants =
-    config.swapConfig.network == "Mainnet" ? ADA_MIN_MAINNET : ADA_MIN_PREPROD;
-
-  const vaRes = getSingleValidatorVA(
-    lucid,
-    config.swapConfig.network,
-    config.spendingScript
-  );
+  const vaRes = getSingleValidatorVA(lucid, config.testnet);
 
   if (vaRes.type == "error") return vaRes;
 
@@ -325,6 +319,10 @@ export const singleSwap = async (
     if (inputIndices.length !== 1)
       return { type: "error", error: new Error("Something went wrong") };
 
+    const swapAddress = config.testnet
+      ? MINSWAP_ADDRESS_PREPROD
+      : MINSWAP_ADDRESS_MAINNET;
+
     const PSwapRedeemer = Data.to(new Constr(0, [inputIndices[0], 0n]));
 
     // Implicit assumption that who creates the transaction is the routing
@@ -337,7 +335,7 @@ export const singleSwap = async (
       .collectFrom(feeUTxOs)
       .addSignerKey(ownHash) // For collateral UTxO
       .attachSpendingValidator(validator)
-      .payToContract(minConstants.address, outputDatumHash, outputAssets)
+      .payToContract(swapAddress, outputDatumHash, outputAssets)
       .attachMetadata(674, { msg: [MetadataMessage.SWAP_EXACT_IN_ORDER] })
       .complete();
     return { type: "ok", data: tx };
@@ -352,14 +350,15 @@ export const batchSwap = async (
   config: BatchSwapConfig
 ): Promise<Result<TxComplete>> => {
   // {{{
-  const minConstants =
-    config.swapConfig.network == "Mainnet" ? ADA_MIN_MAINNET : ADA_MIN_PREPROD;
-
-  const batchVAsRes = getBatchVAs(lucid, config.swapConfig.network, config.scripts);
+  const batchVAsRes = getBatchVAs(lucid, config.testnet);
 
   if (batchVAsRes.type == "error") return batchVAsRes;
 
   const batchVAs: BatchVAs = batchVAsRes.data;
+
+  const swapAddress = config.testnet
+    ? MINSWAP_ADDRESS_PREPROD
+    : MINSWAP_ADDRESS_MAINNET;
 
   try {
     const ownHash = paymentCredentialOf(await lucid.wallet.address()).hash;
@@ -390,7 +389,7 @@ export const batchSwap = async (
     utxosAndTheirOutputInfos.forEach((inUTxOAndOutInfo) => {
       swapUTxOs.push(inUTxOAndOutInfo.utxo);
       initTx.payToContract(
-        minConstants.address,
+        swapAddress,
         inUTxOAndOutInfo.outputDatumHash,
         inUTxOAndOutInfo.outputAssets
       );
