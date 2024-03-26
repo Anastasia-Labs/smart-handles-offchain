@@ -1,5 +1,4 @@
-import { Address, PolicyId } from "@anastasia-labs/lucid-cardano-fork";
-import { AssetClass } from "./types.js";
+import { MinswapConstants } from "./types.js";
 
 /**
  * Amount of Lovelaces required as a convenient alternative to finding the
@@ -70,35 +69,30 @@ const ADA_MIN_LP_TOKEN_NAME_PREPROD =
 const ADA_MIN_LP_TOKEN_NAME_MAINNET =
   "6aa2153e1ae896a95539c9d62f76cedcdabdcdf144e564b8955f609d660cf6a2";
 
-export type AdaMinConstants = {
-  address: Address;
-  minAsset: AssetClass;
-  poolSymbol: PolicyId;
-  poolId: string;
-};
-
 /**
  * Collection of values related to Minswap on preprod.
  */
-export const ADA_MIN_PREPROD: AdaMinConstants = {
+export const ADA_MIN_PREPROD: MinswapConstants = {
   address: MINSWAP_ADDRESS_PREPROD,
-  minAsset: {
+  asset: {
     policyId: MIN_SYMBOL_PREPROD,
     tokenName: MIN_TOKEN_NAME,
   },
   poolSymbol: ADA_MIN_LP_SYMBOL,
   poolId: ADA_MIN_LP_TOKEN_NAME_PREPROD,
+  testnet: true,
 };
 
 /**
  * Collection of values related to Minswap on mainnet.
  */
-export const ADA_MIN_MAINNET = {
+export const ADA_MIN_MAINNET: MinswapConstants = {
   address: MINSWAP_ADDRESS_MAINNET,
-  minAsset: {
+  asset: {
     policyId: MIN_SYMBOL_MAINNET,
     tokenName: MIN_TOKEN_NAME,
   },
   poolSymbol: ADA_MIN_LP_SYMBOL,
   poolId: ADA_MIN_LP_TOKEN_NAME_MAINNET,
+  testnet: false,
 };

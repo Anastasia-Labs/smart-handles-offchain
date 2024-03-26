@@ -7,46 +7,36 @@ import {
 } from "../core/utils/index.js";
 import {
   ReadableUTxO,
-  FetchSingleRequestConfig,
-  FetchBatchRequestConfig,
-  FetchUsersSingleRequestConfig,
-  FetchUsersBatchRequestConfig,
 } from "../core/types.js";
 import { SmartHandleDatum } from "../core/contract.types.js";
 
-type SmartUTxO = ReadableUTxO<SmartHandleDatum>
+type SmartUTxO = ReadableUTxO<SmartHandleDatum>;
 
-export const getSingleRequestUTxOs = async (
+export const fetchSingleRequestUTxOs = async (
   lucid: Lucid,
-  config: FetchSingleRequestConfig
+  testnet?: boolean,
 ): Promise<SmartUTxO[]> => {
-  const vaRes = getSingleValidatorVA(
-    lucid,
-    config.network,
-    config.spendingScript
-  );
+  const vaRes = getSingleValidatorVA(lucid, testnet);
 
   if (vaRes.type === "error") return [];
 
   try {
-    return await getUTxOsAt(lucid, vaRes.data.address);
+    return await fetchUTxOsAt(lucid, vaRes.data.address);
   } catch (_e) {
     return [];
   }
 };
 
-export const userSingleRequestUTxOs = async (
+export const fetchUsersSingleRequestUTxOs = async (
   lucid: Lucid,
-  config: FetchUsersSingleRequestConfig
+  usersAddress: Address,
+  testnet?: boolean
 ): Promise<SmartUTxO[]> => {
   try {
-    const allUTxOs = await getSingleRequestUTxOs(
-      lucid,
-      singleUsersConfigToGenerigConfig(config)
-    );
+    const allUTxOs = await fetchSingleRequestUTxOs(lucid, testnet);
     return allUTxOs.flatMap((utxo: SmartUTxO) => {
       const ownerAddress: Address = toAddress(utxo.datum.owner, lucid);
-      if (ownerAddress == config.owner) {
+      if (ownerAddress == usersAddress) {
         return {
           outRef: {
             txHash: utxo.outRef.txHash,
@@ -64,37 +54,35 @@ export const userSingleRequestUTxOs = async (
   }
 };
 
-export const getBatchRequestUTxOs = async (
+export const fetchBatchRequestUTxOs = async (
   lucid: Lucid,
-  config: FetchBatchRequestConfig
+  testnet?: boolean
 ): Promise<SmartUTxO[]> => {
-  const batchVAsRes = getBatchVAs(lucid, config.network, config.scripts);
+  const batchVAsRes = getBatchVAs(lucid, testnet);
 
   if (batchVAsRes.type === "error") return [];
 
   try {
-    return await getUTxOsAt(lucid, batchVAsRes.data.spendVA.address);
+    return await fetchUTxOsAt(lucid, batchVAsRes.data.spendVA.address);
   } catch (_e) {
     return [];
   }
 };
 
-export const userBatchRequestUTxOs = async (
+export const fetchUsersBatchRequestUTxOs = async (
   lucid: Lucid,
-  config: FetchUsersBatchRequestConfig,
+  usersAddress: Address,
+  testnet?: boolean
 ): Promise<SmartUTxO[]> => {
   try {
-    const allUTxOs = await getBatchRequestUTxOs(
-      lucid,
-      batchUsersConfigToGenerigConfig(config)
-    );
-    return keepUsersUTxOs(lucid, allUTxOs, config.owner);
+    const allUTxOs = await fetchBatchRequestUTxOs(lucid, testnet);
+    return keepUsersUTxOs(lucid, allUTxOs, usersAddress);
   } catch (_e) {
     return [];
   }
 };
 
-const getUTxOsAt = async (
+const fetchUTxOsAt = async (
   lucid: Lucid,
   addr: Address
 ): Promise<SmartUTxO[]> => {
@@ -146,22 +134,4 @@ const keepUsersUTxOs = (
       return [];
     }
   });
-};
-
-const singleUsersConfigToGenerigConfig = (
-  config: FetchUsersSingleRequestConfig
-): FetchSingleRequestConfig => {
-  return {
-    network: config.network,
-    spendingScript: config.spendingScript,
-  };
-};
-
-const batchUsersConfigToGenerigConfig = (
-  config: FetchUsersBatchRequestConfig
-): FetchBatchRequestConfig => {
-  return {
-    network: config.network,
-    scripts: config.scripts,
-  };
 };

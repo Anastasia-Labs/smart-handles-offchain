@@ -24,11 +24,7 @@ export const singleRequest = async (
   lucid: Lucid,
   config: SingleRequestConfig
 ): Promise<Result<TxComplete>> => {
-  const vaRes = getSingleValidatorVA(
-    lucid,
-    config.network,
-    config.spendingScript
-  );
+  const vaRes = getSingleValidatorVA(lucid, config.testnet);
 
   if (vaRes.type == "error") return vaRes;
 
@@ -74,7 +70,7 @@ export const batchRequest = async (
   lucid: Lucid,
   config: BatchRequestConfig
 ): Promise<Result<TxComplete>> => {
-  const batchVAsRes = getBatchVAs(lucid, config.network, config.scripts);
+  const batchVAsRes = getBatchVAs(lucid, config.testnet);
 
   if (batchVAsRes.type == "error") return batchVAsRes;
 
@@ -82,41 +78,48 @@ export const batchRequest = async (
 
   const initTx = lucid.newTx();
 
-  const badLovelaceErrorMsgs = validateItems(
-    config.lovelaces,
-    (l) => {
-      if (l < ROUTER_FEE + LOVELACE_MARGIN) {
-        return `${config.owner}: ${INSUFFICIENT_LOVELACES_ERROR_MSG}`;
-      } else {
-        const outputDatum: SmartHandleDatum = {
-          owner: fromAddress(config.owner),
-        };
-        const outputDatumData = Data.to<SmartHandleDatum>(
-          outputDatum,
-          SmartHandleDatum
-        );
-        const outputAssets = {
-          lovelace: l,
-        };
-        initTx.payToContract(
-          targetAddress,
-          { inline: outputDatumData },
-          outputAssets
-        );
-        return undefined;
-      }
-    },
-    true
-  );
+  try {
+    const ownAddress = await lucid.wallet.address();
 
-  if (badLovelaceErrorMsgs.length > 0)
-    return {
-      type: "error",
-      error: collectErrorMsgs(badLovelaceErrorMsgs, "Bad config encountered"),
+    // Implicit assumption that who creates the transaction is the owner of all
+    // requests.
+    const outputDatum: SmartHandleDatum = {
+      owner: fromAddress(ownAddress),
     };
 
-  try {
+    const outputDatumData = Data.to<SmartHandleDatum>(
+      outputDatum,
+      SmartHandleDatum
+    );
+
+    const badLovelaceErrorMsgs = validateItems(
+      config.lovelaces,
+      (l) => {
+        if (l < ROUTER_FEE + LOVELACE_MARGIN) {
+          return `${l}: ${INSUFFICIENT_LOVELACES_ERROR_MSG}`;
+        } else {
+          const outputAssets = {
+            lovelace: l,
+          };
+          initTx.payToContract(
+            targetAddress,
+            { inline: outputDatumData },
+            outputAssets
+          );
+          return undefined;
+        }
+      },
+      true
+    );
+
+    if (badLovelaceErrorMsgs.length > 0)
+      return {
+        type: "error",
+        error: collectErrorMsgs(badLovelaceErrorMsgs, "Bad config encountered"),
+      };
+
     const tx = await initTx.complete();
+
     return { type: "ok", data: tx };
   } catch (error) {
     return genericCatch(error);

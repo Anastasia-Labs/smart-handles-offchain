@@ -1,4 +1,4 @@
-import { Address, Assets, OutRef } from "@anastasia-labs/lucid-cardano-fork";
+import { Address, Assets, OutRef, PolicyId } from "@anastasia-labs/lucid-cardano-fork";
 
 export type CborHex = string;
 export type RawHex = string;
@@ -23,85 +23,57 @@ export type ReadableUTxO<T> = {
   assets: Assets;
 };
 
-export type LimitedNetwork = "Mainnet" | "Testnet";
-
-export type FetchSingleRequestConfig = {
-  network: LimitedNetwork;
-  spendingScript: CborHex;
+/**
+ * Collection of on-chain constants required for performing a swap:
+ * @property address - Script address where a swap request should be produced at.
+ * @property asset - Policy ID and token name of the desired asset.
+ * @property poolSymbol - Policy ID of the LP token.
+ * @property poolId - Token name of the LP token.
+ * @property testnet - Optional flag for indicating whether the constants are meant
+ * for the preprod network.
+ */
+export type MinswapConstants = {
+  address: Address;
+  asset: AssetClass;
+  poolSymbol: PolicyId;
+  poolId: string;
+  testnet?: boolean;
 };
 
-export type FetchUsersSingleRequestConfig = {
-  owner: Address;
-  network: LimitedNetwork;
-  spendingScript: CborHex;
+export type SingleRequestConfig = {
+  lovelace: bigint;
+  testnet?: boolean;
 };
 
-export type FetchBatchRequestConfig = {
-  network: LimitedNetwork;
-  scripts: {
-    spending: CborHex;
-    staking: CborHex;
-  };
-};
-
-export type FetchUsersBatchRequestConfig = {
-  owner: Address;
-  network: LimitedNetwork;
-  scripts: {
-    spending: CborHex;
-    staking: CborHex;
-  };
+export type BatchRequestConfig = {
+  lovelaces: bigint[];
+  testnet?: boolean;
 };
 
 export type SingleReclaimConfig = {
   requestOutRef: OutRef;
-  network: LimitedNetwork;
-  spendingScript: CborHex;
+  testnet?: boolean;
 };
 
 export type BatchReclaimConfig = {
   requestOutRefs: OutRef[];
-  network: LimitedNetwork;
-  scripts: {
-    spending: CborHex;
-    staking: CborHex;
-  };
+  testnet?: boolean;
 };
 
 export type SwapConfig = {
   blockfrostKey: string;
-  network: LimitedNetwork;
   slippageTolerance: bigint;
 };
 
 export type SingleSwapConfig = {
   swapConfig: SwapConfig;
   requestOutRef: OutRef;
-  spendingScript: CborHex;
+  testnet?: boolean;
 };
 
 // Same `slippageTolerance` for all request outrefs. TODO?
 export type BatchSwapConfig = {
   swapConfig: SwapConfig;
   requestOutRefs: OutRef[];
-  scripts: {
-    spending: CborHex;
-    staking: CborHex;
-  };
-};
-
-export type SingleRequestConfig = {
-  network: LimitedNetwork;
-  spendingScript: CborHex;
-  lovelace: bigint;
-};
-
-export type BatchRequestConfig = {
-  network: LimitedNetwork;
-  owner: Address;
-  lovelaces: bigint[];
-  scripts: {
-    spending: CborHex;
-    staking: CborHex;
-  };
+  testnet?: boolean;
 };
