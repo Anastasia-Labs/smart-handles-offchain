@@ -1,4 +1,4 @@
-import { Address, Assets, OutRef } from "@anastasia-labs/lucid-cardano-fork";
+import { Address, Assets, OutRef, Unit } from "@anastasia-labs/lucid-cardano-fork";
 
 export type CborHex = string;
 export type RawHex = string;
@@ -17,19 +17,27 @@ export type AssetClass = {
   tokenName: string;
 };
 
+export type Asset = "lovelace" | Unit;
+
 export type ReadableUTxO<T> = {
   outRef: OutRef;
   datum: T;
   assets: Assets;
 };
 
+export type SwapRequest = {
+  fromAsset: Asset;
+  quantity: bigint;
+  toAsset: Asset;
+}
+
 export type SingleRequestConfig = {
-  lovelace: bigint;
+  swapRequest: SwapRequest;
   testnet: boolean;
 };
 
 export type BatchRequestConfig = {
-  lovelaces: bigint[];
+  swapRequests: SwapRequest[];
   testnet: boolean;
 };
 

@@ -439,10 +439,14 @@ export function collectErrorMsgs(msgs: string[], label: string): Error {
   return new Error(`${label}: ${msgs.join(", ")}`);
 }
 
+export function errorToString(error: any): string {
+  return error.message ?? JSON.stringify(error);
+}
+
 export function genericCatch(error: any): Result<any> {
   if (error instanceof Error) return { type: "error", error: error };
   return {
     type: "error",
-    error: new Error(`${error.message ?? JSON.stringify(error)}`),
+    error: new Error(errorToString(error)),
   };
 }
