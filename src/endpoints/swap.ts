@@ -18,15 +18,12 @@ import {
   BlockfrostAdapter,
   calculateSwapExactIn,
   MetadataMessage,
-  OrderStepType,
   PoolState,
 } from "@minswap/sdk";
 import { BlockFrostAPI } from "@blockfrost/blockfrost-js";
 import {
   LOVELACE_MARGIN,
   ROUTER_FEE,
-  ADA_MIN_PREPROD,
-  ADA_MIN_MAINNET,
   MINSWAP_BATCHER_FEE,
   MINSWAP_DEPOSIT,
   MINSWAP_ADDRESS_PREPROD,
@@ -148,14 +145,14 @@ type InputUTxOAndItsOutputInfo = {
  * @param config - Swap configurations (BF key, desired asset, pool ID of the asset, and slippage tolerance)
  * @param validatorAddress - Address of the smart handle script
  * @param requestOutRefs - `OutRef`s of the desired UTxOs to be spent
- * @param testnet? - Optional flag for preprod network
+ * @param testnet - Flag for preprod network or mainnet
  */
 const fetchUTxOsAndTheirCorrespondingOutputInfos = async (
   lucid: Lucid,
   config: SwapConfig,
   validatorAddress: Address,
   requestOutRefs: OutRef[],
-  testnet?: boolean
+  testnet: boolean
 ): Promise<Result<InputUTxOAndItsOutputInfo[]>> => {
   // {{{
   const blockfrostAdapter = new BlockfrostAdapter({
@@ -295,7 +292,8 @@ export const singleSwap = async (
       lucid,
       config.swapConfig,
       vaRes.data.address,
-      [config.requestOutRef]
+      [config.requestOutRef],
+      config.testnet
     );
 
     if (outputInfoRes.type == "error") return outputInfoRes;
@@ -377,7 +375,8 @@ export const batchSwap = async (
       lucid,
       config.swapConfig,
       batchVAs.spendVA.address,
-      sortedOutRefs
+      sortedOutRefs,
+      config.testnet
     );
 
     if (outputInfosRes.type == "error") return outputInfosRes;

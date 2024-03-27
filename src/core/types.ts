@@ -25,22 +25,22 @@ export type ReadableUTxO<T> = {
 
 export type SingleRequestConfig = {
   lovelace: bigint;
-  testnet?: boolean;
+  testnet: boolean;
 };
 
 export type BatchRequestConfig = {
   lovelaces: bigint[];
-  testnet?: boolean;
+  testnet: boolean;
 };
 
 export type SingleReclaimConfig = {
   requestOutRef: OutRef;
-  testnet?: boolean;
+  testnet: boolean;
 };
 
 export type BatchReclaimConfig = {
   requestOutRefs: OutRef[];
-  testnet?: boolean;
+  testnet: boolean;
 };
 
 export type SwapConfig = {
@@ -53,12 +53,12 @@ export type SwapConfig = {
 export type SingleSwapConfig = {
   swapConfig: SwapConfig;
   requestOutRef: OutRef;
-  testnet?: boolean;
+  testnet: boolean;
 };
 
 // Same `slippageTolerance` for all request outrefs. TODO?
 export type BatchSwapConfig = {
   swapConfig: SwapConfig;
   requestOutRefs: OutRef[];
-  testnet?: boolean;
+  testnet: boolean;
 };

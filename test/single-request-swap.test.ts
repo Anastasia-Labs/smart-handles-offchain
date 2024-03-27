@@ -5,14 +5,15 @@ import {
   SingleRequestConfig,
   SingleReclaimConfig,
   singleRequest,
-  FetchUsersSingleRequestConfig,
-  userSingleRequestUTxOs,
+  fetchUsersSingleRequestUTxOs,
   singleReclaim,
   SingleSwapConfig,
   singleSwap,
+  MIN_SYMBOL_PREPROD,
+  MIN_TOKEN_NAME,
+  ADA_MIN_LP_TOKEN_NAME_PREPROD,
 } from "../src/index.js";
 import { beforeEach, expect, test } from "vitest";
-import spendingValidator from "./smartHandleSimple.json" assert { type : "json" };
 
 type LucidContext = {
   lucid: Lucid;
@@ -46,9 +47,8 @@ test<LucidContext>("Test - Single Request, Swap", async ({
   emulator,
 }) => {
   const requestConfig: SingleRequestConfig = {
-    network: "Testnet",
-    spendingScript: spendingValidator.cborHex,
     lovelace: BigInt(50_000_000),
+    testnet: true,
   };
 
   lucid.selectWalletFromSeed(users.user.seedPhrase);
@@ -64,15 +64,10 @@ test<LucidContext>("Test - Single Request, Swap", async ({
 
   emulator.awaitBlock(100);
 
-  const usersSingleRequestConfig: FetchUsersSingleRequestConfig = {
-    owner: users.user.address,
-    network: "Testnet",
-    spendingScript: spendingValidator.cborHex,
-  };
-
-  const userRequests = await userSingleRequestUTxOs(
+  const userRequests = await fetchUsersSingleRequestUTxOs(
     lucid,
-    usersSingleRequestConfig
+    users.user.address,
+    true
   );
 
   // Invalid reclaim by adversary
@@ -80,8 +75,7 @@ test<LucidContext>("Test - Single Request, Swap", async ({
 
   const reclaimConfig: SingleReclaimConfig = {
     requestOutRef: userRequests[0].outRef,
-    network: "Testnet",
-    spendingScript: spendingValidator.cborHex,
+    testnet: true,
   };
   const invalidReclaim = await singleReclaim(lucid, reclaimConfig);
 
@@ -102,11 +96,15 @@ test<LucidContext>("Test - Single Request, Swap", async ({
   const swapConfig: SingleSwapConfig = {
     swapConfig: {
       blockfrostKey,
-      network: "Testnet",
+      asset: {
+        policyId: MIN_SYMBOL_PREPROD,
+        tokenName: MIN_TOKEN_NAME,
+      },
+      poolId: ADA_MIN_LP_TOKEN_NAME_PREPROD,
       slippageTolerance: BigInt(20), // TODO?
     },
     requestOutRef: userRequests[0].outRef,
-    spendingScript: spendingValidator.cborHex,
+    testnet: true,
   };
 
   const swapTxUnsigned = await singleSwap(lucid, swapConfig);

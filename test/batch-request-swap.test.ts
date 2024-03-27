@@ -1,23 +1,20 @@
 import {
-  Address,
   Emulator,
   Lucid,
   generateAccountSeedPhrase,
   BatchRequestConfig,
   batchRequest,
-  FetchBatchRequestConfig,
-  getBatchRequestUTxOs,
+  fetchBatchRequestUTxOs,
   BatchSwapConfig,
   batchSwap,
-  WithdrawalValidator,
   PROTOCOL_PARAMETERS_DEFAULT,
   getBatchVAs,
   BatchVAs,
-  LimitedNetwork,
+  MIN_SYMBOL_PREPROD,
+  MIN_TOKEN_NAME,
+  ADA_MIN_LP_TOKEN_NAME_PREPROD,
 } from "../src/index.js";
 import { beforeEach, expect, test } from "vitest";
-import spendingValidator from "./smartHandleRouter.json" assert { type : "json" };
-import stakingValidator from "./smartHandleStake.json" assert { type : "json" };
 
 type LucidContext = {
   lucid: Lucid;
@@ -50,49 +47,32 @@ beforeEach<LucidContext>(async (context) => {
     ],
     {
       ...PROTOCOL_PARAMETERS_DEFAULT,
-      maxTxSize: 1000000,
-      maxTxExMem: BigInt(140000000),
-      maxTxExSteps: BigInt(100000000000),
+      // maxTxSize: 1000000,
+      // maxTxExMem: BigInt(140000000),
+      // maxTxExSteps: BigInt(100000000000),
     }
   );
 
   context.lucid = await Lucid.new(context.emulator);
 });
 
-const unAppliedScripts = {
-  spending: spendingValidator.cborHex,
-  staking: stakingValidator.cborHex,
-};
-
-const makeRequestConfig = (
-  network: LimitedNetwork,
-  ownerAddr: Address,
-  lovelaces: number[]
-): BatchRequestConfig => {
+const makeRequestConfig = (lovelaces: number[]): BatchRequestConfig => {
   return {
-    network,
-    owner: ownerAddr,
     lovelaces: lovelaces.map(BigInt),
-    scripts: unAppliedScripts,
+    testnet: true,
   };
 };
 
 const makeAndSubmitRequest = async (
   lucid: Lucid,
   emulator: Emulator,
-  network: LimitedNetwork,
   userSeedPhrase: string,
-  userAddress: Address,
   lovelaces: number[]
 ) => {
   // Batch Swap Request
   lucid.selectWalletFromSeed(userSeedPhrase);
 
-  const requestConfig: BatchRequestConfig = makeRequestConfig(
-    network,
-    userAddress,
-    lovelaces
-  );
+  const requestConfig: BatchRequestConfig = makeRequestConfig(lovelaces);
 
   const requestUnsigned = await batchRequest(lucid, requestConfig);
 
@@ -127,11 +107,7 @@ test<LucidContext>("Test - Batch Request, Swap", async ({
 }) => {
   console.log("MAX CPU", emulator.protocolParameters.maxTxExSteps);
   console.log("MAX MEM", emulator.protocolParameters.maxTxExMem);
-  const batchVAsRes = getBatchVAs(
-    lucid,
-    "Testnet",
-    unAppliedScripts
-  );
+  const batchVAsRes = getBatchVAs(lucid, true);
 
   if (batchVAsRes.type == "error") return batchVAsRes;
 
@@ -141,48 +117,35 @@ test<LucidContext>("Test - Batch Request, Swap", async ({
   await makeAndSubmitRequest(
     lucid,
     emulator,
-    "Testnet",
     users.user1.seedPhrase,
-    users.user1.address,
     [5_000_000, 20_000_000, 30_000_000, 40_000_000]
   );
   // User2 Batch Swap Request
   await makeAndSubmitRequest(
     lucid,
     emulator,
-    "Testnet",
     users.user2.seedPhrase,
-    users.user2.address,
     [30_000_000, 36_000_000, 24_000_000]
   );
-  // // User3 Batch Swap Request
-  // await makeAndSubmitRequest(
-  //   lucid,
-  //   emulator,
-  //   "Testnet",
-  //   users.user3.seedPhrase,
-  //   users.user3.address,
-  //   [10_000_000, 72_000_000]
-  // );
-  // // User4 Batch Swap Request
-  // await makeAndSubmitRequest(
-  //   lucid,
-  //   emulator,
-  //   "Testnet",
-  //   users.user4.seedPhrase,
-  //   users.user4.address,
-  //   [
-  //     5_000_000, 10_000_000, 7_000_000, 4_000_000, 3_000_000, 3_400_000,
-  //     6_800_000,
-  //   ]
-  // );
+  // User3 Batch Swap Request
+  await makeAndSubmitRequest(
+    lucid,
+    emulator,
+    users.user3.seedPhrase,
+    [10_000_000, 72_000_000]
+  );
+  // User4 Batch Swap Request
+  await makeAndSubmitRequest(
+    lucid,
+    emulator,
+    users.user4.seedPhrase,
+    [
+      5_000_000, 10_000_000, 7_000_000, 4_000_000, 3_000_000, 3_400_000,
+      6_800_000,
+    ]
+  );
 
-  const batchRequestConfig: FetchBatchRequestConfig = {
-    network: "Testnet",
-    scripts: unAppliedScripts,
-  };
-
-  const allRequests = await getBatchRequestUTxOs(lucid, batchRequestConfig);
+  const allRequests = await fetchBatchRequestUTxOs(lucid, true);
 
   // Valid Swap
   lucid.selectWalletFromSeed(users.router.seedPhrase);
@@ -201,11 +164,15 @@ test<LucidContext>("Test - Batch Request, Swap", async ({
   const swapConfig: BatchSwapConfig = {
     swapConfig: {
       blockfrostKey,
-      network: "Testnet",
+      asset: {
+        policyId: MIN_SYMBOL_PREPROD,
+        tokenName: MIN_TOKEN_NAME,
+      },
+      poolId: ADA_MIN_LP_TOKEN_NAME_PREPROD,
       slippageTolerance: BigInt(20), // TODO?
     },
-    requestOutRefs: allRequests.map(u => u.outRef),
-    scripts: unAppliedScripts,
+    requestOutRefs: allRequests.map((u) => u.outRef),
+    testnet: true,
   };
 
   const swapTxUnsigned = await batchSwap(lucid, swapConfig);

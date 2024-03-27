@@ -14,7 +14,7 @@ type SmartUTxO = ReadableUTxO<SmartHandleDatum>;
 
 export const fetchSingleRequestUTxOs = async (
   lucid: Lucid,
-  testnet?: boolean,
+  testnet: boolean,
 ): Promise<SmartUTxO[]> => {
   const vaRes = getSingleValidatorVA(lucid, testnet);
 
@@ -30,7 +30,7 @@ export const fetchSingleRequestUTxOs = async (
 export const fetchUsersSingleRequestUTxOs = async (
   lucid: Lucid,
   usersAddress: Address,
-  testnet?: boolean
+  testnet: boolean
 ): Promise<SmartUTxO[]> => {
   try {
     const allUTxOs = await fetchSingleRequestUTxOs(lucid, testnet);
@@ -56,7 +56,7 @@ export const fetchUsersSingleRequestUTxOs = async (
 
 export const fetchBatchRequestUTxOs = async (
   lucid: Lucid,
-  testnet?: boolean
+  testnet: boolean
 ): Promise<SmartUTxO[]> => {
   const batchVAsRes = getBatchVAs(lucid, testnet);
 
@@ -72,7 +72,7 @@ export const fetchBatchRequestUTxOs = async (
 export const fetchUsersBatchRequestUTxOs = async (
   lucid: Lucid,
   usersAddress: Address,
-  testnet?: boolean
+  testnet: boolean
 ): Promise<SmartUTxO[]> => {
   try {
     const allUTxOs = await fetchBatchRequestUTxOs(lucid, testnet);

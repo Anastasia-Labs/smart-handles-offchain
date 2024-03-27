@@ -11,9 +11,9 @@ import {
 import { fromAddressToData } from "../utils/index.js";
 import { Result } from "../types.js";
 import { MINSWAP_ADDRESS_MAINNET, MINSWAP_ADDRESS_PREPROD } from "../constants.js";
-import singleSpendingValidator from "./smartHandleSimple.json" assert { type : "json" };
-import batchSpendingValidator from "./smartHandleRouter.json" assert { type : "json" };
-import stakingValidator from "./smartHandleStake.json" assert { type : "json" };
+import singleSpendingValidator from "../../uplc/smartHandleSimple.json" assert { type : "json" };
+import batchSpendingValidator from "../../uplc/smartHandleRouter.json" assert { type : "json" };
+import stakingValidator from "../../uplc/smartHandleStake.json" assert { type : "json" };
 
 export type ValidatorAndAddress = {
   validator: Script;
@@ -30,11 +30,11 @@ export type BatchVAs = {
  * Returns smart handle's validator and address for Minswap. "VA" is short for
  * "validator and address."
  * @param lucid - Lucid API object
- * @param testnet? - Optional flag to use preprod
+ * @param testnet - Flag to use preprod or not
  */
 export const getSingleValidatorVA = (
   lucid: Lucid,
-  testnet?: boolean
+  testnet: boolean
 ): Result<ValidatorAndAddress> => {
   const swapAddress = testnet
     ? MINSWAP_ADDRESS_PREPROD
@@ -63,11 +63,11 @@ export const getSingleValidatorVA = (
  * Returns validators and addresses of batch smart handles (both the spending
  * part and the staking part).
  * @param lucid - Lucid's API object
- * @param testnet? - Optional flag for preprod
+ * @param testnet - Flag to use preprod or not
  */
 export const getBatchVAs = (
   lucid: Lucid,
-  testnet?: boolean
+  testnet: boolean
 ): Result<BatchVAs> => {
   const swapAddress = testnet
     ? MINSWAP_ADDRESS_PREPROD
