@@ -196,3 +196,7 @@ While this SDK is currently curated for working with Minswap V1, in near future
 it'll also offer interfaces for providing customized variants of the base
 contract. Meaning for example choosing between other DEXs, or perhaps requiring
 more strict validations.
+
+Another feature to add is a more straight-forward way of finding the appropriate
+pool ID for a given swap (which will grab all the pools and filter them based
+on the tokens they hold).
