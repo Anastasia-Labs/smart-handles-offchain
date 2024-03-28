@@ -1,14 +1,23 @@
+<!-- vim-markdown-toc GFM -->
+# Table of Contents
+
+* [Contract Logic](#contract-logic)
+* [How to Use](#how-to-use)
+    * [Install Package](#install-package)
+    * [Submit One or More Request UTxOs](#submit-one-or-more-request-utxos)
+    * [Fetch Swap Requests](#fetch-swap-requests)
+    * [Reclaim a Swap Request](#reclaim-a-swap-request)
+    * [Performing a Swap by Routing Agent](#performing-a-swap-by-routing-agent)
+* [Future](#future)
+
+<!-- vim-markdown-toc -->
+
 # Off-Chain SDK for Smart Handles
 
 Smart Handles is a customizable Cardano contract that allows users to circumvent
 frontend of their favorite DEXs for submitting a swap request. It does so by
 acting as an intermediary and offering a "router fee" to incentivise arbitrary
 entities for carrying out the swaps.
-
-While this SDK is currently curated for working with Minswap V1, in near future
-this it'll also offer interfaces for providing customized variants of the base
-contract. Meaning for example choosing between other DEXs, or perhaps requiring
-more strict validations.
 
 ## Contract Logic
 
@@ -30,10 +39,10 @@ The `Swap` endpoint validates a few things:
 5. The custom validation function passes (this is the customizable part of the
    contract, currently implemented for Minswap)
 
-The off-chain side determines the offered by inspecting the input value: if
-there is only one asset (i.e. Ada), it'll consider the request as a simple token
-purchase. However, if there are 2 assets, the other asset will be considered as
-the offer. It'll fail if there are more assets.
+The off-chain side determines the offered asset by inspecting the input value:
+if there is only one asset (i.e. Ada), it'll consider the request as a simple
+token purchase. However, if there are 2 assets, the other asset will be
+considered as the offer. It'll fail if there are more assets.
 
 ## How to Use
 
@@ -180,3 +189,10 @@ const swapTxUnsigned = await batchSwap(lucid, swapConfig);
 
 // ...plus further steps for submitting the transaction.
 ```
+
+## Future
+
+While this SDK is currently curated for working with Minswap V1, in near future
+it'll also offer interfaces for providing customized variants of the base
+contract. Meaning for example choosing between other DEXs, or perhaps requiring
+more strict validations.
