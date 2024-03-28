@@ -75,10 +75,14 @@ test<LucidContext>("Test - Batch Swap Request, Reclaim", async ({
   lucid.selectWalletFromSeed(users.user1.seedPhrase);
 
   const requestConfig: BatchRequestConfig = makeRequestConfig(
-    [5_000_000, 20_000_000, 30_000_000, 40_000_000]
+    [8_000_000, 20_000_000, 30_000_000, 40_000_000]
   );
 
   const requestUnsigned1 = await batchRequest(lucid, requestConfig);
+
+  if (requestUnsigned1.type == "error") {
+    console.log("BATCH REQUEST FAILED", requestUnsigned1.error);
+  }
 
   expect(requestUnsigned1.type).toBe("ok");
 

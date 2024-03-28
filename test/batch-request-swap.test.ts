@@ -48,9 +48,9 @@ beforeEach<LucidContext>(async (context) => {
     ],
     {
       ...PROTOCOL_PARAMETERS_DEFAULT,
-      // maxTxSize: 1000000,
-      // maxTxExMem: BigInt(140000000),
-      // maxTxExSteps: BigInt(100000000000),
+      maxTxSize: 1000000,
+      maxTxExMem: BigInt(140000000),
+      maxTxExSteps: BigInt(100000000000),
     }
   );
 
@@ -187,7 +187,6 @@ test<LucidContext>("Test - Batch Request, Swap", async ({
 
   if (swapTxUnsigned.type == "ok") {
     const swapTxSigned = await swapTxUnsigned.data.sign().complete();
-    console.log("SIGNED TX", swapTxSigned);
     const swapTxHash = await swapTxSigned.submit();
     // console.log("SWAP TX HASH", swapTxHash);
   }

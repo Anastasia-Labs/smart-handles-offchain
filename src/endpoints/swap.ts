@@ -15,7 +15,7 @@ import {
   fromUnit,
 } from "@anastasia-labs/lucid-cardano-fork";
 import {
-  Asset as MinswapAssetType,
+  Asset as MinswapAsset,
   BlockfrostAdapter,
   calculateSwapExactIn,
   MetadataMessage,
@@ -92,15 +92,15 @@ const getPoolStateById = async (
  * @param minimumReceived - Minimum amount of tokens the owner should receive
  */
 const makeOrderDatum = (
-  asset: Asset,
+  asset: MinswapAsset,
   ownerAddress: Address,
   minimumReceived: bigint
 ): OrderDatum => {
   // {{{
   const addr = fromAddress(ownerAddress);
-  const desiredAsset = asset == "lovelace" ? {symbol: "", name: ""} : {
-    symbol: fromUnit(asset).policyId,
-    name: fromUnit(asset).assetName ?? "",
+  const desiredAsset = {
+    symbol: asset.policyId,
+    name: asset.tokenName,
   };
   const orderType: OrderType = {
     desiredAsset,
@@ -196,14 +196,18 @@ const fetchUTxOsAndTheirCorrespondingOutputInfos = async (
 
         const units = Object.keys(utxo.assets);
 
-        const assetStr =
+        const fromAssetStr =
           units.length > 1
-          ? units.filter((k: string) => k != "lovelace")[0]
-          : "lovelace";
+            ? units.filter((k: string) => k != "lovelace")[0]
+            : "lovelace";
 
-        const amountIn = assetStr == "lovelace"
-          ? utxo.assets["lovelace"] - MINSWAP_BATCHER_FEE - MINSWAP_DEPOSIT - ROUTER_FEE
-          : utxo.assets[assetStr];
+        const amountIn =
+          fromAssetStr == "lovelace"
+            ? utxo.assets["lovelace"] -
+              MINSWAP_BATCHER_FEE -
+              MINSWAP_DEPOSIT -
+              ROUTER_FEE
+            : utxo.assets[fromAssetStr];
 
         const { amountOut } = calculateSwapExactIn({
           amountIn,
@@ -212,7 +216,10 @@ const fetchUTxOsAndTheirCorrespondingOutputInfos = async (
         });
 
         const outputDatum = makeOrderDatum(
-          assetStr as unknown as Asset,
+          {
+            policyId: datum.value.desiredAssetSymbol,
+            tokenName: datum.value.desiredAssetTokenName,
+          },
           ownerAddress,
           (amountOut * (100n - config.slippageTolerance)) / 100n
         );
