@@ -12,6 +12,7 @@ import {
   MIN_SYMBOL_PREPROD,
   MIN_TOKEN_NAME,
   ADA_MIN_LP_TOKEN_NAME_PREPROD,
+  toUnit,
 } from "../src/index.js";
 import { beforeEach, expect, test } from "vitest";
 
@@ -47,7 +48,11 @@ test<LucidContext>("Test - Single Request, Swap", async ({
   emulator,
 }) => {
   const requestConfig: SingleRequestConfig = {
-    lovelace: BigInt(50_000_000),
+    swapRequest: {
+      fromAsset: "lovelace",
+      quantity: BigInt(50_000_000),
+      toAsset: toUnit(MIN_SYMBOL_PREPROD, MIN_TOKEN_NAME)
+    },
     testnet: true,
   };
 
@@ -96,10 +101,6 @@ test<LucidContext>("Test - Single Request, Swap", async ({
   const swapConfig: SingleSwapConfig = {
     swapConfig: {
       blockfrostKey,
-      asset: {
-        policyId: MIN_SYMBOL_PREPROD,
-        tokenName: MIN_TOKEN_NAME,
-      },
       poolId: ADA_MIN_LP_TOKEN_NAME_PREPROD,
       slippageTolerance: BigInt(20), // TODO?
     },

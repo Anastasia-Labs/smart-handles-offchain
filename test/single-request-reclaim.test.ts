@@ -7,6 +7,9 @@ import {
   singleRequest,
   fetchUsersSingleRequestUTxOs,
   singleReclaim,
+  toUnit,
+  MIN_SYMBOL_PREPROD,
+  MIN_TOKEN_NAME,
 } from "../src/index.js";
 import { beforeEach, expect, test } from "vitest";
 
@@ -45,7 +48,11 @@ test<LucidContext>("Test - Request Single Swap, Reclaim", async ({
   emulator,
 }) => {
   const requestConfig: SingleRequestConfig = {
-    lovelace: BigInt(50_000_000),
+    swapRequest: {
+      fromAsset: "lovelace",
+      quantity: BigInt(50_000_000),
+      toAsset: toUnit(MIN_SYMBOL_PREPROD, MIN_TOKEN_NAME)
+    },
     testnet: true,
   };
 

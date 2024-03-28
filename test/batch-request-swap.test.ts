@@ -13,6 +13,7 @@ import {
   MIN_SYMBOL_PREPROD,
   MIN_TOKEN_NAME,
   ADA_MIN_LP_TOKEN_NAME_PREPROD,
+  toUnit,
 } from "../src/index.js";
 import { beforeEach, expect, test } from "vitest";
 
@@ -58,7 +59,13 @@ beforeEach<LucidContext>(async (context) => {
 
 const makeRequestConfig = (lovelaces: number[]): BatchRequestConfig => {
   return {
-    lovelaces: lovelaces.map(BigInt),
+    swapRequests: lovelaces.map(l => {
+      return {
+        fromAsset: "lovelace",
+        quantity: BigInt(l),
+        toAsset: toUnit(MIN_SYMBOL_PREPROD, MIN_TOKEN_NAME)
+      };
+    }),
     testnet: true,
   };
 };
@@ -118,7 +125,7 @@ test<LucidContext>("Test - Batch Request, Swap", async ({
     lucid,
     emulator,
     users.user1.seedPhrase,
-    [5_000_000, 20_000_000, 30_000_000, 40_000_000]
+    [8_000_000, 20_000_000, 30_000_000, 40_000_000]
   );
   // User2 Batch Swap Request
   await makeAndSubmitRequest(
@@ -140,8 +147,7 @@ test<LucidContext>("Test - Batch Request, Swap", async ({
     emulator,
     users.user4.seedPhrase,
     [
-      5_000_000, 10_000_000, 7_000_000, 4_000_000, 3_000_000, 3_400_000,
-      6_800_000,
+      8_000_000, 10_000_000, 9_000_000, 14_000_000, 13_000_000, 13_400_000,
     ]
   );
 
@@ -164,10 +170,6 @@ test<LucidContext>("Test - Batch Request, Swap", async ({
   const swapConfig: BatchSwapConfig = {
     swapConfig: {
       blockfrostKey,
-      asset: {
-        policyId: MIN_SYMBOL_PREPROD,
-        tokenName: MIN_TOKEN_NAME,
-      },
       poolId: ADA_MIN_LP_TOKEN_NAME_PREPROD,
       slippageTolerance: BigInt(20), // TODO?
     },

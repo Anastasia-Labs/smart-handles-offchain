@@ -8,6 +8,9 @@ import {
   batchRequest,
   fetchUsersBatchRequestUTxOs,
   batchReclaim,
+  toUnit,
+  MIN_SYMBOL_PREPROD,
+  MIN_TOKEN_NAME,
 } from "../src/index.js";
 import { beforeEach, expect, test } from "vitest";
 
@@ -41,7 +44,13 @@ const makeRequestConfig = (
   lovelaces: number[]
 ): BatchRequestConfig => {
   return {
-    lovelaces: lovelaces.map(BigInt),
+    swapRequests: lovelaces.map(l => {
+      return {
+        fromAsset: "lovelace",
+        quantity: BigInt(l),
+        toAsset: toUnit(MIN_SYMBOL_PREPROD, MIN_TOKEN_NAME)
+      };
+    }),
     testnet: true,
   };
 };
