@@ -196,8 +196,13 @@ const fetchUTxOsAndTheirCorrespondingOutputInfos = async (
 
         const units = Object.keys(utxo.assets);
 
+        if (units.length > 2) return {
+          type: "error",
+          error: new Error("More than 2 assets were found in the smart UTxO")
+        };
+
         const fromAssetStr =
-          units.length > 1
+          units.length == 2
             ? units.filter((k: string) => k != "lovelace")[0]
             : "lovelace";
 
