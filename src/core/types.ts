@@ -53,7 +53,6 @@ export type BatchReclaimConfig = {
 
 export type SwapConfig = {
   blockfrostKey: string;
-  asset: AssetClass;
   poolId: string;
   slippageTolerance: bigint;
 };

@@ -12,9 +12,10 @@ import {
   OutRef,
   Address,
   UTxO,
+  fromUnit,
 } from "@anastasia-labs/lucid-cardano-fork";
 import {
-  Asset,
+  Asset as MinswapAssetType,
   BlockfrostAdapter,
   calculateSwapExactIn,
   MetadataMessage,
@@ -35,6 +36,7 @@ import {
   SmartHandleDatum,
 } from "../core/contract.types.js";
 import {
+  Asset,
   BatchSwapConfig,
   Result,
   SingleSwapConfig,
@@ -96,11 +98,12 @@ const makeOrderDatum = (
 ): OrderDatum => {
   // {{{
   const addr = fromAddress(ownerAddress);
+  const desiredAsset = asset == "lovelace" ? {symbol: "", name: ""} : {
+    symbol: fromUnit(asset).policyId,
+    name: fromUnit(asset).assetName ?? "",
+  };
   const orderType: OrderType = {
-    desiredAsset: {
-      symbol: asset.policyId,
-      name: asset.tokenName,
-    },
+    desiredAsset,
     minReceive: minimumReceived,
   };
   return {
@@ -163,6 +166,8 @@ const fetchUTxOsAndTheirCorrespondingOutputInfos = async (
   });
 
   try {
+    // CAUTION: There is no validation on `poolId` to make sure it correctly
+    // corresponds the swap pair.
     const poolStateRes = await getPoolStateById(
       blockfrostAdapter,
       config.poolId
@@ -189,27 +194,25 @@ const fetchUTxOsAndTheirCorrespondingOutputInfos = async (
 
         const ownerAddress = toAddress(datum.value.owner, lucid);
 
-        const inputLovelaces = utxo.assets["lovelace"];
+        const units = Object.keys(utxo.assets);
 
-        if (
-          inputLovelaces <
-          LOVELACE_MARGIN + MINSWAP_BATCHER_FEE + MINSWAP_DEPOSIT + ROUTER_FEE
-        ) {
-          return {
-            type: "error",
-            error: new Error("Insufficient Lovelaces"),
-          };
-        }
+        const assetStr =
+          units.length > 1
+          ? units.filter((k: string) => k != "lovelace")[0]
+          : "lovelace";
+
+        const amountIn = assetStr == "lovelace"
+          ? utxo.assets["lovelace"] - MINSWAP_BATCHER_FEE - MINSWAP_DEPOSIT - ROUTER_FEE
+          : utxo.assets[assetStr];
 
         const { amountOut } = calculateSwapExactIn({
-          amountIn:
-            inputLovelaces - MINSWAP_BATCHER_FEE - MINSWAP_DEPOSIT - ROUTER_FEE,
+          amountIn,
           reserveIn: poolState.reserveA,
           reserveOut: poolState.reserveB,
         });
 
         const outputDatum = makeOrderDatum(
-          config.asset,
+          assetStr as unknown as Asset,
           ownerAddress,
           (amountOut * (100n - config.slippageTolerance)) / 100n
         );
@@ -224,7 +227,7 @@ const fetchUTxOsAndTheirCorrespondingOutputInfos = async (
 
         const outputAssets = {
           ...utxo.assets,
-          lovelace: inputLovelaces - ROUTER_FEE,
+          lovelace: utxo.assets["lovelace"] - ROUTER_FEE,
         };
         return {
           type: "ok",

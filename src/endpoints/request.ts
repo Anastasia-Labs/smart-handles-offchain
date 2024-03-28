@@ -107,7 +107,10 @@ export const batchRequest = async (
     if (badRequestsErrorMsgs.length > 0)
       return {
         type: "error",
-        error: collectErrorMsgs(badRequestsErrorMsgs, "Bad config encountered"),
+        error: collectErrorMsgs(
+          badRequestsErrorMsgs,
+          "Bad request(s) encountered"
+        ),
       };
 
     const tx = await initTx.complete();
