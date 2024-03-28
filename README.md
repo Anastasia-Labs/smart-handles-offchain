@@ -1,9 +1,14 @@
 # Off-Chain SDK for Smart Handles
 
-Smart Handles is a Cardano contract that allows users to circumvent Minswap's
-frontend for submitting a swap request. It does so by acting as an intermediary
-and offering a "router fee" to incentivise arbitrary entities for carrying out
-the swap itself.
+Smart Handles is a customizable Cardano contract that allows users to circumvent
+frontend of their favorite DEXs for submitting a swap request. It does so by
+acting as an intermediary and offering a "router fee" to incentivise arbitrary
+entities for carrying out the swaps.
+
+While this SDK is currently curated for working with Minswap V1, in near future
+this it'll also offer interfaces for providing customized variants of the base
+contract. Meaning for example choosing between other DEXs, or perhaps requiring
+more strict validations.
 
 ## Contract Logic
 
@@ -16,33 +21,34 @@ that carries 3 values:
 The `Reclaim` endpoint only checks for the consent of its owner.
 
 The `Swap` endpoint validates a few things:
-1. Index of the UTxO matches redeemer's
+1. Index of the UTxO matches the one specified by the redeemer
 2. The reproduced UTxO is going to the swap address (specified as a parameter)
 3. The new UTxO at the swap address carries an identical value with the router
    fee deduced
 4. Exactly 1 UTxO is getting spent from the smart handle script (the batch
    version doesn't require this)
-5. The custom validation function passes (this is different for each target DEX)
+5. The custom validation function passes (this is the customizable part of the
+   contract, currently implemented for Minswap)
 
-The off-chain side determines what the offered asset is by inspecting the input
-value: if there is only one asset (i.e. Ada), it'll consider it as a simple
-token purchase request. However, if there are 2 assets, the other asset will be
-considered as the offer. It'll fail if there are more assets.
+The off-chain side determines the offered by inspecting the input value: if
+there is only one asset (i.e. Ada), it'll consider the request as a simple token
+purchase. However, if there are 2 assets, the other asset will be considered as
+the offer. It'll fail if there are more assets.
 
 ## How to Use
 
-All endpoints offer two variants: `single` and `batch`. These two correspond to
-two different script addresses. The former works for single
+All endpoints provide two variants: `single` and `batch`. These two correspond
+to two different script addresses. The former works for single
 request/reclaim/swaps per transaction, while the latter allows batch actions.
 
 Both variants of endpoints return a `Result` that, if successful, carries the
-completed transaction (i.e. ready to be submitted).
+completed transaction (i.e. ready to be signed and submitted).
 
 ### Install Package
 ```sh
 npm install @anastasia-labs/smart-handles-offchain
 ```
-   or:
+or:
 
 ```sh
 pnpm install @anastasia-labs/smart-handles-offchain
@@ -64,9 +70,9 @@ type SwapRequest = {
 
 Where `Asset` can either be `"lovelace"` or `Unit` of a token (which is the
 concatenation of its policy ID and its token name in hex), and `quantity` is the
-desired amount of the offered asset.
+amount of the offered asset.
 
-Here's an example for producing an Ada to MIN request:
+Here's an example for producing an Ada to MIN request UTxO:
 
 ```ts
 import {
@@ -114,7 +120,8 @@ const allSingleRequests = await fetchSingleRequestUTxOs(
 
 ### Reclaim a Swap Request
 
-Any user can retract from a swap request at any time. Here's a batch example:
+Any user can retract from their swap requests at any time. Here's a batch
+example:
 
 ```ts
 import {
