@@ -96,13 +96,13 @@ const requestConfig: SingleRequestConfig = {
   swapRequest: {
     fromAsset: "lovelace",
     quantity: 50_000_000n,
-    toAsset: toUnit(MIN_SYMBOL_PREPROD, MIN_TOKEN_NAME,
+    toAsset: toUnit(MIN_SYMBOL_PREPROD, MIN_TOKEN_NAME),
   },
   testnet: true,
 };
 
 // Assuming `lucid` is already set up for the user
-const requestTxUnsigned = singleRequest(lucid, requestConfig);
+const requestTxUnsigned = await singleRequest(lucid, requestConfig);
 
 if (requestTxUnsigned.type == "error") {
   throw requestTxUnsigned.error;
@@ -159,7 +159,45 @@ const reclaimTxUnsigned = await batchReclaim(lucid, reclaimConfig);
 // ...plus further steps for submitting the transaction.
 ```
 
-### Performing a Swap by Routing Agent
+### Register the Staking Validator (Optional)
+
+If the reward address of the staking validator is not already registered, you'll
+need to submit stake registration transaction (costs about 2.2 Ada).
+
+This is only required for batch actions.
+
+```ts
+import {
+  getBatchVAs,
+  BatchVAs,
+  Lucid,
+} from "@anastasia-labs/smart-handles-offchain"
+
+// We first need to grab the stake validator's address:
+const batchVAsRes = getBatchVAs(lucid, true);
+
+if (batchVAsRes.type == "error") return batchVAsRes;
+
+const batchVAs: BatchVAs = batchVAsRes.data;
+
+const rewardAddress = batchVAs.stakeVA.address;
+
+// The selected wallet will pay for the registration fee:
+const registerationTxUnsigned = await lucid
+  .newTx()
+  .registerStake(rewardAddress)
+  .complete();
+
+const registerationTxSigned = await registerationTxUnsigned
+  .sign()
+  .complete();
+
+const registerationTxHash = await registerationTxSigned.submit();
+
+await lucid.awaitTx(registerationTxHash);
+```
+
+### Perform a Swap by Routing Agent
 
 Anyone can spend a smart handle UTxO as long as they perform the requested swap
 properly. The `ROUTER_FEE` is for incentivising third parties for carrying out
@@ -189,6 +227,14 @@ const swapTxUnsigned = await batchSwap(lucid, swapConfig);
 
 // ...plus further steps for submitting the transaction.
 ```
+
+## Sample Transactions on Preprod
+
+Reward address registration: [073641112c7b7c645521d1aca3650989bdc0bf06ae36e76e2e74287e015dcc99](https://preprod.cexplorer.io/tx/073641112c7b7c645521d1aca3650989bdc0bf06ae36e76e2e74287e015dcc99)
+
+Batch swap requests: [afa0b004e0679cbfb8879a71cbad7f061b362a68ca314c2d6a907e93d9cbd14a](https://preprod.cexplorer.io/tx/afa0b004e0679cbfb8879a71cbad7f061b362a68ca314c2d6a907e93d9cbd14a)
+
+Batch swap by routing agent: [b34377eb875b47b9c66ed710d986baece744194e86ebb8c27286e8e50177045a](https://preprod.cexplorer.io/tx/b34377eb875b47b9c66ed710d986baece744194e86ebb8c27286e8e50177045a)
 
 ## Future
 
