@@ -1,14 +1,17 @@
-<!-- vim-markdown-toc GFM -->
 # Table of Contents
+<!-- vim-markdown-toc GFM -->
 
-* [Contract Logic](#contract-logic)
-* [How to Use](#how-to-use)
-    * [Install Package](#install-package)
-    * [Submit One or More Request UTxOs](#submit-one-or-more-request-utxos)
-    * [Fetch Swap Requests](#fetch-swap-requests)
-    * [Reclaim a Swap Request](#reclaim-a-swap-request)
-    * [Performing a Swap by Routing Agent](#performing-a-swap-by-routing-agent)
-* [Future](#future)
+* [Off-Chain SDK for Smart Handles](#off-chain-sdk-for-smart-handles)
+    * [Contract Logic](#contract-logic)
+    * [How to Use](#how-to-use)
+        * [Install Package](#install-package)
+        * [Submit One or More Request UTxOs](#submit-one-or-more-request-utxos)
+        * [Fetch Swap Requests](#fetch-swap-requests)
+        * [Reclaim a Swap Request](#reclaim-a-swap-request)
+        * [Register the Staking Validator (Optional)](#register-the-staking-validator-optional)
+        * [Perform a Swap by Routing Agent](#perform-a-swap-by-routing-agent)
+    * [Sample Transactions on Preprod](#sample-transactions-on-preprod)
+    * [Future](#future)
 
 <!-- vim-markdown-toc -->
 
