@@ -107,7 +107,10 @@ async function registerRewardAddress(
   await signedTx.submit();
 }
 
-test<LucidContext>("Test - Batch Request, Swap", async ({
+const ciEnv = process.env.NODE_ENV === "CI";
+
+// Avoid running the test in CI due to requirement for a Blockfrost key.
+test.skipIf(ciEnv)<LucidContext>("Test - Batch Request, Swap", async ({
   lucid,
   users,
   emulator,
