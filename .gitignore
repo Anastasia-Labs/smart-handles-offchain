@@ -3,7 +3,6 @@
 node_modules
 dist
 *.tgz
-*-lock.*
 !lucid-cardano*.tgz
 .direnv
 test/lock.ts
