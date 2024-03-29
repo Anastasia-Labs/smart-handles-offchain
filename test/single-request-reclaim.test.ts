@@ -5,12 +5,13 @@ import {
   SingleRequestConfig,
   SingleReclaimConfig,
   singleRequest,
-  FetchUsersSingleRequestConfig,
-  userSingleRequestUTxOs,
+  fetchUsersSingleRequestUTxOs,
   singleReclaim,
+  toUnit,
+  MIN_SYMBOL_PREPROD,
+  MIN_TOKEN_NAME,
 } from "../src/index.js";
 import { beforeEach, expect, test } from "vitest";
-import spendingValidator from "./smartHandleSimple.json" assert { type : "json" };
 
 type LucidContext = {
   lucid: Lucid;
@@ -47,9 +48,12 @@ test<LucidContext>("Test - Request Single Swap, Reclaim", async ({
   emulator,
 }) => {
   const requestConfig: SingleRequestConfig = {
-    swapAddress: users.swapAccount.address,
-    spendingScript: spendingValidator.cborHex,
-    lovelace: BigInt(50_000_000),
+    swapRequest: {
+      fromAsset: "lovelace",
+      quantity: BigInt(50_000_000),
+      toAsset: toUnit(MIN_SYMBOL_PREPROD, MIN_TOKEN_NAME)
+    },
+    testnet: true,
   };
 
   lucid.selectWalletFromSeed(users.creator1.seedPhrase);
@@ -68,15 +72,10 @@ test<LucidContext>("Test - Request Single Swap, Reclaim", async ({
   emulator.awaitBlock(100);
 
   // NOTE: Swap Request 1
-  const usersSingleRequestConfig: FetchUsersSingleRequestConfig = {
-    owner: users.creator1.address,
-    swapAddress: users.swapAccount.address,
-    spendingScript: spendingValidator.cborHex,
-  };
-
-  const userRequests1 = await userSingleRequestUTxOs(
+  const userRequests1 = await fetchUsersSingleRequestUTxOs(
     lucid,
-    usersSingleRequestConfig
+    users.creator1.address,
+    true
   );
 
   // console.log("Request 1");
@@ -88,8 +87,7 @@ test<LucidContext>("Test - Request Single Swap, Reclaim", async ({
 
   const reclaimConfig: SingleReclaimConfig = {
     requestOutRef: userRequests1[0].outRef,
-    swapAddress: users.swapAccount.address,
-    spendingScript: spendingValidator.cborHex,
+    testnet: true,
   };
 
   // NOTE: Invalid Reclaim 1
@@ -116,11 +114,4 @@ test<LucidContext>("Test - Request Single Swap, Reclaim", async ({
   }
   const reclaimSigned1 = await reclaimUnsigned1.data.sign().complete();
   const reclaimSignedHash1 = await reclaimSigned1.submit();
-
-  emulator.awaitBlock(100);
-
-  const userOffers2 = await userSingleRequestUTxOs(
-    lucid,
-    usersSingleRequestConfig
-  );
 });

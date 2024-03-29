@@ -6,13 +6,13 @@ import {
   BatchRequestConfig,
   BatchReclaimConfig,
   batchRequest,
-  FetchUsersBatchRequestConfig,
-  userBatchRequestUTxOs,
+  fetchUsersBatchRequestUTxOs,
   batchReclaim,
+  toUnit,
+  MIN_SYMBOL_PREPROD,
+  MIN_TOKEN_NAME,
 } from "../src/index.js";
 import { beforeEach, expect, test } from "vitest";
-import spendingValidator from "./smartHandleRouter.json" assert { type : "json" };
-import stakingValidator from "./smartHandleStake.json" assert { type : "json" };
 
 type LucidContext = {
   lucid: Lucid;
@@ -40,39 +40,29 @@ beforeEach<LucidContext>(async (context) => {
   context.lucid = await Lucid.new(context.emulator);
 });
 
-const scripts = {
-  spending: spendingValidator.cborHex,
-  staking: stakingValidator.cborHex,
-};
-
 const makeRequestConfig = (
-  swapAddr: Address,
-  ownerAddr: Address,
   lovelaces: number[]
 ): BatchRequestConfig => {
   return {
-    swapAddress: swapAddr,
-    owner: ownerAddr,
-    lovelaces: lovelaces.map(BigInt),
-    scripts,
+    swapRequests: lovelaces.map(l => {
+      return {
+        fromAsset: "lovelace",
+        quantity: BigInt(l),
+        toAsset: toUnit(MIN_SYMBOL_PREPROD, MIN_TOKEN_NAME)
+      };
+    }),
+    testnet: true,
   };
 };
 
 const makeReclaimConfig = async (
   lucid: Lucid,
-  swapAddr: Address,
   ownerAddr: Address
 ): Promise<BatchReclaimConfig> => {
-  const batchRequestConfig: FetchUsersBatchRequestConfig = {
-    owner: ownerAddr,
-    swapAddress: swapAddr,
-    scripts,
-  };
-  const userRequests = await userBatchRequestUTxOs(lucid, batchRequestConfig);
+  const userRequests = await fetchUsersBatchRequestUTxOs(lucid, ownerAddr, true);
   return {
     requestOutRefs: userRequests.map((u) => u.outRef),
-    swapAddress: swapAddr,
-    scripts,
+    testnet: true,
   };
 };
 
@@ -85,12 +75,14 @@ test<LucidContext>("Test - Batch Swap Request, Reclaim", async ({
   lucid.selectWalletFromSeed(users.user1.seedPhrase);
 
   const requestConfig: BatchRequestConfig = makeRequestConfig(
-    users.swapAccount.address,
-    users.user1.address,
-    [5_000_000, 20_000_000, 30_000_000, 40_000_000]
+    [8_000_000, 20_000_000, 30_000_000, 40_000_000]
   );
 
   const requestUnsigned1 = await batchRequest(lucid, requestConfig);
+
+  if (requestUnsigned1.type == "error") {
+    console.log("BATCH REQUEST FAILED", requestUnsigned1.error);
+  }
 
   expect(requestUnsigned1.type).toBe("ok");
 
@@ -105,7 +97,6 @@ test<LucidContext>("Test - Batch Swap Request, Reclaim", async ({
   // Valid Batch Reclaim
   const reclaimConfig1: BatchReclaimConfig = await makeReclaimConfig(
     lucid,
-    users.swapAccount.address,
     users.user1.address
   );
 
@@ -142,7 +133,6 @@ test<LucidContext>("Test - Batch Swap Request, Reclaim", async ({
   lucid.selectWalletFromSeed(users.user2.seedPhrase);
   const reclaimConfig2: BatchReclaimConfig = await makeReclaimConfig(
     lucid,
-    users.swapAccount.address,
     users.user1.address
   );
 

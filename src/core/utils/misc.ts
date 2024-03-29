@@ -9,8 +9,11 @@ import {
   applyParamsToScript,
 } from "@anastasia-labs/lucid-cardano-fork";
 import { fromAddressToData } from "../utils/index.js";
-import { CborHex, LimitedNetwork, Result } from "../types.js";
-import { ADA_MIN_MAINNET, ADA_MIN_PREPROD } from "../constants.js";
+import { Result } from "../types.js";
+import { MINSWAP_ADDRESS_MAINNET, MINSWAP_ADDRESS_PREPROD } from "../constants.js";
+import singleSpendingValidator from "../../uplc/smartHandleSimple.json" assert { type : "json" };
+import batchSpendingValidator from "../../uplc/smartHandleRouter.json" assert { type : "json" };
+import stakingValidator from "../../uplc/smartHandleStake.json" assert { type : "json" };
 
 export type ValidatorAndAddress = {
   validator: Script;
@@ -24,29 +27,24 @@ export type BatchVAs = {
 };
 
 /**
- * Given the network and a non-applied validator parametrized by the swap
- * address, attempts to decode the Minswap's address (corresponding to the
- * provided network) into a `Data`, applies it, and returns the acquired
- * `Script` along with its corresponding address. "VA" is short for "validator
- * and address."
+ * Returns smart handle's validator and address for Minswap. "VA" is short for
+ * "validator and address."
  * @param lucid - Lucid API object
- * @param network - Currently only supports "Mainnet" and "Testnet"
- * @param unAppliedSpendingScript - The parametrized spending script that needs
- * an `Address`
+ * @param testnet - Flag to use preprod or not
  */
 export const getSingleValidatorVA = (
   lucid: Lucid,
-  network: LimitedNetwork,
-  unAppliedSpendingScript: CborHex
+  testnet: boolean
 ): Result<ValidatorAndAddress> => {
-  const swapAddress =
-    network == "Mainnet" ? ADA_MIN_MAINNET.address : ADA_MIN_PREPROD.address;
+  const swapAddress = testnet
+    ? MINSWAP_ADDRESS_PREPROD
+    : MINSWAP_ADDRESS_MAINNET;
 
   const addressRes = fromAddressToData(swapAddress);
 
   if (addressRes.type == "error") return addressRes;
 
-  const validatorScript = applyParamsToScript(unAppliedSpendingScript, [
+  const validatorScript = applyParamsToScript(singleSpendingValidator.cborHex, [
     addressRes.data,
   ]);
 
@@ -61,19 +59,25 @@ export const getSingleValidatorVA = (
   };
 };
 
+/**
+ * Returns validators and addresses of batch smart handles (both the spending
+ * part and the staking part).
+ * @param lucid - Lucid's API object
+ * @param testnet - Flag to use preprod or not
+ */
 export const getBatchVAs = (
   lucid: Lucid,
-  network: "Mainnet" | "Testnet",
-  unAppliedScripts: { spending: CborHex; staking: CborHex }
+  testnet: boolean
 ): Result<BatchVAs> => {
-  const swapAddress =
-    network == "Mainnet" ? ADA_MIN_MAINNET.address : ADA_MIN_PREPROD.address;
+  const swapAddress = testnet
+    ? MINSWAP_ADDRESS_PREPROD
+    : MINSWAP_ADDRESS_MAINNET;
 
   const addressRes = fromAddressToData(swapAddress);
 
   if (addressRes.type == "error") return addressRes;
 
-  const stakingScript = applyParamsToScript(unAppliedScripts.staking, [
+  const stakingScript = applyParamsToScript(stakingValidator.cborHex, [
     addressRes.data,
   ]);
 
@@ -92,7 +96,9 @@ export const getBatchVAs = (
 
   const spendingVal: SpendingValidator = {
     type: "PlutusV2",
-    script: applyParamsToScript(unAppliedScripts.spending, [stakingCredData]),
+    script: applyParamsToScript(batchSpendingValidator.cborHex, [
+      stakingCredData,
+    ]),
   };
   const spendingAddress = lucid.utils.validatorToAddress(spendingVal);
 

@@ -43,16 +43,10 @@ export const AddressSchema = Data.Object({
 export type AddressD = Data.Static<typeof AddressSchema>;
 export const AddressD = AddressSchema as unknown as AddressD;
 
-// NOTE: liqwid-plutarch-extra AssetClass version, not PlutusLedgerApi.V1.Value
-// TODO: ^ This comment doesn't seem true for this contract (as opposed to the
-//       direct-offer-offchain repo).
-export const AssetClassSchema = Data.Object(
-  {
-    symbol: Data.Bytes(),
-    name: Data.Bytes(),
-  },
-  { hasConstr: true } // Explicit `true` because of the TODO above.
-);
+export const AssetClassSchema = Data.Object({
+  symbol: Data.Bytes(),
+  name: Data.Bytes(),
+});
 export type AssetClassD = Data.Static<typeof AssetClassSchema>;
 export const AssetClassD = AssetClassSchema as unknown as AssetClassD;
 
@@ -67,6 +61,8 @@ export const Value = ValueSchema as unknown as Value;
 
 export const SmartHandleDatumSchema = Data.Object({
   owner: AddressSchema,
+  desiredAssetSymbol: Data.Bytes(),
+  desiredAssetTokenName: Data.Bytes(),
 });
 export type SmartHandleDatum = Data.Static<typeof SmartHandleDatumSchema>;
 export const SmartHandleDatum =
@@ -88,5 +84,4 @@ export const OrderDatumSchema = Data.Object({
   depositADA: Data.Integer(),
 });
 export type OrderDatum = Data.Static<typeof OrderDatumSchema>;
-export const OrderDatum =
-  OrderDatumSchema as unknown as OrderDatum;
+export const OrderDatum = OrderDatumSchema as unknown as OrderDatum;

@@ -1,4 +1,4 @@
-import { Address, Assets, OutRef } from "@anastasia-labs/lucid-cardano-fork";
+import { Address, Assets, OutRef, Unit } from "@anastasia-labs/lucid-cardano-fork";
 
 export type CborHex = string;
 export type RawHex = string;
@@ -17,91 +17,55 @@ export type AssetClass = {
   tokenName: string;
 };
 
+export type Asset = "lovelace" | Unit;
+
 export type ReadableUTxO<T> = {
   outRef: OutRef;
   datum: T;
   assets: Assets;
 };
 
-export type LimitedNetwork = "Mainnet" | "Testnet";
+export type SwapRequest = {
+  fromAsset: Asset;
+  quantity: bigint;
+  toAsset: Asset;
+}
 
-export type FetchSingleRequestConfig = {
-  network: LimitedNetwork;
-  spendingScript: CborHex;
+export type SingleRequestConfig = {
+  swapRequest: SwapRequest;
+  testnet: boolean;
 };
 
-export type FetchUsersSingleRequestConfig = {
-  owner: Address;
-  network: LimitedNetwork;
-  spendingScript: CborHex;
-};
-
-export type FetchBatchRequestConfig = {
-  network: LimitedNetwork;
-  scripts: {
-    spending: CborHex;
-    staking: CborHex;
-  };
-};
-
-export type FetchUsersBatchRequestConfig = {
-  owner: Address;
-  network: LimitedNetwork;
-  scripts: {
-    spending: CborHex;
-    staking: CborHex;
-  };
+export type BatchRequestConfig = {
+  swapRequests: SwapRequest[];
+  testnet: boolean;
 };
 
 export type SingleReclaimConfig = {
   requestOutRef: OutRef;
-  network: LimitedNetwork;
-  spendingScript: CborHex;
+  testnet: boolean;
 };
 
 export type BatchReclaimConfig = {
   requestOutRefs: OutRef[];
-  network: LimitedNetwork;
-  scripts: {
-    spending: CborHex;
-    staking: CborHex;
-  };
+  testnet: boolean;
 };
 
 export type SwapConfig = {
   blockfrostKey: string;
-  network: LimitedNetwork;
+  poolId: string;
   slippageTolerance: bigint;
 };
 
 export type SingleSwapConfig = {
   swapConfig: SwapConfig;
   requestOutRef: OutRef;
-  spendingScript: CborHex;
+  testnet: boolean;
 };
 
 // Same `slippageTolerance` for all request outrefs. TODO?
 export type BatchSwapConfig = {
   swapConfig: SwapConfig;
   requestOutRefs: OutRef[];
-  scripts: {
-    spending: CborHex;
-    staking: CborHex;
-  };
-};
-
-export type SingleRequestConfig = {
-  network: LimitedNetwork;
-  spendingScript: CborHex;
-  lovelace: bigint;
-};
-
-export type BatchRequestConfig = {
-  network: LimitedNetwork;
-  owner: Address;
-  lovelaces: bigint[];
-  scripts: {
-    spending: CborHex;
-    staking: CborHex;
-  };
+  testnet: boolean;
 };

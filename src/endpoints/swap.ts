@@ -12,26 +12,31 @@ import {
   OutRef,
   Address,
   UTxO,
+  fromUnit,
 } from "@anastasia-labs/lucid-cardano-fork";
 import {
-  Asset,
+  Asset as MinswapAsset,
   BlockfrostAdapter,
   calculateSwapExactIn,
   MetadataMessage,
-  OrderStepType,
   PoolState,
 } from "@minswap/sdk";
 import { BlockFrostAPI } from "@blockfrost/blockfrost-js";
 import {
   LOVELACE_MARGIN,
   ROUTER_FEE,
-  ADA_MIN_PREPROD,
-  ADA_MIN_MAINNET,
   MINSWAP_BATCHER_FEE,
   MINSWAP_DEPOSIT,
+  MINSWAP_ADDRESS_PREPROD,
+  MINSWAP_ADDRESS_MAINNET,
 } from "../core/constants.js";
-import { OrderDatum, OrderType, SmartHandleDatum } from "../core/contract.types.js";
 import {
+  OrderDatum,
+  OrderType,
+  SmartHandleDatum,
+} from "../core/contract.types.js";
+import {
+  Asset,
   BatchSwapConfig,
   Result,
   SingleSwapConfig,
@@ -82,25 +87,23 @@ const getPoolStateById = async (
 /**
  * Helper function for constructing the proper datum expected by Minswap's
  * script address.
- * @param minAsset - Policy ID and token name of the $MIN token. This can vary
- * based on the chosen network (mainnet or preprod)
- * @param ownerAddress - Address of the owner extracted from the input
- * `SmartHandleDatum`
- * @param minimumReceived - Minimum amount of $MIN tokens the owner should
- * receive
+ * @param asset - Policy ID and token name of the desired token
+ * @param ownerAddress - Address of the owner extracted from the input `SmartHandleDatum`
+ * @param minimumReceived - Minimum amount of tokens the owner should receive
  */
 const makeOrderDatum = (
-  minAsset: Asset,
+  asset: MinswapAsset,
   ownerAddress: Address,
   minimumReceived: bigint
 ): OrderDatum => {
   // {{{
   const addr = fromAddress(ownerAddress);
+  const desiredAsset = {
+    symbol: asset.policyId,
+    name: asset.tokenName,
+  };
   const orderType: OrderType = {
-    desiredAsset: {
-      symbol: minAsset.policyId,
-      name: minAsset.tokenName,
-    },
+    desiredAsset,
     minReceive: minimumReceived,
   };
   return {
@@ -142,35 +145,35 @@ type InputUTxOAndItsOutputInfo = {
  * - Don't have a proper datum
  * - Don't have enough Lovelaces
  * @param lucid - Lucid API object
- * @param config - Swap configurations (BF key, network, and slippage tolerance)
+ * @param config - Swap configurations (BF key, desired asset, pool ID of the asset, and slippage tolerance)
  * @param validatorAddress - Address of the smart handle script
  * @param requestOutRefs - `OutRef`s of the desired UTxOs to be spent
+ * @param testnet - Flag for preprod network or mainnet
  */
 const fetchUTxOsAndTheirCorrespondingOutputInfos = async (
   lucid: Lucid,
   config: SwapConfig,
   validatorAddress: Address,
-  requestOutRefs: OutRef[]
+  requestOutRefs: OutRef[],
+  testnet: boolean
 ): Promise<Result<InputUTxOAndItsOutputInfo[]>> => {
   // {{{
-  const minConstants =
-    config.network == "Mainnet" ? ADA_MIN_MAINNET : ADA_MIN_PREPROD;
-
   const blockfrostAdapter = new BlockfrostAdapter({
     blockFrost: new BlockFrostAPI({
       projectId: config.blockfrostKey,
-      network: config.network == "Mainnet" ? "mainnet" : "preprod",
+      network: testnet ? "preprod" : "mainnet",
     }),
   });
 
   try {
+    // CAUTION: There is no validation on `poolId` to make sure it correctly
+    // corresponds the swap pair.
     const poolStateRes = await getPoolStateById(
       blockfrostAdapter,
-      minConstants.poolId
+      config.poolId
     );
 
     if (poolStateRes.type == "error") return poolStateRes;
-
 
     const poolState = poolStateRes.data;
 
@@ -191,29 +194,39 @@ const fetchUTxOsAndTheirCorrespondingOutputInfos = async (
 
         const ownerAddress = toAddress(datum.value.owner, lucid);
 
-        const inputLovelaces = utxo.assets["lovelace"];
+        const units = Object.keys(utxo.assets);
 
-        if (
-          inputLovelaces <
-          LOVELACE_MARGIN + MINSWAP_BATCHER_FEE + MINSWAP_DEPOSIT + ROUTER_FEE
-        ) {
-          return {
-            type: "error",
-            error: new Error("Insufficient Lovelaces"),
-          };
-        }
+        if (units.length > 2) return {
+          type: "error",
+          error: new Error("More than 2 assets were found in the smart UTxO")
+        };
+
+        const fromAssetStr =
+          units.length == 2
+            ? units.filter((k: string) => k != "lovelace")[0]
+            : "lovelace";
+
+        const amountIn =
+          fromAssetStr == "lovelace"
+            ? utxo.assets["lovelace"] -
+              MINSWAP_BATCHER_FEE -
+              MINSWAP_DEPOSIT -
+              ROUTER_FEE
+            : utxo.assets[fromAssetStr];
 
         const { amountOut } = calculateSwapExactIn({
-          amountIn:
-            inputLovelaces - MINSWAP_BATCHER_FEE - MINSWAP_DEPOSIT - ROUTER_FEE,
+          amountIn,
           reserveIn: poolState.reserveA,
           reserveOut: poolState.reserveB,
         });
 
         const outputDatum = makeOrderDatum(
-          minConstants.minAsset,
+          {
+            policyId: datum.value.desiredAssetSymbol,
+            tokenName: datum.value.desiredAssetTokenName,
+          },
           ownerAddress,
-          (amountOut * (100n - config.slippageTolerance)) / 100n,
+          (amountOut * (100n - config.slippageTolerance)) / 100n
         );
 
         const outputDatumCBOR = Data.to<OrderDatum>(outputDatum, OrderDatum);
@@ -226,7 +239,7 @@ const fetchUTxOsAndTheirCorrespondingOutputInfos = async (
 
         const outputAssets = {
           ...utxo.assets,
-          lovelace: inputLovelaces - ROUTER_FEE,
+          lovelace: utxo.assets["lovelace"] - ROUTER_FEE,
         };
         return {
           type: "ok",
@@ -283,14 +296,7 @@ export const singleSwap = async (
   config: SingleSwapConfig
 ): Promise<Result<TxComplete>> => {
   // {{{
-  const minConstants =
-    config.swapConfig.network == "Mainnet" ? ADA_MIN_MAINNET : ADA_MIN_PREPROD;
-
-  const vaRes = getSingleValidatorVA(
-    lucid,
-    config.swapConfig.network,
-    config.spendingScript
-  );
+  const vaRes = getSingleValidatorVA(lucid, config.testnet);
 
   if (vaRes.type == "error") return vaRes;
 
@@ -301,7 +307,8 @@ export const singleSwap = async (
       lucid,
       config.swapConfig,
       vaRes.data.address,
-      [config.requestOutRef]
+      [config.requestOutRef],
+      config.testnet
     );
 
     if (outputInfoRes.type == "error") return outputInfoRes;
@@ -325,6 +332,10 @@ export const singleSwap = async (
     if (inputIndices.length !== 1)
       return { type: "error", error: new Error("Something went wrong") };
 
+    const swapAddress = config.testnet
+      ? MINSWAP_ADDRESS_PREPROD
+      : MINSWAP_ADDRESS_MAINNET;
+
     const PSwapRedeemer = Data.to(new Constr(0, [inputIndices[0], 0n]));
 
     // Implicit assumption that who creates the transaction is the routing
@@ -337,7 +348,7 @@ export const singleSwap = async (
       .collectFrom(feeUTxOs)
       .addSignerKey(ownHash) // For collateral UTxO
       .attachSpendingValidator(validator)
-      .payToContract(minConstants.address, outputDatumHash, outputAssets)
+      .payToContract(swapAddress, outputDatumHash, outputAssets)
       .attachMetadata(674, { msg: [MetadataMessage.SWAP_EXACT_IN_ORDER] })
       .complete();
     return { type: "ok", data: tx };
@@ -352,14 +363,15 @@ export const batchSwap = async (
   config: BatchSwapConfig
 ): Promise<Result<TxComplete>> => {
   // {{{
-  const minConstants =
-    config.swapConfig.network == "Mainnet" ? ADA_MIN_MAINNET : ADA_MIN_PREPROD;
-
-  const batchVAsRes = getBatchVAs(lucid, config.swapConfig.network, config.scripts);
+  const batchVAsRes = getBatchVAs(lucid, config.testnet);
 
   if (batchVAsRes.type == "error") return batchVAsRes;
 
   const batchVAs: BatchVAs = batchVAsRes.data;
+
+  const swapAddress = config.testnet
+    ? MINSWAP_ADDRESS_PREPROD
+    : MINSWAP_ADDRESS_MAINNET;
 
   try {
     const ownHash = paymentCredentialOf(await lucid.wallet.address()).hash;
@@ -378,7 +390,8 @@ export const batchSwap = async (
       lucid,
       config.swapConfig,
       batchVAs.spendVA.address,
-      sortedOutRefs
+      sortedOutRefs,
+      config.testnet
     );
 
     if (outputInfosRes.type == "error") return outputInfosRes;
@@ -390,7 +403,7 @@ export const batchSwap = async (
     utxosAndTheirOutputInfos.forEach((inUTxOAndOutInfo) => {
       swapUTxOs.push(inUTxOAndOutInfo.utxo);
       initTx.payToContract(
-        minConstants.address,
+        swapAddress,
         inUTxOAndOutInfo.outputDatumHash,
         inUTxOAndOutInfo.outputAssets
       );
