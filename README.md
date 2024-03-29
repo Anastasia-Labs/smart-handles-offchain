@@ -162,9 +162,9 @@ const reclaimTxUnsigned = await batchReclaim(lucid, reclaimConfig);
 ### Register the Staking Validator (Optional)
 
 If the reward address of the staking validator is not already registered, you'll
-need to submit stake registration transaction (costs about 2.2 Ada).
+need to submit its registration transaction (costs about 2.2 Ada).
 
-This is only required for batch actions.
+This is only required for batch actions as they utilize the "withdraw 0 trick."
 
 ```ts
 import {
@@ -230,11 +230,11 @@ const swapTxUnsigned = await batchSwap(lucid, swapConfig);
 
 ## Sample Transactions on Preprod
 
-Reward address registration: [073641112c7b7c645521d1aca3650989bdc0bf06ae36e76e2e74287e015dcc99](https://preprod.cexplorer.io/tx/073641112c7b7c645521d1aca3650989bdc0bf06ae36e76e2e74287e015dcc99)
+Reward address registration: [`073641112c7b7c645521d1aca3650989bdc0bf06ae36e76e2e74287e015dcc99`](https://preprod.cexplorer.io/tx/073641112c7b7c645521d1aca3650989bdc0bf06ae36e76e2e74287e015dcc99)
 
-Batch swap requests: [afa0b004e0679cbfb8879a71cbad7f061b362a68ca314c2d6a907e93d9cbd14a](https://preprod.cexplorer.io/tx/afa0b004e0679cbfb8879a71cbad7f061b362a68ca314c2d6a907e93d9cbd14a)
+Batch swap requests: [`afa0b004e0679cbfb8879a71cbad7f061b362a68ca314c2d6a907e93d9cbd14a`](https://preprod.cexplorer.io/tx/afa0b004e0679cbfb8879a71cbad7f061b362a68ca314c2d6a907e93d9cbd14a)
 
-Batch swap by routing agent: [b34377eb875b47b9c66ed710d986baece744194e86ebb8c27286e8e50177045a](https://preprod.cexplorer.io/tx/b34377eb875b47b9c66ed710d986baece744194e86ebb8c27286e8e50177045a)
+Batch swap by routing agent: [`b34377eb875b47b9c66ed710d986baece744194e86ebb8c27286e8e50177045a`](https://preprod.cexplorer.io/tx/b34377eb875b47b9c66ed710d986baece744194e86ebb8c27286e8e50177045a)
 
 ## Future
 
