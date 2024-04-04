@@ -42,7 +42,10 @@ beforeEach<LucidContext>(async (context) => {
   context.lucid = await Lucid.new(context.emulator);
 });
 
-test<LucidContext>("Test - Single Request, Swap", async ({
+const ciEnv = process.env.NODE_ENV === "CI";
+
+// Avoid running the test in CI due to requirement for a Blockfrost key.
+test.skipIf(ciEnv)<LucidContext>("Test - Single Request, Swap", async ({
   lucid,
   users,
   emulator,
