@@ -222,8 +222,8 @@ const fetchUTxOsAndTheirCorrespondingOutputInfos = async (
 
         const outputDatum = makeOrderDatum(
           {
-            policyId: datum.value.desiredAssetSymbol,
-            tokenName: datum.value.desiredAssetTokenName,
+            policyId: datum.value.extraInfo.desiredAssetSymbol,
+            tokenName: datum.value.extraInfo.desiredAssetTokenName,
           },
           ownerAddress,
           (amountOut * (100n - config.slippageTolerance)) / 100n

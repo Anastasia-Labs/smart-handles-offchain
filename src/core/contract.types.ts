@@ -59,10 +59,17 @@ export const ValueSchema = Data.Map(
 export type Value = Data.Static<typeof ValueSchema>;
 export const Value = ValueSchema as unknown as Value;
 
-export const SmartHandleDatumSchema = Data.Object({
-  owner: AddressSchema,
+export const MinswapRequestInfoSchema = Data.Object({
   desiredAssetSymbol: Data.Bytes(),
   desiredAssetTokenName: Data.Bytes(),
+});
+export type MinswapRequestInfo = Data.Static<typeof MinswapRequestInfoSchema>;
+export const MinswapRequestInfo =
+  MinswapRequestInfoSchema as unknown as MinswapRequestInfo;
+
+export const SmartHandleDatumSchema = Data.Object({
+  owner: AddressSchema,
+  extraInfo: MinswapRequestInfoSchema
 });
 export type SmartHandleDatum = Data.Static<typeof SmartHandleDatumSchema>;
 export const SmartHandleDatum =
