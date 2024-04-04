@@ -127,11 +127,13 @@ const INSUFFICIENT_LOVELACES_ERROR_MSG =
 const datumBuilder = (ownAddress: string, swapRequest: SwapRequest): string => {
   const outputDatum: SmartHandleDatum = {
     owner: fromAddress(ownAddress),
-    desiredAssetSymbol:
-      swapRequest.toAsset == "lovelace"
-        ? ""
-        : fromUnit(swapRequest.toAsset).policyId,
-    desiredAssetTokenName: fromUnit(swapRequest.toAsset).assetName ?? "",
+    extraInfo: {
+      desiredAssetSymbol:
+        swapRequest.toAsset == "lovelace"
+          ? ""
+          : fromUnit(swapRequest.toAsset).policyId,
+      desiredAssetTokenName: fromUnit(swapRequest.toAsset).assetName ?? "",
+    },
   };
   return Data.to(outputDatum, SmartHandleDatum);
 };
