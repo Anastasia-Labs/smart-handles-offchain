@@ -8,13 +8,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: pnpm/action-setup@v2
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
         with:
           version: 8
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
           cache: "pnpm"
       - run: pnpm i
       - run: pnpm run lint && pnpm run build
@@ -27,13 +27,13 @@ jobs:
       packages: write
       contents: read
     steps:
-      - uses: actions/checkout@v3
-      - uses: pnpm/action-setup@v2
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
         with:
           version: 8
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
           cache: "pnpm"
           registry-url: 'https://registry.npmjs.org'
       - run: pnpm i --frozen-lockfile
