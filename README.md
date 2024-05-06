@@ -233,11 +233,11 @@ const swapTxUnsigned = await batchSwap(lucid, swapConfig);
 
 ## Sample Transactions on Preprod
 
-Reward address registration: [`073641112c7b7c645521d1aca3650989bdc0bf06ae36e76e2e74287e015dcc99`](https://preprod.cexplorer.io/tx/073641112c7b7c645521d1aca3650989bdc0bf06ae36e76e2e74287e015dcc99)
+Reward address registration: [`8227766d19fea7523ec78262230dfbc25cc00d238759df967d381dddb655f421`](https://preprod.cexplorer.io/tx/8227766d19fea7523ec78262230dfbc25cc00d238759df967d381dddb655f421)
 
-Batch swap requests: [`afa0b004e0679cbfb8879a71cbad7f061b362a68ca314c2d6a907e93d9cbd14a`](https://preprod.cexplorer.io/tx/afa0b004e0679cbfb8879a71cbad7f061b362a68ca314c2d6a907e93d9cbd14a)
+Batch swap requests: [`272c43a0e8427ad69d5321b287ad2ce4135ceeb23d8e6016c53353634fbd8831`](https://preprod.cexplorer.io/tx/272c43a0e8427ad69d5321b287ad2ce4135ceeb23d8e6016c53353634fbd8831)
 
-Batch swap by routing agent: [`b34377eb875b47b9c66ed710d986baece744194e86ebb8c27286e8e50177045a`](https://preprod.cexplorer.io/tx/b34377eb875b47b9c66ed710d986baece744194e86ebb8c27286e8e50177045a)
+Batch swap by routing agent: [`cdb903d2e22bed41f52f0afa2fed91da6633a68f858fe587de784fc1bf92b5de`](https://preprod.cexplorer.io/tx/cdb903d2e22bed41f52f0afa2fed91da6633a68f858fe587de784fc1bf92b5de)
 
 ## Future
 
