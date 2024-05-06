@@ -1,6 +1,6 @@
 {
   "name": "@anastasia-labs/smart-handles-offchain",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "https://docs.github.com/en/packages/quickstart",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
