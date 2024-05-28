@@ -6,5 +6,10 @@
 
 example="ada-to-min" # or "min-to-tbtc"
 
-tsc example/$example.ts --target esnext --module nodenext --moduleResolution nodenext --resolveJsonModule
+tsc example/$example.ts       \
+  --target esnext             \
+  --module nodenext           \
+  --moduleResolution nodenext \
+  --resolveJsonModule
+
 node example/$example.js

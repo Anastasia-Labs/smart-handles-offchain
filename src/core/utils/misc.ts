@@ -11,9 +11,9 @@ import {
 import { fromAddressToData } from "../utils/index.js";
 import { Result } from "../types.js";
 import { MINSWAP_ADDRESS_MAINNET, MINSWAP_ADDRESS_PREPROD } from "../constants.js";
-import singleSpendingValidator from "../../uplc/smartHandleSimple.json" assert { type : "json" };
-import batchSpendingValidator from "../../uplc/smartHandleRouter.json" assert { type : "json" };
-import stakingValidator from "../../uplc/smartHandleStake.json" assert { type : "json" };
+import singleSpendingValidator from "../../uplc/smartHandleSimple.json" with { type : "json" };
+import batchSpendingValidator from "../../uplc/smartHandleRouter.json" with { type : "json" };
+import stakingValidator from "../../uplc/smartHandleStake.json" with { type : "json" };
 
 export type ValidatorAndAddress = {
   validator: Script;
