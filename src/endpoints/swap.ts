@@ -86,15 +86,16 @@ const getPoolStateById = async (
   // }}}
 };
 
-const CACHE_REFETCH_THRESHOLD = 60000;
+const CACHE_REFETCH_THRESHOLD = 600000;
 let CACHED_POOL_STATES: PoolState[] = [];
 let pool_states_cache_date = new Date(0);
 
 /*
  * Practice EXTREME CAUTION here: this function is quite expensive, and
- * therefore leverages a memory-based caching mechanism that expires after one
- * minute. The cache is stored in the module-wide variable `CACHED_POOL_STATES`,
- * while its last cache `Date` is stored in `pool_states_cache_date`.
+ * therefore leverages a memory-based caching mechanism that expires after ten
+ * minutes (although it doesn't refetch unless a sought pool is not found). The
+ * cache is stored in the module-wide variable `CACHED_POOL_STATES`, while its
+ * last cache `Date` is stored in `pool_states_cache_date`.
  * */
 const getPoolStateFromAssets = async (
   blockfrostAdapter: BlockfrostAdapter,
@@ -102,13 +103,9 @@ const getPoolStateFromAssets = async (
   assetB: Unit
 ): Promise<Result<PoolState>> => {
   // {{{
-  const curr_date = new Date();
   const allPools: PoolState[] = [];
-  if (
-    // If a fresh cache exists, reuse it.
-    curr_date.getTime() - pool_states_cache_date.getTime() < CACHE_REFETCH_THRESHOLD &&
-    CACHED_POOL_STATES.length > 0
-  ) {
+  if (CACHED_POOL_STATES.length > 0) {
+    // If a cache exists, reuse it.
     allPools.push(...CACHED_POOL_STATES);
   } else {
     // Pages 0 and 1 seem to be identical, hence starting with `i = 1`
@@ -150,10 +147,25 @@ const getPoolStateFromAssets = async (
       data: poolState,
     };
   } else {
-    return {
-      type: "error",
-      error: new Error("Pool ID not found"),
-    };
+    const curr_date = new Date();
+    if (
+      curr_date.getTime() - pool_states_cache_date.getTime() <
+      CACHE_REFETCH_THRESHOLD
+    ) {
+      // If stored cache is old, empty it and recall this function.
+      CACHED_POOL_STATES = [];
+      const res = await getPoolStateFromAssets(
+        blockfrostAdapter,
+        assetA,
+        assetB
+      );
+      return res;
+    } else {
+      return {
+        type: "error",
+        error: new Error("Pool ID not found"),
+      };
+    }
   }
   // }}}
 };

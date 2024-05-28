@@ -11,6 +11,9 @@
         * [Register the Staking Validator (Optional)](#register-the-staking-validator-optional)
         * [Perform a Swap by Routing Agent](#perform-a-swap-by-routing-agent)
     * [Sample Transactions on Preprod](#sample-transactions-on-preprod)
+        * [Common](#common)
+        * [ADA to MIN](#ada-to-min)
+        * [MIN to tBTC](#min-to-tbtc)
     * [Future](#future)
 
 <!-- vim-markdown-toc -->
@@ -206,6 +209,13 @@ Anyone can spend a smart handle UTxO as long as they perform the requested swap
 properly. The `ROUTER_FEE` is for incentivising third parties for carrying out
 swaps.
 
+Note that the pool ID is optional: If it's set, there won't be any validation
+for its correctness. And if it's not set, it'll fetch all the Minswap pools in
+order to find the desired pool ID.
+
+[MIN-to-tBTC example transactions below](#min-to-tbtc) are carried out without
+specifying the pool ID.
+
 ```ts
 import {
   batchSwap,
@@ -218,7 +228,7 @@ const allUTxOs = await fetchBatchRequestUTxOs(lucid, true);
 const swapConfig: BatchSwapConfig = {
   swapConfig: {
     blockfrostKey: "routing agent's blockfrost key",
-    poolId: "pool ID or token name of the corresponding LP token",
+    poolId: "OPTIONAL pool ID or token name of the corresponding LP token",
     slippageTolerance: 20n,
   },
   requestOutRefs: allUTxOs.map(u => u.outRef),
@@ -233,11 +243,21 @@ const swapTxUnsigned = await batchSwap(lucid, swapConfig);
 
 ## Sample Transactions on Preprod
 
+### Common
+
 Reward address registration: [`8227766d19fea7523ec78262230dfbc25cc00d238759df967d381dddb655f421`](https://preprod.cexplorer.io/tx/8227766d19fea7523ec78262230dfbc25cc00d238759df967d381dddb655f421)
+
+### ADA to MIN
 
 Batch swap requests: [`272c43a0e8427ad69d5321b287ad2ce4135ceeb23d8e6016c53353634fbd8831`](https://preprod.cexplorer.io/tx/272c43a0e8427ad69d5321b287ad2ce4135ceeb23d8e6016c53353634fbd8831)
 
 Batch swap by routing agent: [`cdb903d2e22bed41f52f0afa2fed91da6633a68f858fe587de784fc1bf92b5de`](https://preprod.cexplorer.io/tx/cdb903d2e22bed41f52f0afa2fed91da6633a68f858fe587de784fc1bf92b5de)
+
+### MIN to tBTC
+
+Batch swap requests: [`4343f9ac73f83b04a37fab998bddf3e1294597f3e81df5b8278860ceeb989668`](https://preprod.cexplorer.io/tx/4343f9ac73f83b04a37fab998bddf3e1294597f3e81df5b8278860ceeb989668)
+
+Batch swap by routing agent: [`a2c62eb9218110f8d6cc3e55730c310a162ecfc22d38dd2a25e321641a61d873`](https://preprod.cexplorer.io/tx/a2c62eb9218110f8d6cc3e55730c310a162ecfc22d38dd2a25e321641a61d873)
 
 ## Future
 
@@ -245,7 +265,3 @@ While this SDK is currently curated for working with Minswap V1, in near future
 it'll also offer interfaces for providing customized variants of the base
 contract. Meaning for example choosing between other DEXs, or perhaps requiring
 more strict validations.
-
-Another feature to add is a more straight-forward way of finding the appropriate
-pool ID for a given swap (which will grab all the pools and filter them based
-on the tokens they hold).
