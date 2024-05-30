@@ -12,26 +12,7 @@ import {
   BatchSwapConfig,
   Result,
   TxComplete,
-} from "../src/index.js";
-//     ^---------------^
-// In your project this source should change to:
-// "@anastasia-labs/smart-handles-offchain"
-
-const blockfrostKey = process.env.BLOCKFROST_KEY;
-
-// Seed phrases are space separated words
-
-const seedPhrase = process.env.SEED_PHRASE;
-
-const routingAgentsSeedPhrase = process.env.ROUTING_SEED_PHRASE;
-
-if (!blockfrostKey)
-  throw new Error("No Blockfrost API key was found (BLOCKFROST_KEY)");
-if (!seedPhrase) throw new Error("No wallet seed phrase found (SEED_PHRASE)");
-if (!routingAgentsSeedPhrase)
-  throw new Error(
-    "Routing agent's wallet seed phrase not found (ROUTING_SEED_PHRASE)"
-  );
+} from "@anastasia-labs/smart-handles-offchain";
 
 const signAndSubmitTxRes = async (
   lucid: Lucid,
@@ -48,7 +29,22 @@ const signAndSubmitTxRes = async (
   return txHash;
 };
 
-const run = async () => {
+export const run = async () => {
+  const blockfrostKey = process.env.BLOCKFROST_KEY;
+  
+  // Seed phrases are space separated words
+  
+  const seedPhrase = process.env.SEED_PHRASE;
+  
+  const routingAgentsSeedPhrase = process.env.ROUTING_SEED_PHRASE;
+  
+  if (!blockfrostKey)
+    throw new Error("No Blockfrost API key was found (BLOCKFROST_KEY)");
+  if (!seedPhrase) throw new Error("No wallet seed phrase found (SEED_PHRASE)");
+  if (!routingAgentsSeedPhrase)
+    throw new Error(
+      "Routing agent's wallet seed phrase not found (ROUTING_SEED_PHRASE)"
+    );
   const lucid = await Lucid.new(
     new Blockfrost(
       "https://cardano-preprod.blockfrost.io/api/v0",
@@ -108,5 +104,3 @@ const run = async () => {
   const swapTxHash = await signAndSubmitTxRes(lucid, swapTxUnsigned);
   console.log(`Swap successfully performed: ${swapTxHash}`);
 };
-
-run();
