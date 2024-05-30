@@ -43,28 +43,12 @@ const signAndSubmitTxRes = async (
   return txHash;
 };
 
-export const run = async () => {
+export const run = async (
+  blockfrostKey: string,
+  seedPhrase: string,
+  routingAgentsSeedPhrase: string
+): Promise<Error | void> => {
   try {
-    const blockfrostKey = process.env.BLOCKFROST_KEY;
-    
-    // Seed phrases are space separated words
-    
-    const seedPhrase = process.env.SEED_PHRASE;
-    
-    const routingAgentsSeedPhrase = process.env.ROUTING_SEED_PHRASE;
-    
-    if (!blockfrostKey)
-      throw new Error(
-        "No Blockfrost API key was found (BLOCKFROST_KEY)"
-      );
-    if (!seedPhrase)
-      throw new Error(
-        "No wallet seed phrase found (SEED_PHRASE)"
-      );
-    if (!routingAgentsSeedPhrase)
-      throw new Error(
-        "Routing agent's wallet seed phrase not found (ROUTING_SEED_PHRASE)"
-      );
     const lucid = await Lucid.new(
       new Blockfrost(
         "https://cardano-preprod.blockfrost.io/api/v0",
@@ -72,9 +56,9 @@ export const run = async () => {
       ),
       "Preprod"
     );
-  
+
     lucid.selectWalletFromSeed(seedPhrase);
-  
+
     const requestConfig: BatchRequestConfig = {
       swapRequests: [
         50_000_000, 100_000_000, 150_000_000, 200_000_000, 250_000_000,
@@ -85,33 +69,33 @@ export const run = async () => {
       })),
       testnet: true,
     };
-  
+
     const requestTxUnsignedRes = await batchRequest(lucid, requestConfig);
-  
+
     console.log("Submitting the swap requests...");
     const requestTxHash = await signAndSubmitTxRes(lucid, requestTxUnsignedRes);
     console.log(`Request Successfully Submitted: ${requestTxHash}`);
-  
+
     // Commented out as the Minswap version of the smart handles contract is
     // already registered on preprod.
-  
+
     // const batchVAsRes = getBatchVAs(lucid, true);
-  
+
     // if (batchVAsRes.type == "error") return batchVAsRes;
-  
+
     // const batchVAs: BatchVAs = batchVAsRes.data;
-  
+
     // const rewardAddress = batchVAs.stakeVA.address;
-  
+
     // console.log("Registering the staking validator...");
     // await registerRewardAddress(lucid, rewardAddress);
     // console.log(`Staking validator successfully registered: ${rewardAddress}`);
-  
+
     const userAddress = await lucid.wallet.address();
-  
+
     lucid.selectWalletFromSeed(routingAgentsSeedPhrase);
     console.log("(switched to the routing agent's wallet)");
-  
+
     console.log("Fetching user's batch requests...");
     const usersRequests = await fetchUsersBatchRequestUTxOs(
       lucid,
@@ -120,25 +104,25 @@ export const run = async () => {
     );
     console.log("Fetch completed:");
     console.log(usersRequests);
-  
+
     const swapConfig: SwapConfig = {
       blockfrostKey,
       poolId: ADA_MIN_LP_TOKEN_NAME_PREPROD,
       slippageTolerance: BigInt(10),
     };
-  
+
     const batchSwapConfig: BatchSwapConfig = {
       swapConfig,
       requestOutRefs: usersRequests.map((u) => u.outRef),
       testnet: true,
     };
-  
+
     const swapTxUnsigned = await batchSwap(lucid, batchSwapConfig);
-  
+
     console.log("Submitting the swap transaction...");
     const swapTxHash = await signAndSubmitTxRes(lucid, swapTxUnsigned);
     console.log(`Swap successfully performed: ${swapTxHash}`);
-  } catch(e) {
+  } catch (e) {
     return e;
   }
 };
