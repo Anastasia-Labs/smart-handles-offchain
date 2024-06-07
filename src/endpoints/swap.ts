@@ -13,6 +13,8 @@ import {
   Address,
   UTxO,
   fromUnit,
+  Unit,
+  toUnit,
 } from "@anastasia-labs/lucid-cardano-fork";
 import {
   Asset as MinswapAsset,
@@ -80,6 +82,90 @@ const getPoolStateById = async (
     };
   } catch (error) {
     return genericCatch(error);
+  }
+  // }}}
+};
+
+const CACHE_REFETCH_THRESHOLD = 600000;
+let CACHED_POOL_STATES: PoolState[] = [];
+let pool_states_cache_date = new Date(0);
+
+/*
+ * Practice EXTREME CAUTION here: this function is quite expensive, and
+ * therefore leverages a memory-based caching mechanism that expires after ten
+ * minutes (although it doesn't refetch unless a sought pool is not found). The
+ * cache is stored in the module-wide variable `CACHED_POOL_STATES`, while its
+ * last cache `Date` is stored in `pool_states_cache_date`.
+ * */
+const getPoolStateFromAssets = async (
+  blockfrostAdapter: BlockfrostAdapter,
+  assetA: Unit,
+  assetB: Unit
+): Promise<Result<PoolState>> => {
+  // {{{
+  const allPools: PoolState[] = [];
+  if (CACHED_POOL_STATES.length > 0) {
+    // If a cache exists, reuse it.
+    allPools.push(...CACHED_POOL_STATES);
+  } else {
+    // Pages 0 and 1 seem to be identical, hence starting with `i = 1`
+    let i = 1;
+    while (true) {
+      try {
+        const pools = await blockfrostAdapter.getPools({ page: i });
+        if (pools.length <= 0) {
+          break;
+        } else {
+          allPools.push(...pools);
+          i++;
+        }
+      } catch (e) {
+        return genericCatch(e);
+      }
+    }
+    CACHED_POOL_STATES = [...allPools];
+    pool_states_cache_date = new Date();
+  }
+  const filteredPools = allPools.filter((p) => {
+    const aIsA = p.assetA == assetA;
+    const aIsB = p.assetA == assetB;
+    const bIsA = p.assetB == assetA;
+    const bIsB = p.assetB == assetB;
+    return (aIsA && bIsB) || (aIsB && bIsA);
+  });
+  if (filteredPools.length == 1) {
+    const poolState = filteredPools[0];
+    // const poolIdValue = poolState.value.find(
+    //   (v) =>
+    //     v.unit != "lovelace" &&
+    //     v.unit != assetA &&
+    //     v.unit != assetB &&
+    //     v.unit.length == 120
+    // );
+    return {
+      type: "ok",
+      data: poolState,
+    };
+  } else {
+    const curr_date = new Date();
+    if (
+      curr_date.getTime() - pool_states_cache_date.getTime() <
+      CACHE_REFETCH_THRESHOLD
+    ) {
+      // If stored cache is old, empty it and recall this function.
+      CACHED_POOL_STATES = [];
+      const res = await getPoolStateFromAssets(
+        blockfrostAdapter,
+        assetA,
+        assetB
+      );
+      return res;
+    } else {
+      return {
+        type: "error",
+        error: new Error("Pool ID not found"),
+      };
+    }
   }
   // }}}
 };
@@ -166,17 +252,6 @@ const fetchUTxOsAndTheirCorrespondingOutputInfos = async (
   });
 
   try {
-    // CAUTION: There is no validation on `poolId` to make sure it correctly
-    // corresponds the swap pair.
-    const poolStateRes = await getPoolStateById(
-      blockfrostAdapter,
-      config.poolId
-    );
-
-    if (poolStateRes.type == "error") return poolStateRes;
-
-    const poolState = poolStateRes.data;
-
     const utxos = await lucid.utxosByOutRef(requestOutRefs);
 
     const results = await Promise.all(
@@ -196,10 +271,11 @@ const fetchUTxOsAndTheirCorrespondingOutputInfos = async (
 
         const units = Object.keys(utxo.assets);
 
-        if (units.length > 2) return {
-          type: "error",
-          error: new Error("More than 2 assets were found in the smart UTxO")
-        };
+        if (units.length > 2)
+          return {
+            type: "error",
+            error: new Error("More than 2 assets were found in the smart UTxO"),
+          };
 
         const fromAssetStr =
           units.length == 2
@@ -213,6 +289,23 @@ const fetchUTxOsAndTheirCorrespondingOutputInfos = async (
               MINSWAP_DEPOSIT -
               ROUTER_FEE
             : utxo.assets[fromAssetStr];
+
+        // CAUTION: If `poolId` is provided, there is no validation to make sure
+        // it correctly corresponds the swap pair.
+        const poolStateRes = config.poolId
+          ? await getPoolStateById(blockfrostAdapter, config.poolId)
+          : await getPoolStateFromAssets(
+              blockfrostAdapter,
+              fromAssetStr,
+              toUnit(
+                datum.value.extraInfo.desiredAssetSymbol,
+                datum.value.extraInfo.desiredAssetTokenName
+              )
+            );
+
+        if (poolStateRes.type == "error") return poolStateRes;
+
+        const poolState = poolStateRes.data;
 
         const { amountOut } = calculateSwapExactIn({
           amountIn,
