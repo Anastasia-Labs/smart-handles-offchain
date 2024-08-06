@@ -1,4 +1,4 @@
-import { Address, Assets, OutRef, Unit } from "@anastasia-labs/lucid-cardano-fork";
+import { Assets, Network, OutRef, Unit } from "@lucid-evolution/lucid";
 
 export type CborHex = string;
 export type RawHex = string;
@@ -33,22 +33,22 @@ export type SwapRequest = {
 
 export type SingleRequestConfig = {
   swapRequest: SwapRequest;
-  testnet: boolean;
+  network: Network;
 };
 
 export type BatchRequestConfig = {
   swapRequests: SwapRequest[];
-  testnet: boolean;
+  network: Network;
 };
 
 export type SingleReclaimConfig = {
   requestOutRef: OutRef;
-  testnet: boolean;
+  network: Network;
 };
 
 export type BatchReclaimConfig = {
   requestOutRefs: OutRef[];
-  testnet: boolean;
+  network: Network;
 };
 
 export type SwapConfig = {
@@ -60,12 +60,12 @@ export type SwapConfig = {
 export type SingleSwapConfig = {
   swapConfig: SwapConfig;
   requestOutRef: OutRef;
-  testnet: boolean;
+  network: Network;
 };
 
 // Same `slippageTolerance` for all request outrefs. TODO?
 export type BatchSwapConfig = {
   swapConfig: SwapConfig;
   requestOutRefs: OutRef[];
-  testnet: boolean;
+  network: Network;
 };

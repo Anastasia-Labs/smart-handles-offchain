@@ -2,7 +2,6 @@ import {
   Address,
   Emulator,
   Lucid,
-  generateAccountSeedPhrase,
   BatchRequestConfig,
   BatchReclaimConfig,
   batchRequest,
@@ -11,24 +10,17 @@ import {
   toUnit,
   MIN_SYMBOL_PREPROD,
   MIN_TOKEN_NAME,
+  LucidEvolution,
 } from "../src/index.js";
+import { LucidContext, createUser, getWalletUTxOs, logWalletUTxOs } from "./utils.js";
 import { beforeEach, expect, test } from "vitest";
-
-type LucidContext = {
-  lucid: Lucid;
-  users: any;
-  emulator: Emulator;
-};
 
 //NOTE: INITIALIZE EMULATOR + ACCOUNTS
 beforeEach<LucidContext>(async (context) => {
-  const createUser = async () => {
-    return await generateAccountSeedPhrase({ lovelace: BigInt(100_000_000) });
-  };
   context.users = {
-    swapAccount: await createUser(),
-    user1: await createUser(),
-    user2: await createUser(),
+    swapAccount: createUser(),
+    user1: createUser(),
+    user2: createUser(),
   };
 
   context.emulator = new Emulator([
@@ -37,32 +29,34 @@ beforeEach<LucidContext>(async (context) => {
     context.users.user2,
   ]);
 
-  context.lucid = await Lucid.new(context.emulator);
+  context.lucid = await Lucid(context.emulator, "Custom");
 });
 
-const makeRequestConfig = (
-  lovelaces: number[]
-): BatchRequestConfig => {
+const makeRequestConfig = (lovelaces: number[]): BatchRequestConfig => {
   return {
-    swapRequests: lovelaces.map(l => {
+    swapRequests: lovelaces.map((l) => {
       return {
         fromAsset: "lovelace",
         quantity: BigInt(l),
-        toAsset: toUnit(MIN_SYMBOL_PREPROD, MIN_TOKEN_NAME)
+        toAsset: toUnit(MIN_SYMBOL_PREPROD, MIN_TOKEN_NAME),
       };
     }),
-    testnet: true,
+    network: "Custom",
   };
 };
 
 const makeReclaimConfig = async (
-  lucid: Lucid,
+  lucid: LucidEvolution,
   ownerAddr: Address
 ): Promise<BatchReclaimConfig> => {
-  const userRequests = await fetchUsersBatchRequestUTxOs(lucid, ownerAddr, true);
+  const userRequests = await fetchUsersBatchRequestUTxOs(
+    lucid,
+    ownerAddr,
+    "Custom"
+  );
   return {
     requestOutRefs: userRequests.map((u) => u.outRef),
-    testnet: true,
+    network: "Custom",
   };
 };
 
@@ -72,11 +66,11 @@ test<LucidContext>("Test - Batch Swap Request, Reclaim", async ({
   emulator,
 }) => {
   // Batch Swap Request
-  lucid.selectWalletFromSeed(users.user1.seedPhrase);
+  lucid.selectWallet.fromSeed(users.user1.seedPhrase);
 
-  const requestConfig: BatchRequestConfig = makeRequestConfig(
-    [8_000_000, 20_000_000, 30_000_000, 40_000_000]
-  );
+  const requestConfig: BatchRequestConfig = makeRequestConfig([
+    8_000_000, 20_000_000, 30_000_000, 35_000_000,
+  ]);
 
   const requestUnsigned1 = await batchRequest(lucid, requestConfig);
 
@@ -87,12 +81,37 @@ test<LucidContext>("Test - Batch Swap Request, Reclaim", async ({
   expect(requestUnsigned1.type).toBe("ok");
 
   if (requestUnsigned1.type == "ok") {
-    const requestSigned1 = await requestUnsigned1.data.sign().complete();
+    const requestSigned1 = await requestUnsigned1.data.sign
+      .withWallet()
+      .complete();
     const requestTxHash1 = await requestSigned1.submit();
-    // console.log("BATCH REQUEST 1 TX HASH", requestTxHash1);
+    console.log("BATCH REQUEST 1", requestUnsigned1);
+    console.log("BATCH REQUEST 1 TX HASH", requestTxHash1);
   }
 
   emulator.awaitBlock(100);
+
+  // const utxosAfterRequest = await getWalletUTxOs(lucid);
+  // console.log("------------------------- AFTER REQUEST -------------------------");
+  // console.log(utxosAfterRequest);
+
+  // const unsignedCollateralTx = await lucid
+  //   .newTx()
+  //   .collectFrom(utxosAfterRequest)
+  //   .pay.ToAddress(users.user1.address, { lovelace: BigInt(5_000_000) })
+  //   .complete();
+
+  // console.log("~~~~~~~~~~~~~~~~~~~~~ TX ~~~~~~~~~~~~~~~~~~~~~");
+  // console.log(unsignedCollateralTx);
+
+  // const signedCollateralTx = await unsignedCollateralTx.sign
+  //   .withWallet()
+  //   .complete();
+  // const collateralTxHash = await signedCollateralTx.submit();
+
+  // emulator.awaitBlock(100);
+
+  // await logWalletUTxOs(lucid, "AFTER COLLATERAL");
 
   // Valid Batch Reclaim
   const reclaimConfig1: BatchReclaimConfig = await makeReclaimConfig(
@@ -103,13 +122,16 @@ test<LucidContext>("Test - Batch Swap Request, Reclaim", async ({
   const reclaimUnsigned1 = await batchReclaim(lucid, reclaimConfig1);
 
   if (reclaimUnsigned1.type == "error") {
-    console.log("FAILED", reclaimUnsigned1.error);
+    console.log("================ BATCH RECLAIM FAILED ================");
+    console.log(reclaimUnsigned1.error);
   }
 
   expect(reclaimUnsigned1.type).toBe("ok");
 
   if (reclaimUnsigned1.type == "ok") {
-    const reclaimSigned1 = await reclaimUnsigned1.data.sign().complete();
+    const reclaimSigned1 = await reclaimUnsigned1.data.sign
+      .withWallet()
+      .complete();
     const reclaimSignedHash1 = await reclaimSigned1.submit();
     // console.log("BATCH RECLAIM 1 TX HASH", reclaimSignedHash1);
   }
@@ -122,7 +144,9 @@ test<LucidContext>("Test - Batch Swap Request, Reclaim", async ({
   expect(requestUnsigned2.type).toBe("ok");
 
   if (requestUnsigned2.type == "ok") {
-    const requestSigned2 = await requestUnsigned2.data.sign().complete();
+    const requestSigned2 = await requestUnsigned2.data.sign
+      .withWallet()
+      .complete();
     const requestTxHash2 = await requestSigned2.submit();
     // console.log("BATCH REQUEST 2 TX HASH", requestTxHash2);
   }
@@ -130,7 +154,7 @@ test<LucidContext>("Test - Batch Swap Request, Reclaim", async ({
   emulator.awaitBlock(100);
 
   // Attempt Batch Reclaim of user1 UTxOs by user2
-  lucid.selectWalletFromSeed(users.user2.seedPhrase);
+  lucid.selectWallet.fromSeed(users.user2.seedPhrase);
   const reclaimConfig2: BatchReclaimConfig = await makeReclaimConfig(
     lucid,
     users.user1.address

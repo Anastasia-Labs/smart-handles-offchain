@@ -1,12 +1,12 @@
 import {
   Constr,
   Data,
-  Lucid,
+  LucidEvolution,
   Script,
-  TxComplete,
+  TxSignBuilder,
   UTxO,
   paymentCredentialOf,
-} from "@anastasia-labs/lucid-cardano-fork";
+} from "@lucid-evolution/lucid";
 import {
   BatchVAs,
   ValidatorAndAddress,
@@ -26,10 +26,10 @@ import {
 import { SmartHandleDatum } from "../core/contract.types.js";
 
 export const singleReclaim = async (
-  lucid: Lucid,
+  lucid: LucidEvolution,
   config: SingleReclaimConfig
-): Promise<Result<TxComplete>> => {
-  const vaRes = getSingleValidatorVA(lucid, config.testnet);
+): Promise<Result<TxSignBuilder>> => {
+  const vaRes = getSingleValidatorVA(config.network);
 
   if (vaRes.type == "error") return vaRes;
 
@@ -41,29 +41,30 @@ export const singleReclaim = async (
     if (!utxoToSpend)
       return { type: "error", error: new Error("No UTxO with that TxOutRef") };
 
-    const datum = parseSafeDatum(lucid, utxoToSpend.datum, SmartHandleDatum);
+    const datum = parseSafeDatum(utxoToSpend.datum, SmartHandleDatum);
     if (datum.type == "left")
       return { type: "error", error: new Error(datum.value) };
-    const ownHash = paymentCredentialOf(await lucid.wallet.address()).hash;
 
-    const correctUTxO = datumBelongsToOwner(datum.value, ownHash);
+    const ownAddress = await lucid.wallet().address();
+
+    const correctUTxO = datumBelongsToOwner(datum.value, ownAddress);
     if (!correctUTxO) {
       return {
         type: "error",
         error: new Error(UNAUTHORIZED_OWNER_ERROR_MSG),
       };
     }
-    return await buildTx(lucid, [utxoToSpend], ownHash, va.validator);
+    return await buildTx(lucid, [utxoToSpend], ownAddress, va.validator);
   } catch (error) {
     return genericCatch(error);
   }
 };
 
 export const batchReclaim = async (
-  lucid: Lucid,
+  lucid: LucidEvolution,
   config: BatchReclaimConfig
-): Promise<Result<TxComplete>> => {
-  const batchVAsRes = getBatchVAs(lucid, config.testnet);
+): Promise<Result<TxSignBuilder>> => {
+  const batchVAsRes = getBatchVAs(config.network);
 
   if (batchVAsRes.type == "error") return batchVAsRes;
 
@@ -77,15 +78,16 @@ export const batchReclaim = async (
         type: "error",
         error: new Error("None of the specified UTxOs could be found"),
       };
-    const ownHash = paymentCredentialOf(await lucid.wallet.address()).hash;
+
+    const ownAddress = await lucid.wallet().address();
 
     const badUTxOErrorMsgs: string[] = validateItems(
       utxosToSpend,
       (u: UTxO) => {
-        const datum = parseSafeDatum(lucid, u.datum, SmartHandleDatum);
+        const datum = parseSafeDatum(u.datum, SmartHandleDatum);
         if (datum.type == "left") {
           return `${printUTxOOutRef(u)}: ${datum.value}`;
-        } else if (!datumBelongsToOwner(datum.value, ownHash)) {
+        } else if (!datumBelongsToOwner(datum.value, ownAddress)) {
           return `${printUTxOOutRef(u)}: ${UNAUTHORIZED_OWNER_ERROR_MSG}`;
         } else {
           return undefined;
@@ -102,7 +104,7 @@ export const batchReclaim = async (
     return await buildTx(
       lucid,
       utxosToSpend,
-      ownHash,
+      ownAddress,
       batchVAs.spendVA.validator
     );
   } catch (error) {
@@ -111,19 +113,19 @@ export const batchReclaim = async (
 };
 
 const buildTx = async (
-  lucid: Lucid,
+  lucid: LucidEvolution,
   utxosToSpend: UTxO[],
-  ownHash: string,
+  ownAddress: string,
   validator: Script
-): Promise<Result<TxComplete>> => {
+): Promise<Result<TxSignBuilder>> => {
   try {
     const PReclaimRedeemer = Data.to(new Constr(1, []));
 
     const tx = await lucid
       .newTx()
       .collectFrom(utxosToSpend, PReclaimRedeemer)
-      .addSignerKey(ownHash)
-      .attachSpendingValidator(validator)
+      .addSigner(ownAddress)
+      .attach.SpendingValidator(validator)
       .complete();
     return { type: "ok", data: tx };
   } catch (error) {
@@ -134,11 +136,12 @@ const buildTx = async (
 
 const datumBelongsToOwner = (
   d: SmartHandleDatum,
-  ownerHash: string
+  ownerAddress: string
 ): boolean => {
   return (
     "PublicKeyCredential" in d.owner.paymentCredential &&
-    d.owner.paymentCredential.PublicKeyCredential[0] == ownerHash
+    d.owner.paymentCredential.PublicKeyCredential[0] ==
+      paymentCredentialOf(ownerAddress).hash
   );
 };
 

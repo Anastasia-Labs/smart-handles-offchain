@@ -5,17 +5,18 @@ import {
   Constr,
   Data,
   OutputData,
-  Lucid,
+  LucidEvolution,
   SpendingValidator,
-  TxComplete,
+  TxSignBuilder,
   paymentCredentialOf,
   OutRef,
   Address,
   UTxO,
-  fromUnit,
   Unit,
   toUnit,
-} from "@anastasia-labs/lucid-cardano-fork";
+  OutputDatum,
+  Network,
+} from "@lucid-evolution/lucid";
 import {
   Asset as MinswapAsset,
   BlockfrostAdapter,
@@ -38,7 +39,6 @@ import {
   SmartHandleDatum,
 } from "../core/contract.types.js";
 import {
-  Asset,
   BatchSwapConfig,
   Result,
   SingleSwapConfig,
@@ -210,7 +210,7 @@ const makeOrderDatum = (
 type InputUTxOAndItsOutputInfo = {
   utxo: UTxO;
   outputAssets: Assets;
-  outputDatumHash: OutputData;
+  outputDatum: OutputDatum;
 };
 
 /**
@@ -230,24 +230,24 @@ type InputUTxOAndItsOutputInfo = {
  * - Are not from the validator address
  * - Don't have a proper datum
  * - Don't have enough Lovelaces
- * @param lucid - Lucid API object
+ * @param lucid - LucidEvolution API object
  * @param config - Swap configurations (BF key, desired asset, pool ID of the asset, and slippage tolerance)
  * @param validatorAddress - Address of the smart handle script
  * @param requestOutRefs - `OutRef`s of the desired UTxOs to be spent
- * @param testnet - Flag for preprod network or mainnet
+ * @param network - Target network
  */
 const fetchUTxOsAndTheirCorrespondingOutputInfos = async (
-  lucid: Lucid,
+  lucid: LucidEvolution,
   config: SwapConfig,
   validatorAddress: Address,
   requestOutRefs: OutRef[],
-  testnet: boolean
+  network: Network
 ): Promise<Result<InputUTxOAndItsOutputInfo[]>> => {
   // {{{
   const blockfrostAdapter = new BlockfrostAdapter({
     blockFrost: new BlockFrostAPI({
       projectId: config.blockfrostKey,
-      network: testnet ? "preprod" : "mainnet",
+      network: network === "Mainnet" ? "mainnet" : "preprod",
     }),
   });
 
@@ -262,12 +262,12 @@ const fetchUTxOsAndTheirCorrespondingOutputInfos = async (
             error: new Error("UTxO is not coming from the script address"),
           };
 
-        const datum = parseSafeDatum(lucid, utxo.datum, SmartHandleDatum);
+        const datum = parseSafeDatum(utxo.datum, SmartHandleDatum);
 
         if (datum.type == "left")
           return { type: "error", error: new Error(datum.value) };
 
-        const ownerAddress = toAddress(datum.value.owner, lucid);
+        const ownerAddress = toAddress(datum.value.owner, network);
 
         const units = Object.keys(utxo.assets);
 
@@ -313,7 +313,7 @@ const fetchUTxOsAndTheirCorrespondingOutputInfos = async (
           reserveOut: poolState.reserveB,
         });
 
-        const outputDatum = makeOrderDatum(
+        const outputOrderDatum = makeOrderDatum(
           {
             policyId: datum.value.extraInfo.desiredAssetSymbol,
             tokenName: datum.value.extraInfo.desiredAssetTokenName,
@@ -322,12 +322,13 @@ const fetchUTxOsAndTheirCorrespondingOutputInfos = async (
           (amountOut * (100n - config.slippageTolerance)) / 100n
         );
 
-        const outputDatumCBOR = Data.to<OrderDatum>(outputDatum, OrderDatum);
+        const outputOrderDatumCBOR = Data.to<OrderDatum>(outputOrderDatum, OrderDatum);
 
         // Hashed since `SingleValidator` expects as such for the swap address
         // output UTxO.
-        const outputDatumHash: OutputData = {
-          asHash: outputDatumCBOR,
+        const outputDatum: OutputDatum = {
+          kind: "asHash",
+          value: outputOrderDatumCBOR,
         };
 
         const outputAssets = {
@@ -339,7 +340,7 @@ const fetchUTxOsAndTheirCorrespondingOutputInfos = async (
           data: {
             utxo,
             outputAssets,
-            outputDatumHash,
+            outputDatum,
           },
         };
       })
@@ -355,12 +356,12 @@ const fetchUTxOsAndTheirCorrespondingOutputInfos = async (
 };
 
 const getRedeemerIndicesAndFeeUTxOs = async (
-  lucid: Lucid,
+  lucid: LucidEvolution,
   utxosToSpend: UTxO[]
 ): Promise<Result<[bigint[], UTxO[]]>> => {
   // {{{
   try {
-    const walletUTxOs = await lucid.wallet.getUtxos();
+    const walletUTxOs = await lucid.wallet().getUtxos();
 
     // Using `LOVELACE_MARGIN` as the minimum required Lovelaces so that the
     // collected routing fee minus the transaction fee doesn't go below the min
@@ -385,11 +386,11 @@ const getRedeemerIndicesAndFeeUTxOs = async (
 // ----------------------------------------------------------------------------
 
 export const singleSwap = async (
-  lucid: Lucid,
+  lucid: LucidEvolution,
   config: SingleSwapConfig
-): Promise<Result<TxComplete>> => {
+): Promise<Result<TxSignBuilder>> => {
   // {{{
-  const vaRes = getSingleValidatorVA(lucid, config.testnet);
+  const vaRes = getSingleValidatorVA(config.network);
 
   if (vaRes.type == "error") return vaRes;
 
@@ -401,16 +402,16 @@ export const singleSwap = async (
       config.swapConfig,
       vaRes.data.address,
       [config.requestOutRef],
-      config.testnet
+      config.network
     );
 
     if (outputInfoRes.type == "error") return outputInfoRes;
 
     // Expecting exactly one element.
-    const [{ utxo: utxoToSpend, outputDatumHash, outputAssets }] =
+    const [{ utxo: utxoToSpend, outputDatum, outputAssets }] =
       outputInfoRes.data;
 
-    const ownHash = paymentCredentialOf(await lucid.wallet.address()).hash;
+    const ownAddress = await lucid.wallet().address();
 
     const redeemerIndicesAndFeeUTxOsRes = await getRedeemerIndicesAndFeeUTxOs(
       lucid,
@@ -425,9 +426,9 @@ export const singleSwap = async (
     if (inputIndices.length !== 1)
       return { type: "error", error: new Error("Something went wrong") };
 
-    const swapAddress = config.testnet
-      ? MINSWAP_ADDRESS_PREPROD
-      : MINSWAP_ADDRESS_MAINNET;
+    const swapAddress = config.network === "Mainnet"
+      ? MINSWAP_ADDRESS_MAINNET
+      : MINSWAP_ADDRESS_PREPROD;
 
     const PSwapRedeemer = Data.to(new Constr(0, [inputIndices[0], 0n]));
 
@@ -439,9 +440,9 @@ export const singleSwap = async (
       .newTx()
       .collectFrom([utxoToSpend], PSwapRedeemer)
       .collectFrom(feeUTxOs)
-      .addSignerKey(ownHash) // For collateral UTxO
-      .attachSpendingValidator(validator)
-      .payToContract(swapAddress, outputDatumHash, outputAssets)
+      .addSigner(ownAddress) // For collateral UTxO
+      .attach.SpendingValidator(validator)
+      .pay.ToContract(swapAddress, outputDatum, outputAssets)
       .attachMetadata(674, { msg: [MetadataMessage.SWAP_EXACT_IN_ORDER] })
       .complete();
     return { type: "ok", data: tx };
@@ -452,28 +453,28 @@ export const singleSwap = async (
 };
 
 export const batchSwap = async (
-  lucid: Lucid,
+  lucid: LucidEvolution,
   config: BatchSwapConfig
-): Promise<Result<TxComplete>> => {
+): Promise<Result<TxSignBuilder>> => {
   // {{{
-  const batchVAsRes = getBatchVAs(lucid, config.testnet);
+  const batchVAsRes = getBatchVAs(config.network);
 
   if (batchVAsRes.type == "error") return batchVAsRes;
 
   const batchVAs: BatchVAs = batchVAsRes.data;
 
-  const swapAddress = config.testnet
-    ? MINSWAP_ADDRESS_PREPROD
-    : MINSWAP_ADDRESS_MAINNET;
+  const swapAddress = config.network === "Mainnet"
+    ? MINSWAP_ADDRESS_MAINNET
+    : MINSWAP_ADDRESS_PREPROD;
 
   try {
-    const ownHash = paymentCredentialOf(await lucid.wallet.address()).hash;
+    const ownAddress = await lucid.wallet().address();
 
     const initTx = lucid
       .newTx()
-      .addSignerKey(ownHash) // For collateral UTxO
-      .attachSpendingValidator(batchVAs.spendVA.validator)
-      .attachWithdrawalValidator(batchVAs.stakeVA.validator)
+      .addSigner(ownAddress) // For collateral UTxO
+      .attach.SpendingValidator(batchVAs.spendVA.validator)
+      .attach.WithdrawalValidator(batchVAs.stakeVA.validator)
       .attachMetadata(674, { msg: [MetadataMessage.SWAP_EXACT_IN_ORDER] });
 
     // Prior sorting needed as the traversal also adds corresponding outputs.
@@ -484,7 +485,7 @@ export const batchSwap = async (
       config.swapConfig,
       batchVAs.spendVA.address,
       sortedOutRefs,
-      config.testnet
+      config.network
     );
 
     if (outputInfosRes.type == "error") return outputInfosRes;
@@ -495,9 +496,9 @@ export const batchSwap = async (
 
     utxosAndTheirOutputInfos.forEach((inUTxOAndOutInfo) => {
       swapUTxOs.push(inUTxOAndOutInfo.utxo);
-      initTx.payToContract(
+      initTx.pay.ToContract(
         swapAddress,
-        inUTxOAndOutInfo.outputDatumHash,
+        inUTxOAndOutInfo.outputDatum,
         inUTxOAndOutInfo.outputAssets
       );
     });

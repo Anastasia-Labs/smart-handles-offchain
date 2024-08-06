@@ -1,7 +1,6 @@
 import {
   Emulator,
   Lucid,
-  generateAccountSeedPhrase,
   SingleRequestConfig,
   SingleReclaimConfig,
   singleRequest,
@@ -12,25 +11,14 @@ import {
   MIN_TOKEN_NAME,
 } from "../src/index.js";
 import { beforeEach, expect, test } from "vitest";
-
-type LucidContext = {
-  lucid: Lucid;
-  users: any;
-  emulator: Emulator;
-};
+import { LucidContext, createUser } from "./utils.js";
 
 //NOTE: INITIALIZE EMULATOR + ACCOUNTS
 beforeEach<LucidContext>(async (context) => {
   context.users = {
-    swapAccount: await generateAccountSeedPhrase({
-      lovelace: BigInt(100_000_000),
-    }),
-    creator1: await generateAccountSeedPhrase({
-      lovelace: BigInt(100_000_000),
-    }),
-    creator2: await generateAccountSeedPhrase({
-      lovelace: BigInt(100_000_000),
-    }),
+    swapAccount: createUser(),
+    creator1: createUser(),
+    creator2: createUser(),
   };
 
   context.emulator = new Emulator([
@@ -39,7 +27,7 @@ beforeEach<LucidContext>(async (context) => {
     context.users.creator2,
   ]);
 
-  context.lucid = await Lucid.new(context.emulator);
+  context.lucid = await Lucid(context.emulator, "Custom");
 });
 
 test<LucidContext>("Test - Request Single Swap, Reclaim", async ({
@@ -51,12 +39,12 @@ test<LucidContext>("Test - Request Single Swap, Reclaim", async ({
     swapRequest: {
       fromAsset: "lovelace",
       quantity: BigInt(50_000_000),
-      toAsset: toUnit(MIN_SYMBOL_PREPROD, MIN_TOKEN_NAME)
+      toAsset: toUnit(MIN_SYMBOL_PREPROD, MIN_TOKEN_NAME),
     },
-    testnet: true,
+    network: "Custom",
   };
 
-  lucid.selectWalletFromSeed(users.creator1.seedPhrase);
+  lucid.selectWallet.fromSeed(users.creator1.seedPhrase);
 
   // NOTE: Singular Swap Request 1
   const requestUnsigned = await singleRequest(lucid, requestConfig);
@@ -64,7 +52,9 @@ test<LucidContext>("Test - Request Single Swap, Reclaim", async ({
   expect(requestUnsigned.type).toBe("ok");
   if (requestUnsigned.type == "ok") {
     // console.log(requestUnsigned.data.txComplete.to_json());
-    const requestSigned = await requestUnsigned.data.sign().complete();
+    const requestSigned = await requestUnsigned.data.sign
+      .withWallet()
+      .complete();
     const requestTxHash = await requestSigned.submit();
     // console.log(requestTxHash);
   }
@@ -75,7 +65,7 @@ test<LucidContext>("Test - Request Single Swap, Reclaim", async ({
   const userRequests1 = await fetchUsersSingleRequestUTxOs(
     lucid,
     users.creator1.address,
-    true
+    "Custom",
   );
 
   // console.log("Request 1");
@@ -87,11 +77,11 @@ test<LucidContext>("Test - Request Single Swap, Reclaim", async ({
 
   const reclaimConfig: SingleReclaimConfig = {
     requestOutRef: userRequests1[0].outRef,
-    testnet: true,
+    network: "Custom",
   };
 
   // NOTE: Invalid Reclaim 1
-  lucid.selectWalletFromSeed(users.creator2.seedPhrase);
+  lucid.selectWallet.fromSeed(users.creator2.seedPhrase);
   const invalidReclaim = await singleReclaim(lucid, reclaimConfig);
 
   expect(invalidReclaim.type).toBe("error");
@@ -102,16 +92,18 @@ test<LucidContext>("Test - Request Single Swap, Reclaim", async ({
   // console.log(`Failed. Response: ${invalidReclaim.error}`);
 
   // NOTE: Valid Reclaim 1
-  lucid.selectWalletFromSeed(users.creator1.seedPhrase);
+  lucid.selectWallet.fromSeed(users.creator1.seedPhrase);
   const reclaimUnsigned1 = await singleReclaim(lucid, reclaimConfig);
 
-  // console.log(reclaimUnsigned1);
+  if (reclaimUnsigned1.type == "error") {
+    console.log("================ SINGLE RECLAIM FAILED ===============");
+    console.log(reclaimUnsigned1.error);
+  }
+
   expect(reclaimUnsigned1.type).toBe("ok");
 
-  if (reclaimUnsigned1.type == "error") {
-    // console.log(reclaimUnsigned1.error);
-    return;
-  }
-  const reclaimSigned1 = await reclaimUnsigned1.data.sign().complete();
+  const reclaimSigned1 = await reclaimUnsigned1.data.sign
+    .withWallet()
+    .complete();
   const reclaimSignedHash1 = await reclaimSigned1.submit();
 });

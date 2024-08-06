@@ -1,4 +1,4 @@
-import { Address, Lucid, UTxO } from "@anastasia-labs/lucid-cardano-fork";
+import { Address, LucidEvolution, Network, UTxO } from "@lucid-evolution/lucid";
 import {
   parseSafeDatum,
   toAddress,
@@ -13,10 +13,10 @@ import { SmartHandleDatum } from "../core/contract.types.js";
 type SmartUTxO = ReadableUTxO<SmartHandleDatum>;
 
 export const fetchSingleRequestUTxOs = async (
-  lucid: Lucid,
-  testnet: boolean,
+  lucid: LucidEvolution,
+  network: Network,
 ): Promise<SmartUTxO[]> => {
-  const vaRes = getSingleValidatorVA(lucid, testnet);
+  const vaRes = getSingleValidatorVA(network);
 
   if (vaRes.type === "error") return [];
 
@@ -28,14 +28,14 @@ export const fetchSingleRequestUTxOs = async (
 };
 
 export const fetchUsersSingleRequestUTxOs = async (
-  lucid: Lucid,
+  lucid: LucidEvolution,
   usersAddress: Address,
-  testnet: boolean
+  network: Network
 ): Promise<SmartUTxO[]> => {
   try {
-    const allUTxOs = await fetchSingleRequestUTxOs(lucid, testnet);
+    const allUTxOs = await fetchSingleRequestUTxOs(lucid, network);
     return allUTxOs.flatMap((utxo: SmartUTxO) => {
-      const ownerAddress: Address = toAddress(utxo.datum.owner, lucid);
+      const ownerAddress: Address = toAddress(utxo.datum.owner, network);
       if (ownerAddress == usersAddress) {
         return {
           outRef: {
@@ -55,10 +55,10 @@ export const fetchUsersSingleRequestUTxOs = async (
 };
 
 export const fetchBatchRequestUTxOs = async (
-  lucid: Lucid,
-  testnet: boolean
+  lucid: LucidEvolution,
+  network: Network
 ): Promise<SmartUTxO[]> => {
-  const batchVAsRes = getBatchVAs(lucid, testnet);
+  const batchVAsRes = getBatchVAs(network);
 
   if (batchVAsRes.type === "error") return [];
 
@@ -70,20 +70,20 @@ export const fetchBatchRequestUTxOs = async (
 };
 
 export const fetchUsersBatchRequestUTxOs = async (
-  lucid: Lucid,
+  lucid: LucidEvolution,
   usersAddress: Address,
-  testnet: boolean
+  network: Network
 ): Promise<SmartUTxO[]> => {
   try {
-    const allUTxOs = await fetchBatchRequestUTxOs(lucid, testnet);
-    return keepUsersUTxOs(lucid, allUTxOs, usersAddress);
+    const allUTxOs = await fetchBatchRequestUTxOs(lucid, network);
+    return keepUsersUTxOs(allUTxOs, usersAddress, network);
   } catch (_e) {
     return [];
   }
 };
 
 const fetchUTxOsAt = async (
-  lucid: Lucid,
+  lucid: LucidEvolution,
   addr: Address
 ): Promise<SmartUTxO[]> => {
   try {
@@ -91,7 +91,6 @@ const fetchUTxOsAt = async (
 
     return requestUTxOs.flatMap((utxo) => {
       const result = parseSafeDatum<SmartHandleDatum>(
-        lucid,
         utxo.datum,
         SmartHandleDatum
       );
@@ -115,12 +114,12 @@ const fetchUTxOsAt = async (
 };
 
 const keepUsersUTxOs = (
-  lucid: Lucid,
   allUTxOs: SmartUTxO[],
-  user: Address
+  user: Address,
+  network: Network,
 ): SmartUTxO[] => {
   return allUTxOs.flatMap((utxo: SmartUTxO) => {
-    const ownerAddress: Address = toAddress(utxo.datum.owner, lucid);
+    const ownerAddress: Address = toAddress(utxo.datum.owner, network);
     if (ownerAddress == user) {
       return {
         outRef: {

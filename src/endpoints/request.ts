@@ -2,10 +2,10 @@ import {
   Address,
   Assets,
   Data,
-  Lucid,
-  TxComplete,
+  LucidEvolution,
+  TxSignBuilder,
   fromUnit,
-} from "@anastasia-labs/lucid-cardano-fork";
+} from "@lucid-evolution/lucid";
 import {
   LOVELACE_MARGIN,
   MINSWAP_BATCHER_FEE,
@@ -30,10 +30,10 @@ import {
 } from "../core/utils/index.js";
 
 export const singleRequest = async (
-  lucid: Lucid,
+  lucid: LucidEvolution,
   config: SingleRequestConfig
-): Promise<Result<TxComplete>> => {
-  const vaRes = getSingleValidatorVA(lucid, config.testnet);
+): Promise<Result<TxSignBuilder>> => {
+  const vaRes = getSingleValidatorVA(config.network);
 
   if (vaRes.type == "error") return vaRes;
 
@@ -46,16 +46,16 @@ export const singleRequest = async (
   if (outputAssetsRes.type == "error") return outputAssetsRes;
 
   try {
-    const ownAddress = await lucid.wallet.address();
+    const ownAddress = await lucid.wallet().address();
 
     // Implicit assumption that who creates the transaction is the owner.
     const outputDatumData = datumBuilder(ownAddress, swapRequest);
 
     const tx = await lucid
       .newTx()
-      .payToContract(
+      .pay.ToContract(
         validatorAddress,
-        { inline: outputDatumData },
+        { kind: "inline", value: outputDatumData },
         outputAssetsRes.data
       )
       .complete();
@@ -66,10 +66,10 @@ export const singleRequest = async (
 };
 
 export const batchRequest = async (
-  lucid: Lucid,
+  lucid: LucidEvolution,
   config: BatchRequestConfig
-): Promise<Result<TxComplete>> => {
-  const batchVAsRes = getBatchVAs(lucid, config.testnet);
+): Promise<Result<TxSignBuilder>> => {
+  const batchVAsRes = getBatchVAs(config.network);
 
   if (batchVAsRes.type == "error") return batchVAsRes;
 
@@ -78,7 +78,7 @@ export const batchRequest = async (
   const initTx = lucid.newTx();
 
   try {
-    const ownAddress = await lucid.wallet.address();
+    const ownAddress = await lucid.wallet().address();
 
     // Implicit assumption that who creates the transaction is the owner of all
     // requests.
@@ -93,9 +93,9 @@ export const batchRequest = async (
         } else {
           const outputDatumData = datumBuilder(ownAddress, req);
           const outputAssets = outputAssetsRes.data;
-          initTx.payToContract(
+          initTx.pay.ToContract(
             targetAddress,
-            { inline: outputDatumData },
+            { kind: "inline", value: outputDatumData },
             outputAssets
           );
           return undefined;
