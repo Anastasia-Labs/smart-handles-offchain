@@ -254,6 +254,15 @@ export function toAssets(value: Value): Assets {
   return result;
 }
 
+export function getLovelacesFromAssets(assets: Assets): bigint {
+  const qty = assets.lovelace;
+  if (qty) {
+    return qty;
+  } else {
+    return BigInt(0);
+  }
+}
+
 /**
  * Returns a list of UTxOs whose total assets are equal to or greater than the
  * asset value provided.
@@ -380,7 +389,7 @@ export function printUTxOOutRef(u: UTxO): `${string}#${string}` {
 
 /**
  * Applies the validator function to each element of the list to collect
- * potential failur messages.
+ * potential failure messages.
  * @param items - Items to perform validation for each.
  * @param validator - A validation function that if failed, returns a failure
  * message, otherwise returns and `undefined`.

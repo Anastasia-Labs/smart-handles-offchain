@@ -11,16 +11,9 @@ import {
   stakeCredentialOf,
   validatorToScriptHash,
   Network,
+  CBORHex,
 } from "@lucid-evolution/lucid";
-import { fromAddressToData } from "../utils/index.js";
-import { Result } from "../types.js";
-import {
-  MINSWAP_ADDRESS_MAINNET,
-  MINSWAP_ADDRESS_PREPROD,
-} from "../constants.js";
-import singleSpendingValidator from "../../uplc/smartHandleSimple.json";
 import batchSpendingValidator from "../../uplc/smartHandleRouter.json";
-import stakingValidator from "../../uplc/smartHandleStake.json";
 
 export type ValidatorAndAddress = {
   validator: Script;
@@ -34,60 +27,41 @@ export type BatchVAs = {
 };
 
 /**
- * Returns smart handle's validator and address for Minswap. "VA" is short for
- * "validator and address."
+ * Given a fully applied script CBOR (presumably an instance of smart-handles),
+ * returns "validator and address" of the script, based on the network.
+ * @param scriptCBOR - Fully applied UPLC script CBOR
  * @param network - Target network
  */
 export const getSingleValidatorVA = (
+  scriptCBOR: CBORHex,
   network: Network
-): Result<ValidatorAndAddress> => {
-  const swapAddress = network === "Mainnet"
-    ? MINSWAP_ADDRESS_MAINNET
-    : MINSWAP_ADDRESS_PREPROD;
-
-  const addressRes = fromAddressToData(swapAddress);
-
-  if (addressRes.type == "error") return addressRes;
-
-  const validatorScript = applyParamsToScript(singleSpendingValidator.cborHex, [
-    addressRes.data,
-  ]);
-
+): ValidatorAndAddress => {
   const validator: SpendingValidator = {
     type: "PlutusV2",
-    script: validatorScript,
+    script: scriptCBOR,
   };
 
   return {
-    type: "ok",
-    data: {
-      validator,
-      address: validatorToAddress(network, validator),
-    },
+    validator,
+    address: validatorToAddress(network, validator),
   };
 };
 
 /**
- * Returns validators and addresses of batch smart handles (both the spending
- * part and the staking part).
+ * Given a fully applied staking script CBOR (presumably an instance of
+ * smart-handles), applies it to the generic batch spend from smart-handles, and
+ * returns "validator and address" of both spend and staking scripts,
+ * accompanied by the combined address, based on the network.
+ * @param stakingScriptCBOR - Fully applied UPLC withdrawal script CBOR
  * @param network - Target network
  */
-export const getBatchVAs = (network: Network): Result<BatchVAs> => {
-  const swapAddress = network === "Mainnet"
-    ? MINSWAP_ADDRESS_MAINNET
-    : MINSWAP_ADDRESS_PREPROD;
-
-  const addressRes = fromAddressToData(swapAddress);
-
-  if (addressRes.type == "error") return addressRes;
-
-  const stakingScript = applyParamsToScript(stakingValidator.cborHex, [
-    addressRes.data,
-  ]);
-
+export const getBatchVAs = (
+  stakingScriptCBOR: CBORHex,
+  network: Network
+): BatchVAs => {
   const stakingVal: WithdrawalValidator = {
     type: "PlutusV2",
-    script: stakingScript,
+    script: stakingScriptCBOR,
   };
 
   const rewardAddress = validatorToRewardAddress(network, stakingVal);
@@ -107,17 +81,14 @@ export const getBatchVAs = (network: Network): Result<BatchVAs> => {
   const spendingAddress = validatorToAddress(network, spendingVal);
 
   return {
-    type: "ok",
-    data: {
-      spendVA: {
-        validator: spendingVal,
-        address: spendingAddress,
-      },
-      stakeVA: {
-        validator: stakingVal,
-        address: rewardAddress,
-      },
-      fullAddress: validatorToAddress(network, spendingVal, stakingCred),
+    spendVA: {
+      validator: spendingVal,
+      address: spendingAddress,
     },
+    stakeVA: {
+      validator: stakingVal,
+      address: rewardAddress,
+    },
+    fullAddress: validatorToAddress(network, spendingVal, stakingCred),
   };
 };

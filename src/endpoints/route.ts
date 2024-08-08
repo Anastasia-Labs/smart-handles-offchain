@@ -39,8 +39,10 @@ import {
   SmartHandleDatum,
 } from "../core/contract.types.js";
 import {
+  BatchRouteConfig,
   BatchSwapConfig,
   Result,
+  SingleRouteConfig,
   SingleSwapConfig,
   SwapConfig,
 } from "../core/types.js";
@@ -234,16 +236,15 @@ type InputUTxOAndItsOutputInfo = {
  * @param config - Swap configurations (BF key, desired asset, pool ID of the asset, and slippage tolerance)
  * @param validatorAddress - Address of the smart handle script
  * @param requestOutRefs - `OutRef`s of the desired UTxOs to be spent
- * @param network - Target network
  */
 const fetchUTxOsAndTheirCorrespondingOutputInfos = async (
   lucid: LucidEvolution,
   config: SwapConfig,
   validatorAddress: Address,
   requestOutRefs: OutRef[],
-  network: Network
 ): Promise<Result<InputUTxOAndItsOutputInfo[]>> => {
   // {{{
+  const network = lucid.config().network;
   const blockfrostAdapter = new BlockfrostAdapter({
     blockFrost: new BlockFrostAPI({
       projectId: config.blockfrostKey,
@@ -385,12 +386,13 @@ const getRedeemerIndicesAndFeeUTxOs = async (
 // }}}
 // ----------------------------------------------------------------------------
 
-export const singleSwap = async (
+export const singleRoute = async (
   lucid: LucidEvolution,
-  config: SingleSwapConfig
+  config: SingleRouteConfig
 ): Promise<Result<TxSignBuilder>> => {
   // {{{
-  const vaRes = getSingleValidatorVA(config.network);
+  const network = lucid.config().network;
+  const vaRes = getSingleValidatorVA(network);
 
   if (vaRes.type == "error") return vaRes;
 
@@ -402,7 +404,6 @@ export const singleSwap = async (
       config.swapConfig,
       vaRes.data.address,
       [config.requestOutRef],
-      config.network
     );
 
     if (outputInfoRes.type == "error") return outputInfoRes;
@@ -426,7 +427,7 @@ export const singleSwap = async (
     if (inputIndices.length !== 1)
       return { type: "error", error: new Error("Something went wrong") };
 
-    const swapAddress = config.network === "Mainnet"
+    const swapAddress = network === "Mainnet"
       ? MINSWAP_ADDRESS_MAINNET
       : MINSWAP_ADDRESS_PREPROD;
 
@@ -452,18 +453,20 @@ export const singleSwap = async (
   // }}}
 };
 
-export const batchSwap = async (
+export const batchRoute = async (
   lucid: LucidEvolution,
-  config: BatchSwapConfig
+  config: BatchRouteConfig
 ): Promise<Result<TxSignBuilder>> => {
   // {{{
-  const batchVAsRes = getBatchVAs(config.network);
+  const network = lucid.config().network;
+
+  const batchVAsRes = getBatchVAs(network);
 
   if (batchVAsRes.type == "error") return batchVAsRes;
 
   const batchVAs: BatchVAs = batchVAsRes.data;
 
-  const swapAddress = config.network === "Mainnet"
+  const swapAddress = network === "Mainnet"
     ? MINSWAP_ADDRESS_MAINNET
     : MINSWAP_ADDRESS_PREPROD;
 
@@ -485,7 +488,6 @@ export const batchSwap = async (
       config.swapConfig,
       batchVAs.spendVA.address,
       sortedOutRefs,
-      config.network
     );
 
     if (outputInfosRes.type == "error") return outputInfosRes;

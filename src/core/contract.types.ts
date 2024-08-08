@@ -1,4 +1,4 @@
-import { Data } from "@anastasia-labs/lucid-cardano-fork";
+import { Data } from "@lucid-evolution/lucid";
 
 export const OutputReferenceSchema = Data.Object({
   txHash: Data.Object({ hash: Data.Bytes({ minLength: 32, maxLength: 32 }) }),
@@ -50,8 +50,6 @@ export const AssetClassSchema = Data.Object({
 export type AssetClassD = Data.Static<typeof AssetClassSchema>;
 export const AssetClassD = AssetClassSchema as unknown as AssetClassD;
 
-// List [B "test",B "tn"]
-
 export const ValueSchema = Data.Map(
   Data.Bytes(),
   Data.Map(Data.Bytes(), Data.Integer())
@@ -59,36 +57,25 @@ export const ValueSchema = Data.Map(
 export type Value = Data.Static<typeof ValueSchema>;
 export const Value = ValueSchema as unknown as Value;
 
-export const MinswapRequestInfoSchema = Data.Object({
-  desiredAssetSymbol: Data.Bytes(),
-  desiredAssetTokenName: Data.Bytes(),
-});
-export type MinswapRequestInfo = Data.Static<typeof MinswapRequestInfoSchema>;
-export const MinswapRequestInfo =
-  MinswapRequestInfoSchema as unknown as MinswapRequestInfo;
-
-export const SmartHandleDatumSchema = Data.Object({
+export const SimpleDatumSchema = Data.Object({
   owner: AddressSchema,
-  extraInfo: MinswapRequestInfoSchema
 });
+export type SimpleDatum = Data.Static<typeof SimpleDatumSchema>;
+export const SimpleDatum = SimpleDatumSchema as unknown as SimpleDatum;
+
+export const AdvancedDatumSchema = Data.Object({
+  mOwner: Data.Nullable(AddressSchema),
+  routerFee: Data.Integer(),
+  reclaimRouterFee: Data.Integer(),
+  extraInfo: Data.Any(),
+});
+export type AdvancedDatum = Data.Static<typeof AdvancedDatumSchema>;
+export const AdvancedDatum = AdvancedDatumSchema as unknown as AdvancedDatum;
+
+export const SmartHandleDatumSchema = Data.Enum([
+  SimpleDatumSchema,
+  AdvancedDatumSchema,
+]);
 export type SmartHandleDatum = Data.Static<typeof SmartHandleDatumSchema>;
 export const SmartHandleDatum =
   SmartHandleDatumSchema as unknown as SmartHandleDatum;
-
-export const OrderTypeSchema = Data.Object({
-  desiredAsset: AssetClassSchema,
-  minReceive: Data.Integer(),
-});
-export type OrderType = Data.Static<typeof OrderTypeSchema>;
-export const OrderType = OrderTypeSchema as unknown as OrderType;
-
-export const OrderDatumSchema = Data.Object({
-  sender: AddressSchema,
-  receiver: AddressSchema,
-  receiverDatumHash: Data.Nullable(Data.Bytes()),
-  step: OrderTypeSchema,
-  batcherFee: Data.Integer(),
-  depositADA: Data.Integer(),
-});
-export type OrderDatum = Data.Static<typeof OrderDatumSchema>;
-export const OrderDatum = OrderDatumSchema as unknown as OrderDatum;

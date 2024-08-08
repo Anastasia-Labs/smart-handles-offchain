@@ -1,79 +1,114 @@
 import {
   Address,
-  Assets,
   Data,
   LucidEvolution,
   TxSignBuilder,
-  fromUnit,
 } from "@lucid-evolution/lucid";
-import {
-  LOVELACE_MARGIN,
-  MINSWAP_BATCHER_FEE,
-  MINSWAP_DEPOSIT,
-  ROUTER_FEE,
-} from "../core/constants.js";
+import { LOVELACE_MARGIN, ROUTER_FEE } from "../core/constants.js";
 import { SmartHandleDatum } from "../core/contract.types.js";
 import {
   Result,
   BatchRequestConfig,
   SingleRequestConfig,
-  SwapRequest,
+  RouteRequest,
+  AdvancedRouteRequest,
 } from "../core/types.js";
 import {
   collectErrorMsgs,
-  errorToString,
   fromAddress,
   genericCatch,
   getBatchVAs,
+  getLovelacesFromAssets,
   getSingleValidatorVA,
   validateItems,
 } from "../core/utils/index.js";
+
+const enoughLovelacesAreGettingLocked = (
+  routeRequest: RouteRequest,
+  additionalRequiredLovelaces: bigint
+): boolean => {
+  const lovelaceToBeLocked = getLovelacesFromAssets(
+    routeRequest.data.valueToLock
+  );
+  if (routeRequest.kind == "simple") {
+    return lovelaceToBeLocked >= LOVELACE_MARGIN + ROUTER_FEE;
+  } else {
+    return (
+      lovelaceToBeLocked >=
+      additionalRequiredLovelaces +
+        LOVELACE_MARGIN +
+        BigInt(
+          Math.max(
+            Number(routeRequest.data.routerFee),
+            Number(routeRequest.data.reclaimRouterFee)
+          )
+        )
+    );
+  }
+};
+
+const INSUFFICIENT_LOVELACES_ERROR_MSG =
+  "Not enough Lovelaces are getting locked";
 
 export const singleRequest = async (
   lucid: LucidEvolution,
   config: SingleRequestConfig
 ): Promise<Result<TxSignBuilder>> => {
-  const vaRes = getSingleValidatorVA(config.network);
+  // {{{
+  if (
+    !enoughLovelacesAreGettingLocked(
+      config.routeRequest,
+      config.additionalRequiredLovelaces
+    )
+  )
+    return {
+      type: "error",
+      error: new Error(INSUFFICIENT_LOVELACES_ERROR_MSG),
+    };
 
-  if (vaRes.type == "error") return vaRes;
+  const va = getSingleValidatorVA(config.scriptCBOR, lucid.config().network);
 
-  const validatorAddress: Address = vaRes.data.address;
+  const validatorAddress: Address = va.address;
 
-  const swapRequest = config.swapRequest;
-
-  const outputAssetsRes = requestsOutputAssets(swapRequest);
-
-  if (outputAssetsRes.type == "error") return outputAssetsRes;
+  const routeRequest = config.routeRequest;
 
   try {
     const ownAddress = await lucid.wallet().address();
 
     // Implicit assumption that who creates the transaction is the owner.
-    const outputDatumData = datumBuilder(ownAddress, swapRequest);
+    // In case of the `Advanced` datum, whether an owner is specified depends on
+    // the `markWalletAsOwner` flag.
+    const outputDatumData =
+      routeRequest.kind == "simple"
+        ? simpleDatumBuilder(ownAddress)
+        : advancedDatumBuilder(ownAddress, routeRequest.data);
 
     const tx = await lucid
       .newTx()
       .pay.ToContract(
         validatorAddress,
         { kind: "inline", value: outputDatumData },
-        outputAssetsRes.data
+        routeRequest.data.valueToLock
       )
       .complete();
     return { type: "ok", data: tx };
   } catch (error) {
     return genericCatch(error);
   }
+  // }}}
 };
 
 export const batchRequest = async (
   lucid: LucidEvolution,
   config: BatchRequestConfig
 ): Promise<Result<TxSignBuilder>> => {
-  const batchVAsRes = getBatchVAs(config.network);
+  // {{{
+  const batchVAs = getBatchVAs(
+    config.stakingScriptCBOR,
+    lucid.config().network
+  );
 
-  if (batchVAsRes.type == "error") return batchVAsRes;
-
-  const targetAddress: Address = batchVAsRes.data.spendVA.address;
+  const targetAddress: Address = batchVAs.spendVA.address;
 
   const initTx = lucid.newTx();
 
@@ -82,33 +117,35 @@ export const batchRequest = async (
 
     // Implicit assumption that who creates the transaction is the owner of all
     // requests.
-    const badRequestsErrorMsgs = validateItems(
-      config.swapRequests,
-      (req) => {
-        const outputAssetsRes = requestsOutputAssets(req);
-        if (outputAssetsRes.type == "error") {
-          return `${req.fromAsset ?? "lovelace"} -> ${
-            req.toAsset ?? "lovelace"
-          }: ${errorToString(outputAssetsRes.error)}`;
-        } else {
-          const outputDatumData = datumBuilder(ownAddress, req);
-          const outputAssets = outputAssetsRes.data;
-          initTx.pay.ToContract(
-            targetAddress,
-            { kind: "inline", value: outputDatumData },
-            outputAssets
-          );
-          return undefined;
-        }
+    const insufficientLovelacesErrorMsgs: string[] = validateItems(
+      config.routeRequests,
+      (rR) => {
+        if (
+          !enoughLovelacesAreGettingLocked(
+            rR,
+            config.additionalRequiredLovelaces
+          )
+        )
+          return INSUFFICIENT_LOVELACES_ERROR_MSG;
+        const outputDatumData =
+          rR.kind == "simple"
+            ? simpleDatumBuilder(ownAddress)
+            : advancedDatumBuilder(ownAddress, rR.data);
+        initTx.pay.ToContract(
+          targetAddress,
+          { kind: "inline", value: outputDatumData },
+          rR.data.valueToLock
+        );
+        return undefined;
       },
       true
     );
 
-    if (badRequestsErrorMsgs.length > 0)
+    if (insufficientLovelacesErrorMsgs.length > 0)
       return {
         type: "error",
         error: collectErrorMsgs(
-          badRequestsErrorMsgs,
+          insufficientLovelacesErrorMsgs,
           "Bad request(s) encountered"
         ),
       };
@@ -119,54 +156,25 @@ export const batchRequest = async (
   } catch (error) {
     return genericCatch(error);
   }
+  // }}}
 };
 
-const INSUFFICIENT_LOVELACES_ERROR_MSG =
-  "Not enough Lovelaces are getting locked";
-
-const datumBuilder = (ownAddress: string, swapRequest: SwapRequest): string => {
-  const outputDatum: SmartHandleDatum = {
+const simpleDatumBuilder = (ownAddress: string): string => {
+  const simpleDatum: SmartHandleDatum = {
     owner: fromAddress(ownAddress),
-    extraInfo: {
-      desiredAssetSymbol:
-        swapRequest.toAsset == "lovelace"
-          ? ""
-          : fromUnit(swapRequest.toAsset).policyId,
-      desiredAssetTokenName: fromUnit(swapRequest.toAsset).assetName ?? "",
-    },
   };
-  return Data.to(outputDatum, SmartHandleDatum);
+  return Data.to(simpleDatum, SmartHandleDatum);
 };
 
-const requestsOutputAssets = (swapRequest: SwapRequest): Result<Assets> => {
-  if (
-    swapRequest.fromAsset == "lovelace" &&
-    swapRequest.quantity <
-      MINSWAP_BATCHER_FEE + MINSWAP_DEPOSIT + ROUTER_FEE + LOVELACE_MARGIN
-  ) {
-    return {
-      type: "error",
-      error: new Error(INSUFFICIENT_LOVELACES_ERROR_MSG),
-    };
-  }
-
-  if (swapRequest.fromAsset == swapRequest.toAsset) {
-    return {
-      type: "error",
-      error: new Error("Input and target assets can't be identical"),
-    };
-  }
-
-  return {
-    type: "ok",
-    data:
-      swapRequest.fromAsset == "lovelace"
-        ? {
-            lovelace: swapRequest.quantity,
-          }
-        : {
-            lovelace: MINSWAP_BATCHER_FEE + MINSWAP_DEPOSIT + ROUTER_FEE,
-            [swapRequest.fromAsset]: swapRequest.quantity,
-          },
+const advancedDatumBuilder = (
+  ownAddress: string,
+  routeRequest: AdvancedRouteRequest
+): string => {
+  const advancedDatum: SmartHandleDatum = {
+    mOwner: routeRequest.markWalletAsOwner ? fromAddress(ownAddress) : null,
+    routerFee: routeRequest.routerFee,
+    reclaimRouterFee: routeRequest.reclaimRouterFee,
+    extraInfo: routeRequest.extraInfo,
   };
+  return Data.to(advancedDatum, SmartHandleDatum);
 };
