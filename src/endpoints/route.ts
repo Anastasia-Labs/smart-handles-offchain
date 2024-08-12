@@ -4,18 +4,15 @@ import {
   Assets,
   Constr,
   Data,
-  OutputData,
   LucidEvolution,
   SpendingValidator,
   TxSignBuilder,
-  paymentCredentialOf,
   OutRef,
   Address,
   UTxO,
   Unit,
   toUnit,
   OutputDatum,
-  Network,
 } from "@lucid-evolution/lucid";
 import {
   Asset as MinswapAsset,
@@ -34,17 +31,13 @@ import {
   MINSWAP_ADDRESS_MAINNET,
 } from "../core/constants.js";
 import {
-  OrderDatum,
-  OrderType,
   SmartHandleDatum,
 } from "../core/contract.types.js";
 import {
   BatchRouteConfig,
-  BatchSwapConfig,
   Result,
   SingleRouteConfig,
-  SingleSwapConfig,
-  SwapConfig,
+  RouteConfig,
 } from "../core/types.js";
 import {
   BatchVAs,

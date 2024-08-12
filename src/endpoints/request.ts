@@ -1,3 +1,5 @@
+// IMPORTS --------------------------------------------------------------------
+// {{{
 import {
   Address,
   Data,
@@ -22,7 +24,11 @@ import {
   getSingleValidatorVA,
   validateItems,
 } from "../core/utils/index.js";
+// }}}
+// ----------------------------------------------------------------------------
 
+// UTILITY FUNCTIONS ----------------------------------------------------------
+// {{{
 const enoughLovelacesAreGettingLocked = (
   routeRequest: RouteRequest,
   additionalRequiredLovelaces: bigint
@@ -45,6 +51,28 @@ const enoughLovelacesAreGettingLocked = (
     );
   }
 };
+
+const simpleDatumBuilder = (ownAddress: string): string => {
+  const simpleDatum: SmartHandleDatum = {
+    owner: fromAddress(ownAddress),
+  };
+  return Data.to(simpleDatum, SmartHandleDatum);
+};
+
+const advancedDatumBuilder = (
+  ownAddress: string,
+  routeRequest: AdvancedRouteRequest
+): string => {
+  const advancedDatum: SmartHandleDatum = {
+    mOwner: routeRequest.markWalletAsOwner ? fromAddress(ownAddress) : null,
+    routerFee: routeRequest.routerFee,
+    reclaimRouterFee: routeRequest.reclaimRouterFee,
+    extraInfo: routeRequest.extraInfo,
+  };
+  return Data.to(advancedDatum, SmartHandleDatum);
+};
+// }}}
+// ----------------------------------------------------------------------------
 
 export const singleRequest = async (
   lucid: LucidEvolution,
@@ -153,24 +181,4 @@ export const batchRequest = async (
     return genericCatch(error);
   }
   // }}}
-};
-
-const simpleDatumBuilder = (ownAddress: string): string => {
-  const simpleDatum: SmartHandleDatum = {
-    owner: fromAddress(ownAddress),
-  };
-  return Data.to(simpleDatum, SmartHandleDatum);
-};
-
-const advancedDatumBuilder = (
-  ownAddress: string,
-  routeRequest: AdvancedRouteRequest
-): string => {
-  const advancedDatum: SmartHandleDatum = {
-    mOwner: routeRequest.markWalletAsOwner ? fromAddress(ownAddress) : null,
-    routerFee: routeRequest.routerFee,
-    reclaimRouterFee: routeRequest.reclaimRouterFee,
-    extraInfo: routeRequest.extraInfo,
-  };
-  return Data.to(advancedDatum, SmartHandleDatum);
 };

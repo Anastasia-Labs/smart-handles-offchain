@@ -1,4 +1,4 @@
-// IMPORTS
+// IMPORTS --------------------------------------------------------------------
 // {{{
 import {
   Address,
@@ -32,8 +32,9 @@ import {
 } from "../core/types.js";
 import { SimpleDatum, SmartHandleDatum } from "../core/contract.types.js";
 // }}}
+// ----------------------------------------------------------------------------
 
-// UTILS
+// UTILITY FUNCTIONS ----------------------------------------------------------
 // {{{
 const UNAUTHORIZED_OWNER_ERROR_MSG: string =
   "Signer is not authorized to claim the UTxO";
@@ -172,6 +173,7 @@ const complementTxWithReclaimConfigAndOutputInfo = (
   // }}}
 };
 // }}}
+// ----------------------------------------------------------------------------
 
 export const singleReclaim = async (
   lucid: LucidEvolution,
@@ -248,7 +250,7 @@ export const batchReclaim = async (
       return {
         type: "error",
         error: new Error(
-          "One or more of the specified UTxOs could not be found"
+          "One or more of the specified UTxOs could not be found."
         ),
       };
 
