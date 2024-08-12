@@ -211,7 +211,7 @@ export const singleReclaim = async (
       tx,
       walletAddress,
       inOutInfo,
-      config.reclaimConfig,
+      config.reclaimConfig
     );
 
     return {
@@ -247,7 +247,9 @@ export const batchReclaim = async (
     if (!utxosToSpend || utxosToSpend.length !== config.reclaimConfigs.length)
       return {
         type: "error",
-        error: new Error("One or more of the specified UTxOs could be found"),
+        error: new Error(
+          "One or more of the specified UTxOs could not be found"
+        ),
       };
 
     const walletAddress = await lucid.wallet().address();
@@ -264,19 +266,21 @@ export const batchReclaim = async (
 
     const badReclaimErrorMsgs: string[] = validateItems(
       utxosAndReclaimConfigs,
-      ({utxo: utxoToSpend, reclaimConfig}) => {
+      ({ utxo: utxoToSpend, reclaimConfig }) => {
         const inUTxOAndOutInfoRes = utxoToOutputInfo(
           utxoToSpend,
           reclaimConfig,
           walletAddress,
           false,
-          network,
+          network
         );
 
         if (inUTxOAndOutInfoRes.type == "error") {
-          return `${printUTxOOutRef(utxoToSpend)}: ${errorToString(inUTxOAndOutInfoRes.error)}`;
+          return `${printUTxOOutRef(utxoToSpend)}: ${errorToString(
+            inUTxOAndOutInfoRes.error
+          )}`;
         } else {
-          inUTxOAndOutInfos.push(inUTxOAndOutInfoRes.data)
+          inUTxOAndOutInfos.push(inUTxOAndOutInfoRes.data);
           return undefined;
         }
       }
@@ -285,27 +289,30 @@ export const batchReclaim = async (
     if (badReclaimErrorMsgs.length > 0)
       return {
         type: "error",
-        error: collectErrorMsgs(badReclaimErrorMsgs, "Bad reclaim(s) encountered"),
+        error: collectErrorMsgs(
+          badReclaimErrorMsgs,
+          "Bad reclaim(s) encountered"
+        ),
       };
 
     let tx = lucid
       .newTx()
       .collectFrom(utxosToSpend, Data.to(new Constr(1, [])))
       .attach.SpendingValidator(batchVAs.spendVA.validator)
-      .withdraw(
-        batchVAs.stakeVA.address,
-        0n,
-        {
-          kind: "selected",
-          inputs: utxosToSpend,
-          makeRedeemer: (inputIndices) => Data.to(new Constr(0, [
-            inputIndices,
-            Array.from({ length: inputIndices.length }, (_, index) => index).map(
-              BigInt
-            ),
-          ]))
-        }
-      );
+      .withdraw(batchVAs.stakeVA.address, 0n, {
+        kind: "selected",
+        inputs: utxosToSpend,
+        makeRedeemer: (inputIndices) =>
+          Data.to(
+            new Constr(0, [
+              inputIndices,
+              Array.from(
+                { length: inputIndices.length },
+                (_, index) => index
+              ).map(BigInt),
+            ])
+          ),
+      });
 
     // Add corresponding output UTxOs for each reclaimed UTxO. It'll fail if
     // any irreclaimable UTxOs are encountered.
@@ -314,7 +321,7 @@ export const batchReclaim = async (
         tx,
         walletAddress,
         inOutInfo,
-        config.reclaimConfigs[i],
+        config.reclaimConfigs[i]
       );
     });
 
