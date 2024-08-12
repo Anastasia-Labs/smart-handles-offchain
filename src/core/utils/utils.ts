@@ -18,6 +18,7 @@ import {
 } from "@lucid-evolution/lucid";
 import { AddressD, Value } from "../contract.types.js";
 import { Either, ReadableUTxO, Result } from "../types.js";
+import { INSUFFICIENT_ADA_ERROR_MSG, LOVELACE_MARGIN } from "../constants.js";
 
 export const utxosAtScript = async (
   lucid: LucidEvolution,
@@ -25,7 +26,6 @@ export const utxosAtScript = async (
   network: Network,
   stakeCredentialHash?: string
 ) => {
-
   const scriptValidator: SpendingValidator = {
     type: "PlutusV2",
     script: script,
@@ -155,11 +155,7 @@ export function toAddress(address: AddressD, network: Network): Address {
       return undefined;
     }
   })();
-  return credentialToAddress(
-    network,
-    paymentCredential,
-    stakeCredential
-  );
+  return credentialToAddress(network, paymentCredential, stakeCredential);
 }
 
 export const fromAddressToData = (address: Address): Result<Data> => {
@@ -260,6 +256,33 @@ export function getLovelacesFromAssets(assets: Assets): bigint {
     return qty;
   } else {
     return BigInt(0);
+  }
+}
+
+export function enoughLovelacesAreInAssets(
+  assets: Assets,
+  extraLovelaces: bigint
+): boolean {
+  const lovelaceCount = getLovelacesFromAssets(assets);
+  return lovelaceCount >= extraLovelaces + LOVELACE_MARGIN;
+}
+
+export function reduceLovelacesOfAssets(
+  assets: Assets,
+  reduction: bigint,
+  extraLovelacesToBeLocked?: bigint
+): Result<Assets> {
+  const newLovelaceCount = getLovelacesFromAssets(assets) - reduction;
+  if (newLovelaceCount >= (extraLovelacesToBeLocked ?? 0n) + LOVELACE_MARGIN) {
+    return {
+      type: "ok",
+      data: {...assets, lovelace: newLovelaceCount},
+    };
+  } else {
+    return {
+      type: "error",
+      error: new Error(INSUFFICIENT_ADA_ERROR_MSG),
+    }
   }
 }
 

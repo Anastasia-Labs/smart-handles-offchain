@@ -4,7 +4,7 @@ import {
   LucidEvolution,
   TxSignBuilder,
 } from "@lucid-evolution/lucid";
-import { LOVELACE_MARGIN, ROUTER_FEE } from "../core/constants.js";
+import { INSUFFICIENT_ADA_ERROR_MSG, ROUTER_FEE } from "../core/constants.js";
 import { SmartHandleDatum } from "../core/contract.types.js";
 import {
   Result,
@@ -15,10 +15,10 @@ import {
 } from "../core/types.js";
 import {
   collectErrorMsgs,
+  enoughLovelacesAreInAssets,
   fromAddress,
   genericCatch,
   getBatchVAs,
-  getLovelacesFromAssets,
   getSingleValidatorVA,
   validateItems,
 } from "../core/utils/index.js";
@@ -27,16 +27,15 @@ const enoughLovelacesAreGettingLocked = (
   routeRequest: RouteRequest,
   additionalRequiredLovelaces: bigint
 ): boolean => {
-  const lovelaceToBeLocked = getLovelacesFromAssets(
-    routeRequest.data.valueToLock
-  );
   if (routeRequest.kind == "simple") {
-    return lovelaceToBeLocked >= LOVELACE_MARGIN + ROUTER_FEE;
+    return enoughLovelacesAreInAssets(
+      routeRequest.data.valueToLock,
+      ROUTER_FEE
+    );
   } else {
-    return (
-      lovelaceToBeLocked >=
+    return enoughLovelacesAreInAssets(
+      routeRequest.data.valueToLock,
       additionalRequiredLovelaces +
-        LOVELACE_MARGIN +
         BigInt(
           Math.max(
             Number(routeRequest.data.routerFee),
@@ -46,9 +45,6 @@ const enoughLovelacesAreGettingLocked = (
     );
   }
 };
-
-const INSUFFICIENT_LOVELACES_ERROR_MSG =
-  "Not enough Lovelaces are getting locked";
 
 export const singleRequest = async (
   lucid: LucidEvolution,
@@ -63,7 +59,7 @@ export const singleRequest = async (
   )
     return {
       type: "error",
-      error: new Error(INSUFFICIENT_LOVELACES_ERROR_MSG),
+      error: new Error(INSUFFICIENT_ADA_ERROR_MSG),
     };
 
   const va = getSingleValidatorVA(config.scriptCBOR, lucid.config().network);
@@ -126,7 +122,7 @@ export const batchRequest = async (
             config.additionalRequiredLovelaces
           )
         )
-          return INSUFFICIENT_LOVELACES_ERROR_MSG;
+          return INSUFFICIENT_ADA_ERROR_MSG;
         const outputDatumData =
           rR.kind == "simple"
             ? simpleDatumBuilder(ownAddress)

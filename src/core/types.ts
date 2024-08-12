@@ -1,9 +1,13 @@
 import {
+  Address,
   Assets,
   CBORHex,
   Data,
   OutRef,
   OutputDatum,
+  RedeemerBuilder,
+  TxBuilder,
+  UTxO,
   Unit,
 } from "@lucid-evolution/lucid";
 import { Value } from "./contract.types.js";
@@ -32,7 +36,25 @@ export type ReadableUTxO<T> = {
   assets: Assets;
 };
 
-// Assumes selected wallet as `owner`
+/**
+ * Intermediary datatype for mapping an input UTxO to its corresponding output
+ * datum and output assets.
+ *
+ * If `outputAssets` is not set, it'll be handled by change output.
+ */
+export type InputUTxOAndItsOutputInfo = {
+  utxo: UTxO;
+  redeemerBuilder: RedeemerBuilder;
+  outputAddress?: Address;
+  scriptOutput?: {
+    outputAssets: Assets;
+    outputDatum: OutputDatum;
+  }
+};
+
+/**
+ * Assumes selected wallet as `owner`
+ */
 export type SimpleRouteRequest = {
   valueToLock: Assets;
 };
@@ -60,12 +82,27 @@ export type BatchRequestConfig = {
   additionalRequiredLovelaces: bigint;
 };
 
-export type SingleReclaimConfig = {
+export type SimpleReclaimConfig = {
   requestOutRef: OutRef;
+}
+
+export type AdvancedReclaimConfig = SimpleReclaimConfig & {
+  outputDatum: OutputDatum,
+  additionalAction: (tx: TxBuilder, utxo: UTxO) => TxBuilder;
+}
+
+export type ReclaimConfig =
+  | { kind: "simple"; data: SimpleReclaimConfig }
+  | { kind: "advanced"; data: AdvancedReclaimConfig }
+
+export type SingleReclaimConfig = {
+  scriptCBOR: CBORHex;
+  reclaimConfig: ReclaimConfig;
 };
 
 export type BatchReclaimConfig = {
-  requestOutRefs: OutRef[];
+  stakingScriptCBOR: CBORHex;
+  reclaimConfigs: ReclaimConfig[];
 };
 
 export type RouteConfig = {
