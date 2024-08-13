@@ -55,6 +55,12 @@ const simpleDatumBelongsToOwner = (
  * `InputUTxOAndItsOutputInfo` which carries enough information for the tx
  * builder to spend the UTxO with a valid redeemer, and potentially produce a
  * UTxO with a proper datum attached.
+ *
+ * @param utxo - The UTxO about to be spent
+ * @param reclaimConfig - `simple` or `advanced` route config
+ * @param selectedWalletAddress - Selected wallet of `lucid`, i.e. signer
+ * @param forSingle - Flag to distinguish between single or batch variants
+ * @param network - Target network, used for getting Bech32 address of `mOwner`
  */
 const utxoToOutputInfo = (
   utxo: UTxO,
@@ -231,15 +237,12 @@ export const batchReclaim = async (
   config: BatchReclaimConfig
 ): Promise<Result<TxSignBuilder>> => {
   // {{{
-  const batchVAs = getBatchVAs(
-    config.stakingScriptCBOR,
-    lucid.config().network
-  );
+  const network = lucid.config().network;
+
+  const batchVAs = getBatchVAs(config.stakingScriptCBOR, network);
 
   if (config.reclaimConfigs.length < 1)
     return { type: "error", error: new Error("No reclaim configs provided.") };
-
-  const network = lucid.config().network;
 
   try {
     const utxosToSpend = await lucid.utxosByOutRef(
@@ -314,10 +317,11 @@ export const batchReclaim = async (
               ).map(BigInt),
             ])
           ),
-      });
+      })
+      .attach.WithdrawalValidator(batchVAs.stakeVA.validator);
 
-    // Add corresponding output UTxOs for each reclaimed UTxO. It'll fail if
-    // any irreclaimable UTxOs are encountered.
+    // Add corresponding output UTxOs for each reclaimed UTxO. It'll fail if any
+    // irreclaimable UTxOs are encountered.
     inUTxOAndOutInfos.map((inOutInfo: InputUTxOAndItsOutputInfo, i: number) => {
       tx = complementTxWithReclaimConfigAndOutputInfo(
         tx,

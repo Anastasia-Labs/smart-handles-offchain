@@ -2,7 +2,6 @@ import {
   Address,
   Assets,
   CBORHex,
-  Data,
   OutRef,
   OutputDatum,
   RedeemerBuilder,
@@ -10,7 +9,7 @@ import {
   UTxO,
   Unit,
 } from "@lucid-evolution/lucid";
-import { Value } from "./contract.types.js";
+import { AdvancedDatum, SimpleDatum } from "./contract.types.js";
 
 export type RawHex = string;
 export type POSIXTime = number;
@@ -49,7 +48,7 @@ export type InputUTxOAndItsOutputInfo = {
   scriptOutput?: {
     outputAssets: Assets;
     outputDatum: OutputDatum;
-  }
+  };
 };
 
 /**
@@ -84,16 +83,16 @@ export type BatchRequestConfig = {
 
 export type SimpleReclaimConfig = {
   requestOutRef: OutRef;
-}
+};
 
 export type AdvancedReclaimConfig = SimpleReclaimConfig & {
-  outputDatum: OutputDatum,
+  outputDatum: OutputDatum;
   additionalAction: (tx: TxBuilder, utxo: UTxO) => TxBuilder;
-}
+};
 
 export type ReclaimConfig =
   | { kind: "simple"; data: SimpleReclaimConfig }
-  | { kind: "advanced"; data: AdvancedReclaimConfig }
+  | { kind: "advanced"; data: AdvancedReclaimConfig };
 
 export type SingleReclaimConfig = {
   scriptCBOR: CBORHex;
@@ -105,19 +104,37 @@ export type BatchReclaimConfig = {
   reclaimConfigs: ReclaimConfig[];
 };
 
-export type RouteConfig = {
-  blockfrostKey: string;
-  poolId?: string;
-  slippageTolerance: bigint;
+export type CommonRoutingConfig = {
+  requestOutRef: OutRef;
+  additionalAction: (tx: TxBuilder, utxo: UTxO) => TxBuilder;
+}
+
+export type SimpleRouteConfig = CommonRoutingConfig & {
+  outputMaker: (
+    inputAssets: Assets,
+    inputDatum: SimpleDatum
+  ) => Result<OutputDatum>;
 };
+
+export type AdvancedRouteConfig = CommonRoutingConfig & {
+  outputMaker: (
+    inputAssets: Assets,
+    inputDatum: AdvancedDatum
+  ) => Result<OutputDatum>;
+};
+
+export type RouteConfig =
+  | { kind: "simple"; data: SimpleRouteConfig }
+  | { kind: "advanced"; data: AdvancedRouteConfig };
 
 export type SingleRouteConfig = {
-  swapConfig: RouteConfig;
-  requestOutRef: OutRef;
+  scriptCBOR: CBORHex;
+  routeAddress: Address;
+  routeConfig: RouteConfig;
 };
 
-// Same `slippageTolerance` for all request outrefs. TODO?
 export type BatchRouteConfig = {
-  routeConfig: RouteConfig;
-  requestOutRefs: OutRef[];
+  stakingScriptCBOR: CBORHex;
+  routeAddress: Address;
+  routeConfigs: RouteConfig[];
 };
