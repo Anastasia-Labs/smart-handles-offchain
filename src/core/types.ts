@@ -110,14 +110,14 @@ export type CommonRoutingConfig = {
 }
 
 export type SimpleRouteConfig = CommonRoutingConfig & {
-  outputMaker: (
+  outputDatumMaker: (
     inputAssets: Assets,
     inputDatum: SimpleDatum
   ) => Result<OutputDatum>;
 };
 
 export type AdvancedRouteConfig = CommonRoutingConfig & {
-  outputMaker: (
+  outputDatumMaker: (
     inputAssets: Assets,
     inputDatum: AdvancedDatum
   ) => Result<OutputDatum>;

@@ -78,7 +78,7 @@ const utxoToOutputInfo = (
   let outputDatumRes: Result<OutputDatum>;
   if (routeConfig.kind == "simple" && "owner" in smartHandleDatum) {
     outputAssetsRes = reduceLovelacesOfAssets(utxo.assets, ROUTER_FEE);
-    outputDatumRes = routeConfig.data.outputMaker(
+    outputDatumRes = routeConfig.data.outputDatumMaker(
       utxo.assets,
       smartHandleDatum
     );
@@ -87,7 +87,7 @@ const utxoToOutputInfo = (
       utxo.assets,
       smartHandleDatum.routerFee
     );
-    outputDatumRes = routeConfig.data.outputMaker(
+    outputDatumRes = routeConfig.data.outputDatumMaker(
       utxo.assets,
       smartHandleDatum
     );
