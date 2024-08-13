@@ -6,22 +6,24 @@ import {
   toUnit,
   MIN_SYMBOL_PREPROD,
   MIN_TOKEN_NAME,
-  batchSwap,
-  SwapConfig,
+  batchRoute,
+  RouteConfig,
   ADA_MIN_LP_TOKEN_NAME_PREPROD,
   fetchUsersBatchRequestUTxOs,
-  BatchSwapConfig,
+  BatchRouteConfig,
   Result,
-  TxComplete,
-} from "@anastasia-labs/smart-handles-offchain";
+  TxSignBuilder,
+  LucidEvolution,
+// } from "@anastasia-labs/smart-handles-offchain";
+} from "../../../src/index.js";
 
 const registerRewardAddress = async (
-  lucid: Lucid,
+  lucid: LucidEvolution,
   rewardAddress: string
 ): Promise<void> => {
   const tx = await lucid.newTx().registerStake(rewardAddress).complete();
 
-  const signedTx = await tx.sign().complete();
+  const signedTx = await tx.sign.withWallet().complete();
 
   const txHash = await signedTx.submit();
 
@@ -29,12 +31,12 @@ const registerRewardAddress = async (
 };
 
 const signAndSubmitTxRes = async (
-  lucid: Lucid,
-  txRes: Result<TxComplete>
+  lucid: LucidEvolution,
+  txRes: Result<TxSignBuilder>
 ): Promise<string> => {
   if (txRes.type == "error") throw txRes.error;
 
-  const txSigned = await txRes.data.sign().complete();
+  const txSigned = await txRes.data.sign.withWallet().complete();
 
   const txHash = await txSigned.submit();
 
@@ -49,7 +51,7 @@ export const run = async (
   routingAgentsSeedPhrase: string
 ): Promise<Error | void> => {
   try {
-    const lucid = await Lucid.new(
+    const lucid = await Lucid(
       new Blockfrost(
         "https://cardano-preprod.blockfrost.io/api/v0",
         blockfrostKey
@@ -57,7 +59,7 @@ export const run = async (
       "Preprod"
     );
 
-    lucid.selectWalletFromSeed(seedPhrase);
+    lucid.selectWallet.fromSeed(seedPhrase);
 
     const requestConfig: BatchRequestConfig = {
       swapRequests: [
