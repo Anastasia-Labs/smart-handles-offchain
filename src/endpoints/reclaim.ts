@@ -108,7 +108,8 @@ const utxoToOutputInfo = (
     if (smartHandleDatum.mOwner) {
       const outputAssetsRes = reduceLovelacesOfAssets(
         utxo.assets,
-        smartHandleDatum.reclaimRouterFee
+        smartHandleDatum.reclaimRouterFee,
+        reclaimConfig.data.extraLovelacesToBeLocked,
       );
       if (outputAssetsRes.type == "error") return outputAssetsRes;
       return {

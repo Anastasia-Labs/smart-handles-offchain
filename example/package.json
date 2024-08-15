@@ -20,6 +20,8 @@
   },
   "dependencies": {
     "@anastasia-labs/smart-handles-offchain": "^0.3.0",
+    "@blockfrost/blockfrost-js": "^5.5.0",
+    "@minswap/sdk": "^0.2.2-beta",
     "chalk": "^5.3.0",
     "commander": "^12.1.0"
   }

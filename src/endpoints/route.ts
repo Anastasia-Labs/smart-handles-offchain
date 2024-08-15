@@ -10,10 +10,7 @@ import {
   UTxO,
   OutputDatum,
 } from "@lucid-evolution/lucid";
-import {
-  LOVELACE_MARGIN,
-  ROUTER_FEE,
-} from "../core/constants.js";
+import { LOVELACE_MARGIN, ROUTER_FEE } from "../core/constants.js";
 import { SmartHandleDatum } from "../core/contract.types.js";
 import {
   BatchRouteConfig,
@@ -23,6 +20,7 @@ import {
   InputUTxOAndItsOutputInfo,
 } from "../core/types.js";
 import {
+  asyncValidateItems,
   collectErrorMsgs,
   errorToString,
   genericCatch,
@@ -32,7 +30,6 @@ import {
   printUTxOOutRef,
   reduceLovelacesOfAssets,
   selectUtxos,
-  validateItems,
 } from "../core/utils/index.js";
 // }}}
 // ----------------------------------------------------------------------------
@@ -50,12 +47,12 @@ import {
  * @param routeAddress - Routing address of smart handles instance
  * @param forSingle - Flag to distinguish between single or batch variants
  */
-const utxoToOutputInfo = (
+const utxoToOutputInfo = async (
   utxo: UTxO,
   routeConfig: RouteConfig,
   routeAddress: Address,
   forSingle: boolean
-): Result<InputUTxOAndItsOutputInfo> => {
+): Promise<Result<InputUTxOAndItsOutputInfo>> => {
   // {{{
   const datum = parseSafeDatum(utxo.datum, SmartHandleDatum);
   if (datum.type == "left")
@@ -77,17 +74,22 @@ const utxoToOutputInfo = (
   let outputAssetsRes: Result<Assets>;
   let outputDatumRes: Result<OutputDatum>;
   if (routeConfig.kind == "simple" && "owner" in smartHandleDatum) {
-    outputAssetsRes = reduceLovelacesOfAssets(utxo.assets, ROUTER_FEE);
-    outputDatumRes = routeConfig.data.outputDatumMaker(
+    outputAssetsRes = reduceLovelacesOfAssets(
+      utxo.assets,
+      ROUTER_FEE,
+      routeConfig.data.extraLovelacesToBeLocked
+    );
+    outputDatumRes = await routeConfig.data.outputDatumMaker(
       utxo.assets,
       smartHandleDatum
     );
   } else if (routeConfig.kind == "advanced" && "mOwner" in smartHandleDatum) {
     outputAssetsRes = reduceLovelacesOfAssets(
       utxo.assets,
-      smartHandleDatum.routerFee
+      smartHandleDatum.routerFee,
+      routeConfig.data.extraLovelacesToBeLocked
     );
-    outputDatumRes = routeConfig.data.outputDatumMaker(
+    outputDatumRes = await routeConfig.data.outputDatumMaker(
       utxo.assets,
       smartHandleDatum
     );
@@ -144,7 +146,7 @@ export const singleRoute = async (
     const feeUTxOsRes = selectUtxos(walletUTxOs, { lovelace: LOVELACE_MARGIN });
     if (feeUTxOsRes.type == "error") return feeUTxOsRes;
 
-    const inUTxOAndOutInfoRes = utxoToOutputInfo(
+    const inUTxOAndOutInfoRes = await utxoToOutputInfo(
       utxoToSpend,
       config.routeConfig,
       config.routeAddress,
@@ -213,14 +215,14 @@ export const batchRoute = async (
 
     const inUTxOAndOutInfos: InputUTxOAndItsOutputInfo[] = [];
 
-    const badRouteErrorMsgs: string[] = validateItems(
+    const badRouteErrorMsgs: string[] = await asyncValidateItems(
       utxosAndRouteConfigs,
-      ({ utxo: utxoToSpend, routeConfig }) => {
-        const inUTxOAndOutInfoRes = utxoToOutputInfo(
+      async ({ utxo: utxoToSpend, routeConfig }) => {
+        const inUTxOAndOutInfoRes = await utxoToOutputInfo(
           utxoToSpend,
           routeConfig,
           config.routeAddress,
-          false,
+          false
         );
 
         if (inUTxOAndOutInfoRes.type == "error") {

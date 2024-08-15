@@ -8,9 +8,12 @@ importers:
 
   .:
     dependencies:
-      '@anastasia-labs/smart-handles-offchain':
-        specifier: ^0.1.0
-        version: 0.1.0
+      '@blockfrost/blockfrost-js':
+        specifier: ^5.5.0
+        version: 5.5.0
+      '@minswap/sdk':
+        specifier: ^0.2.2-beta
+        version: 0.2.2-beta
       chalk:
         specifier: ^5.3.0
         version: 5.3.0
@@ -29,13 +32,6 @@ importers:
         version: 5.4.5
 
 packages:
-
-  '@anastasia-labs/lucid-cardano-fork@0.10.8-rc.3':
-    resolution: {integrity: sha512-H+iobPIU9XKmfIqVnjrIUaF0INLo8TudEFnNkwUHy+Y7uLHDr1z+LDx9JqzLfADMRgx/hXJJLm59eza4a6TzHA==}
-    engines: {node: '>=14'}
-
-  '@anastasia-labs/smart-handles-offchain@0.1.0':
-    resolution: {integrity: sha512-9ZBw4behxrwlL2X0dU3C1iJ1WSa1Fvn1GrYAMIh/UC5fuTaWMT5RKk3FKleAa7hN589JK7ti7IBPw+R8lQtPWg==}
 
   '@blockfrost/blockfrost-js@5.5.0':
     resolution: {integrity: sha512-9UZIo6jRDSkRJt1r9sU2YPlz9MC3Ndh/5nCxS04H9B2MIak/jtPoJ3jTvn5dED06P8lPSKPn0QYPsIiJQ+8Kew==}
@@ -991,24 +987,6 @@ packages:
     hasBin: true
 
 snapshots:
-
-  '@anastasia-labs/lucid-cardano-fork@0.10.8-rc.3':
-    dependencies:
-      '@peculiar/webcrypto': 1.5.0
-      node-fetch: 3.3.2
-      ws: 8.17.0
-    transitivePeerDependencies:
-      - bufferutil
-      - utf-8-validate
-
-  '@anastasia-labs/smart-handles-offchain@0.1.0':
-    dependencies:
-      '@anastasia-labs/lucid-cardano-fork': 0.10.8-rc.3
-      '@blockfrost/blockfrost-js': 5.5.0
-      '@minswap/sdk': 0.2.2-beta
-    transitivePeerDependencies:
-      - bufferutil
-      - utf-8-validate
 
   '@blockfrost/blockfrost-js@5.5.0':
     dependencies:

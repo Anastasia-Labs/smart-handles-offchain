@@ -87,6 +87,7 @@ export type SimpleReclaimConfig = {
 
 export type AdvancedReclaimConfig = SimpleReclaimConfig & {
   outputDatum: OutputDatum;
+  extraLovelacesToBeLocked: bigint;
   additionalAction: (tx: TxBuilder, utxo: UTxO) => TxBuilder;
 };
 
@@ -106,21 +107,26 @@ export type BatchReclaimConfig = {
 
 export type CommonRoutingConfig = {
   requestOutRef: OutRef;
+  extraLovelacesToBeLocked: bigint;
   additionalAction: (tx: TxBuilder, utxo: UTxO) => TxBuilder;
-}
+};
+
+export type SimpleOutputDatumMaker = (
+  inputAssets: Assets,
+  inputDatum: SimpleDatum
+) => Promise<Result<OutputDatum>>;
+
+export type AdvancedOutputDatumMaker = (
+  inputAssets: Assets,
+  inputDatum: AdvancedDatum
+) => Promise<Result<OutputDatum>>;
 
 export type SimpleRouteConfig = CommonRoutingConfig & {
-  outputDatumMaker: (
-    inputAssets: Assets,
-    inputDatum: SimpleDatum
-  ) => Result<OutputDatum>;
+  outputDatumMaker: SimpleOutputDatumMaker;
 };
 
 export type AdvancedRouteConfig = CommonRoutingConfig & {
-  outputDatumMaker: (
-    inputAssets: Assets,
-    inputDatum: AdvancedDatum
-  ) => Result<OutputDatum>;
+  outputDatumMaker: AdvancedOutputDatumMaker;
 };
 
 export type RouteConfig =
