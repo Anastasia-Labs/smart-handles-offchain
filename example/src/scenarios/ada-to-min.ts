@@ -4,18 +4,22 @@ import {
   Blockfrost,
   Lucid,
   toUnit,
-  MIN_SYMBOL_PREPROD,
-  MIN_TOKEN_NAME,
   batchRoute,
-  RouteConfig,
-  ADA_MIN_LP_TOKEN_NAME_PREPROD,
-  fetchUsersBatchRequestUTxOs,
-  BatchRouteConfig,
   Result,
   TxSignBuilder,
   LucidEvolution,
-// } from "@anastasia-labs/smart-handles-offchain";
+  getBatchVAs,
+  BatchVAs,
+  SmartHandleDatum,
+  parseSafeDatum,
+  UTxO,
+  errorToString,
+  fetchBatchRequestUTxOs,
+  // } from "@anastasia-labs/smart-handles-offchain";
 } from "../../../src/index.js";
+import { MIN_SYMBOL_PREPROD, MIN_TOKEN_NAME } from "../constants.js";
+import { mkBatchRequestConfig, mkBatchRouteConfig } from "../minswap-v1.js";
+import { MinswapV1RequestUTxO } from "../types.js";
 
 const registerRewardAddress = async (
   lucid: LucidEvolution,
@@ -61,16 +65,15 @@ export const run = async (
 
     lucid.selectWallet.fromSeed(seedPhrase);
 
-    const requestConfig: BatchRequestConfig = {
-      swapRequests: [
-        50_000_000, 100_000_000, 150_000_000, 200_000_000, 250_000_000,
-      ].map((l) => ({
-        fromAsset: "lovelace",
-        quantity: BigInt(l),
-        toAsset: toUnit(MIN_SYMBOL_PREPROD, MIN_TOKEN_NAME),
-      })),
-      testnet: true,
-    };
+    const requestConfig: BatchRequestConfig = mkBatchRequestConfig(
+      [50_000_000, 100_000_000, 150_000_000, 200_000_000, 250_000_000].map(
+        (l) => ({
+          fromAsset: "lovelace",
+          quantity: BigInt(l),
+          toAsset: toUnit(MIN_SYMBOL_PREPROD, MIN_TOKEN_NAME),
+        })
+      )
+    );
 
     const requestTxUnsignedRes = await batchRequest(lucid, requestConfig);
 
@@ -78,53 +81,69 @@ export const run = async (
     const requestTxHash = await signAndSubmitTxRes(lucid, requestTxUnsignedRes);
     console.log(`Request Successfully Submitted: ${requestTxHash}`);
 
+    // --- REWARD ADDRESS REGISTRATION -----------------------------------------
     // Commented out as the Minswap version of the smart handles contract is
     // already registered on preprod.
 
-    // const batchVAsRes = getBatchVAs(lucid, true);
+    const batchVAs: BatchVAs = getBatchVAs(
+      requestConfig.stakingScriptCBOR,
+      "Preprod"
+    );
 
-    // if (batchVAsRes.type == "error") return batchVAsRes;
+    const rewardAddress = batchVAs.stakeVA.address;
 
-    // const batchVAs: BatchVAs = batchVAsRes.data;
+    console.log("Registering the staking validator...");
+    await registerRewardAddress(lucid, rewardAddress);
+    console.log(`Staking validator successfully registered: ${rewardAddress}`);
+    // -------------------------------------------------------------------------
 
-    // const rewardAddress = batchVAs.stakeVA.address;
+    const userAddress = await lucid.wallet().address();
 
-    // console.log("Registering the staking validator...");
-    // await registerRewardAddress(lucid, rewardAddress);
-    // console.log(`Staking validator successfully registered: ${rewardAddress}`);
-
-    const userAddress = await lucid.wallet.address();
-
-    lucid.selectWalletFromSeed(routingAgentsSeedPhrase);
+    lucid.selectWallet.fromSeed(routingAgentsSeedPhrase);
     console.log("(switched to the routing agent's wallet)");
 
     console.log("Fetching user's batch requests...");
-    const usersRequests = await fetchUsersBatchRequestUTxOs(
+    const allBatchRequests: UTxO[] = await fetchBatchRequestUTxOs(
       lucid,
       userAddress,
-      true
+      "Preprod"
     );
     console.log("Fetch completed:");
+    const initUsersRequests: (MinswapV1RequestUTxO | undefined)[] =
+      allBatchRequests.map((utxo) => {
+        const datumRes = parseSafeDatum<SmartHandleDatum>(
+          utxo.datum,
+          SmartHandleDatum
+        );
+        if (datumRes.type == "right") {
+          if ("mOwner" in datumRes.value) {
+            return { ...utxo, datum: datumRes.value };
+          } else {
+            return undefined;
+          }
+        } else {
+          return undefined;
+        }
+      });
+    const usersRequests: MinswapV1RequestUTxO[] = initUsersRequests.filter(
+      (u) => u !== undefined
+    );
     console.log(usersRequests);
 
-    const swapConfig: SwapConfig = {
-      blockfrostKey,
-      poolId: ADA_MIN_LP_TOKEN_NAME_PREPROD,
-      slippageTolerance: BigInt(10),
-    };
+    const batchRouteConfigRes = await mkBatchRouteConfig(
+      BigInt(10),
+      usersRequests.map((u) => u.outRef),
+      "Preprod"
+    );
 
-    const batchSwapConfig: BatchSwapConfig = {
-      swapConfig,
-      requestOutRefs: usersRequests.map((u) => u.outRef),
-      testnet: true,
-    };
+    if (batchRouteConfigRes.type == "error") return batchRouteConfigRes.error;
 
-    const swapTxUnsigned = await batchSwap(lucid, batchSwapConfig);
+    const swapTxUnsigned = await batchRoute(lucid, batchRouteConfigRes.data);
 
     console.log("Submitting the swap transaction...");
     const swapTxHash = await signAndSubmitTxRes(lucid, swapTxUnsigned);
     console.log(`Swap successfully performed: ${swapTxHash}`);
   } catch (e) {
-    return e;
+    return new Error(errorToString(e));
   }
 };

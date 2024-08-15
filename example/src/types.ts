@@ -1,4 +1,7 @@
 import {Data} from "@lucid-evolution/lucid";
+import {SmartHandleDatum} from "./index.js";
+import {ReadableUTxO} from "./index.js";
+import {AdvancedDatum} from "./index.js";
 
 export const CredentialSchema = Data.Enum([
   Data.Object({
@@ -72,3 +75,5 @@ export const OrderDatumSchema = Data.Object({
 });
 export type OrderDatum = Data.Static<typeof OrderDatumSchema>;
 export const OrderDatum = OrderDatumSchema as unknown as OrderDatum;
+
+export type MinswapV1RequestUTxO = ReadableUTxO<AdvancedDatum>;
