@@ -15,10 +15,11 @@ import {
   UTxO,
   errorToString,
   fetchBatchRequestUTxOs,
+  toAddress,
   // } from "@anastasia-labs/smart-handles-offchain";
 } from "../../../src/index.js";
 import { MIN_SYMBOL_PREPROD, MIN_TOKEN_NAME } from "../constants.js";
-import { mkBatchRequestConfig, mkBatchRouteConfig } from "../minswap-v1.js";
+import { fetchUsersBatchRequestUTxOs, mkBatchRequestConfig, mkBatchRouteConfig } from "../minswap-v1.js";
 import { MinswapV1RequestUTxO } from "../types.js";
 
 const registerRewardAddress = async (
@@ -103,31 +104,8 @@ export const run = async (
     console.log("(switched to the routing agent's wallet)");
 
     console.log("Fetching user's batch requests...");
-    const allBatchRequests: UTxO[] = await fetchBatchRequestUTxOs(
-      lucid,
-      userAddress,
-      "Preprod"
-    );
-    console.log("Fetch completed:");
-    const initUsersRequests: (MinswapV1RequestUTxO | undefined)[] =
-      allBatchRequests.map((utxo) => {
-        const datumRes = parseSafeDatum<SmartHandleDatum>(
-          utxo.datum,
-          SmartHandleDatum
-        );
-        if (datumRes.type == "right") {
-          if ("mOwner" in datumRes.value) {
-            return { ...utxo, datum: datumRes.value };
-          } else {
-            return undefined;
-          }
-        } else {
-          return undefined;
-        }
-      });
-    const usersRequests: MinswapV1RequestUTxO[] = initUsersRequests.filter(
-      (u) => u !== undefined
-    );
+    const usersRequests: MinswapV1RequestUTxO[] =
+      await fetchUsersBatchRequestUTxOs(lucid, userAddress);
     console.log(usersRequests);
 
     const batchRouteConfigRes = await mkBatchRouteConfig(

@@ -18,6 +18,7 @@ import {
   BatchRequestConfig,
   BatchRouteConfig,
   Data,
+  LucidEvolution,
   Network,
   OutRef,
   OutputDatum,
@@ -26,10 +27,12 @@ import {
   Result,
   RouteConfig,
   RouteRequest,
-  SingleRouteConfig,
+  SmartHandleDatum,
+  UTxO,
   Unit,
   collectErrorMsgs,
   errorToString,
+  fetchBatchRequestUTxOs,
   fromAddress,
   fromUnit,
   genericCatch,
@@ -38,7 +41,7 @@ import {
   toUnit,
   validateItems,
 } from "../../src/index.js";
-import { MinswapRequestInfo, OrderDatum, OrderType } from "./types.js";
+import { MinswapRequestInfo, MinswapV1RequestUTxO, OrderDatum, OrderType } from "./types.js";
 import {
   MINSWAP_ADDRESS_MAINNET,
   MINSWAP_ADDRESS_PREPROD,
@@ -384,6 +387,50 @@ export const mkBatchRequestConfig = (
     routeRequests: swapRequests.map(mkRouteRequest),
     additionalRequiredLovelaces: 0n,
   };
+  // }}}
+};
+
+/**
+ * Looks up all the UTxOs sitting at Minswap V1 instance of smart handles'
+ * batch spend script, and only keeps the ones with `AdvancedDatum`s, which
+ * their `mOwner` field equals the given `userAddress` in `Preprod` network.
+ * @param lucid - LucidEvolution API object
+ * @param userAddress - Address of the user who had previously submitted request
+ *        UTxOs at Minswap V1 instance of smart handles' batch spend script
+ *        instance
+ */
+export const fetchUsersBatchRequestUTxOs = async (
+  lucid: LucidEvolution,
+  userAddress: Address
+): Promise<MinswapV1RequestUTxO[]> => {
+  // {{{
+  const allBatchRequests: UTxO[] = await fetchBatchRequestUTxOs(
+    lucid,
+    stakingValidator.cborHex,
+    "Preprod"
+  );
+  console.log("Fetch completed:");
+  const initUsersRequests: (MinswapV1RequestUTxO | undefined)[] =
+    allBatchRequests.map((utxo) => {
+      const datumRes = parseSafeDatum<SmartHandleDatum>(
+        utxo.datum,
+        SmartHandleDatum
+      );
+      if (datumRes.type == "right") {
+        if ("mOwner" in datumRes.value && datumRes.value.mOwner) {
+          if (toAddress(datumRes.value.mOwner, "Preprod") == userAddress) {
+            return { ...utxo, datum: datumRes.value };
+          } else {
+            return undefined;
+          }
+        } else {
+          return undefined;
+        }
+      } else {
+        return undefined;
+      }
+    });
+  return initUsersRequests.filter((u) => u !== undefined);
   // }}}
 };
 
