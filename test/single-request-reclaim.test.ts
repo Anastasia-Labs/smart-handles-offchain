@@ -10,6 +10,7 @@ import {
   MIN_SYMBOL_PREPROD,
   MIN_TOKEN_NAME,
 } from "../src/index.js";
+import * as M from "../example/src/minswap-v1.js";
 import { beforeEach, expect, test } from "vitest";
 import { LucidContext, createUser } from "./utils.js";
 

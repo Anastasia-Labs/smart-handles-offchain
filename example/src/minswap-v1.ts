@@ -15,8 +15,10 @@ import {
   AdvancedRouteRequest,
   Asset,
   Assets,
+  BatchReclaimConfig,
   BatchRequestConfig,
   BatchRouteConfig,
+  CBORHex,
   Data,
   LucidEvolution,
   Network,
@@ -27,6 +29,8 @@ import {
   Result,
   RouteConfig,
   RouteRequest,
+  SingleReclaimConfig,
+  SingleRequestConfig,
   SmartHandleDatum,
   UTxO,
   Unit,
@@ -41,7 +45,12 @@ import {
   toUnit,
   validateItems,
 } from "../../src/index.js";
-import { MinswapRequestInfo, MinswapV1RequestUTxO, OrderDatum, OrderType } from "./types.js";
+import {
+  MinswapRequestInfo,
+  MinswapV1RequestUTxO,
+  OrderDatum,
+  OrderType,
+} from "./types.js";
 import {
   MINSWAP_ADDRESS_MAINNET,
   MINSWAP_ADDRESS_PREPROD,
@@ -366,14 +375,170 @@ const mkRouteConfig = async (
   };
   // }}}
 };
+
+const fetchUsersRequestUTxOs = async (
+  scriptCBOR: CBORHex,
+  lucid: LucidEvolution,
+  userAddress: Address
+): Promise<MinswapV1RequestUTxO[]> => {
+  // {{{
+  const allBatchRequests: UTxO[] = await fetchBatchRequestUTxOs(
+    lucid,
+    scriptCBOR,
+    "Preprod"
+  );
+  console.log("Fetch completed:");
+  const initUsersRequests: (MinswapV1RequestUTxO | undefined)[] =
+    allBatchRequests.map((utxo) => {
+      const datumRes = parseSafeDatum<SmartHandleDatum>(
+        utxo.datum,
+        SmartHandleDatum
+      );
+      if (datumRes.type == "right") {
+        if ("mOwner" in datumRes.value && datumRes.value.mOwner) {
+          if (toAddress(datumRes.value.mOwner, "Preprod") == userAddress) {
+            return { ...utxo, datum: datumRes.value };
+          } else {
+            return undefined;
+          }
+        } else {
+          return undefined;
+        }
+      } else {
+        return undefined;
+      }
+    });
+  return initUsersRequests.filter((u) => u !== undefined);
+  // }}}
+};
 // }}}
 // ----------------------------------------------------------------------------
 
+// SINGLE CONFIG MAKERS -------------------------------------------------------
+// {{{
+/**
+ * Given a `SwapRequest`, this function creates a `SingleRequestConfig` for
+ * submitting a swap request.
+ * @param swapRequest - `SwapRequest` consists of 3 fields:
+ *   - fromAsset: Unit of the asset A to be converted
+ *   - quantity: Amount of asset A
+ *   - toAsset: Unit of desired asset B
+ */
+export const mkSingleRequestConfig = (
+  swapRequest: SwapRequest
+): SingleRequestConfig => {
+  // {{{
+  return {
+    scriptCBOR: singleSpendingValidator.cborHex,
+    routeRequest: mkRouteRequest(swapRequest),
+    additionalRequiredLovelaces: 0n,
+  };
+  // }}}
+};
+
+/**
+ * Looks up all the UTxOs sitting at Minswap V1 instance of smart handles'
+ * single spend script, and only keeps the ones with `AdvancedDatum`s, which
+ * their `mOwner` field equals the given `userAddress` in `Preprod` network.
+ * @param lucid - LucidEvolution API object
+ * @param userAddress - Address of the user who had previously submitted request
+ *        UTxOs at Minswap V1 instance of smart handles' batch spend script
+ *        instance
+ */
+export const fetchUsersSingleRequestUTxOs = async (
+  lucid: LucidEvolution,
+  userAddress: Address
+): Promise<MinswapV1RequestUTxO[]> => {
+  // {{{
+  return await fetchUsersRequestUTxOs(
+    singleSpendingValidator.cborHex,
+    lucid,
+    userAddress
+  );
+  // }}}
+};
+
+/**
+ * Given a request `OutRef`, this function returns a `SingleReclaimConfig` for
+ * Minswap V1 instance of smart handles.
+ * @param requestOutRef - Output reference of the swap request UTxO at smart
+ *        handles
+ */
+export const mkSingleReclaimConfig = (
+  requestOutRef: OutRef
+): SingleReclaimConfig => {
+  // {{{
+  return {
+    scriptCBOR: singleSpendingValidator.cborHex,
+    reclaimConfig: mkReclaimConfig(requestOutRef),
+  };
+  // }}}
+};
+
+/**
+ * Given a `slippageTolerance` and UTxO `outRef`, this function determines asset
+ * "A" from value of the UTxO, to be converted to desired asset "B" specified in
+ * datum of the UTxO, and uses Blockfrost to find the current exchange rate.
+ * @param slippageTolerance - Swap slippage tolerance in percentages
+ *        (e.g. 10 -> 10%)
+ * @param outRef - Output reference of the UTxO at smart handles instance to be
+ *        swapped
+ * @param network - Target network, used for both Blockfrost, and generating
+ *        Bech32 address of the owner, extracted from input datum
+ */
+export const mkSingleRouteConfig = async (
+  slippageTolerance: bigint,
+  outRefs: OutRef[],
+  network: Network
+): Promise<Result<BatchRouteConfig>> => {
+  // {{{
+  const allRouteConfigRes = await Promise.all(
+    outRefs.map(async (outRef) => {
+      return await mkRouteConfig(slippageTolerance, outRef, network);
+    })
+  );
+  const allRouteConfigs: RouteConfig[] = [];
+  const allFailures = validateItems(
+    allRouteConfigRes,
+    (routeConfigRes) => {
+      if (routeConfigRes.type == "error") {
+        return errorToString(routeConfigRes.error);
+      } else {
+        allRouteConfigs.push(routeConfigRes.data);
+      }
+    },
+    true
+  );
+  if (allFailures.length > 0) {
+    return {
+      type: "error",
+      error: collectErrorMsgs(allFailures, "mkBatchRouteConfig"),
+    };
+  } else {
+    return {
+      type: "ok",
+      data: {
+        stakingScriptCBOR: stakingValidator.cborHex,
+        routeAddress:
+          network === "Mainnet"
+            ? MINSWAP_ADDRESS_MAINNET
+            : MINSWAP_ADDRESS_PREPROD,
+        routeConfigs: allRouteConfigs,
+      },
+    };
+  }
+  // }}}
+};
+// }}}
+// ----------------------------------------------------------------------------
+
+// BATCH CONFIG MAKERS --------------------------------------------------------
+// {{{
 /**
  * Given a list of `SwapRequest` values, this function creates a
  * `BatchRequestConfig` for submitting multiple swap requests in a single
  * transaction.
- * @param swapRequests - Each `SwapRequest`onsists of 3 fields:
+ * @param swapRequests - Each `SwapRequest` consists of 3 fields:
  *   - fromAsset: Unit of the asset A to be converted
  *   - quantity: Amount of asset A
  *   - toAsset: Unit of desired asset B
@@ -404,33 +569,27 @@ export const fetchUsersBatchRequestUTxOs = async (
   userAddress: Address
 ): Promise<MinswapV1RequestUTxO[]> => {
   // {{{
-  const allBatchRequests: UTxO[] = await fetchBatchRequestUTxOs(
-    lucid,
+  return await fetchUsersRequestUTxOs(
     stakingValidator.cborHex,
-    "Preprod"
+    lucid,
+    userAddress
   );
-  console.log("Fetch completed:");
-  const initUsersRequests: (MinswapV1RequestUTxO | undefined)[] =
-    allBatchRequests.map((utxo) => {
-      const datumRes = parseSafeDatum<SmartHandleDatum>(
-        utxo.datum,
-        SmartHandleDatum
-      );
-      if (datumRes.type == "right") {
-        if ("mOwner" in datumRes.value && datumRes.value.mOwner) {
-          if (toAddress(datumRes.value.mOwner, "Preprod") == userAddress) {
-            return { ...utxo, datum: datumRes.value };
-          } else {
-            return undefined;
-          }
-        } else {
-          return undefined;
-        }
-      } else {
-        return undefined;
-      }
-    });
-  return initUsersRequests.filter((u) => u !== undefined);
+  // }}}
+};
+
+/**
+ * Given a list of request `OutRef` values, this function returns a
+ * `BatchReclaimConfig` for Minswap V1 instance of smart handles.
+ * @param requestOutRefs - List of output references of UTxOs at smart handles
+ */
+export const mkBatchReclaimConfig = (
+  requestOutRefs: OutRef[]
+): BatchReclaimConfig => {
+  // {{{
+  return {
+    stakingScriptCBOR: stakingValidator.cborHex,
+    reclaimConfigs: requestOutRefs.map(mkReclaimConfig),
+  };
   // }}}
 };
 
@@ -489,3 +648,5 @@ export const mkBatchRouteConfig = async (
   }
   // }}}
 };
+// }}}
+// ----------------------------------------------------------------------------
