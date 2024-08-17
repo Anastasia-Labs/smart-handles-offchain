@@ -8,7 +8,7 @@ import {
   paymentCredentialOf,
 } from "../src/index.js";
 import { beforeEach, expect, test } from "vitest";
-import { LucidContext, createUser } from "./utils.js";
+import { LucidContext, createUser, submitAdaToMinRequest, unsafeFromOk } from "./utils.js";
 import {
   fetchUsersSingleRequestUTxOs,
   mkSingleReclaimConfig,
@@ -36,67 +36,23 @@ test<LucidContext>("Test - Request Single Swap, Reclaim", async ({
   users,
   emulator,
 }) => {
-  const requestConfigRes = await mkSingleRequestConfig(
-    {
-      fromAsset: "lovelace",
-      quantity: BigInt(50_000_000),
-      toAsset: toUnit(MIN_SYMBOL_PREPROD, MIN_TOKEN_NAME),
-    },
-    "Custom"
-  );
+  await submitAdaToMinRequest(emulator, lucid, users.user1.seedPhrase);
 
-  if (requestConfigRes.type == "error") throw requestConfigRes.error;
-
-  const requestConfig = requestConfigRes.data;
-
-  lucid.selectWallet.fromSeed(users.user1.seedPhrase);
-
-  // NOTE: Singular Swap Request 1
-  const requestUnsigned = await singleRequest(lucid, requestConfig);
-  if (requestUnsigned.type == "error") {
-    console.log("================ SINGLE REQUEST FAILED ===============");
-    console.log(requestUnsigned.error);
-  }
-
-  expect(requestUnsigned.type).toBe("ok");
-  if (requestUnsigned.type == "ok") {
-    // console.log(requestUnsigned.data.txComplete.to_json());
-    const requestSigned = await requestUnsigned.data.sign
-      .withWallet()
-      .complete();
-    console.log("SINGLE REQUEST TX:", requestSigned.toCBOR());
-    const requestTxHash = await requestSigned.submit();
-    console.log("SINGLE REQUEST TX HASH:", requestTxHash);
-  }
-
-  emulator.awaitBlock(100);
-
-  // NOTE: Swap Request 1
-  const userRequests1Res = await fetchUsersSingleRequestUTxOs(
+  const userRequests1 = unsafeFromOk(await fetchUsersSingleRequestUTxOs(
     lucid,
     users.user1.address,
-  );
-
-  if (userRequests1Res.type == "error") throw userRequests1Res.error;
-  const userRequests1 = userRequests1Res.data;
+  ));
 
   console.log(
     "REQUESTS OF USER WITH PAYMENT CRED. OF:",
     paymentCredentialOf(users.user1.address)
   );
   console.log(userRequests1);
-  // console.log("user1 Requests", userRequests1);
-  // console.log(
-  //   "utxos at user1 wallet",
-  //   await lucid.utxosAt(users.user1.address)
-  // );
 
-  const reclaimConfigRes = mkSingleReclaimConfig(
+  const reclaimConfig = unsafeFromOk(mkSingleReclaimConfig(
     userRequests1[0].outRef,
     "Custom"
-  );
-  if (reclaimConfigRes.type == "error") throw reclaimConfigRes.error;
-  const reclaimConfig: SingleReclaimConfig = reclaimConfigRes.data;
+  ));
 
   // NOTE: Invalid Reclaim 1
   lucid.selectWallet.fromSeed(users.user2.seedPhrase);
@@ -108,25 +64,13 @@ test<LucidContext>("Test - Request Single Swap, Reclaim", async ({
 
   expect(invalidReclaim.type).toBe("error");
 
-  // console.log("Invalid Reclaim 1");
-  // console.log(`Failed. Response: ${invalidReclaim.error}`);
-
   // NOTE: Valid Reclaim 1
   lucid.selectWallet.fromSeed(users.user1.seedPhrase);
-  const reclaimUnsigned1 = await singleReclaim(lucid, reclaimConfig);
-
-  if (reclaimUnsigned1.type == "error") {
-    console.log("================ SINGLE RECLAIM FAILED ===============");
-    console.log(reclaimUnsigned1.error);
-  }
-
-  expect(reclaimUnsigned1.type).toBe("ok");
+  const reclaimUnsigned1 = unsafeFromOk(await singleReclaim(lucid, reclaimConfig));
 
   // Typescript seems to be confused without this check.
-  if (reclaimUnsigned1.type == "ok") {
-    const reclaimSigned1 = await reclaimUnsigned1.data.sign
-      .withWallet()
-      .complete();
-    const reclaimSignedHash1 = await reclaimSigned1.submit();
-  }
+  const reclaimSigned1 = await reclaimUnsigned1.sign
+    .withWallet()
+    .complete();
+  const reclaimSignedHash1 = await reclaimSigned1.submit();
 }, 60_000);

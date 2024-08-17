@@ -15,10 +15,11 @@ import {
   LucidEvolution,
   scriptHashToCredential,
   credentialToAddress,
+  paymentCredentialOf,
 } from "@lucid-evolution/lucid";
-import { AddressD, Value } from "../contract.types.js";
-import { Either, ReadableUTxO, Result } from "../types.js";
-import { INSUFFICIENT_ADA_ERROR_MSG, LOVELACE_MARGIN } from "../constants.js";
+import { AddressD, AdvancedDatumFields, SimpleDatumFields, Value, parseAdvancedDatum, parseSimpleDatum } from "../contract.types.js";
+import { Either, InputUTxOAndItsOutputInfo, ReadableUTxO, Result } from "../types.js";
+import { INSUFFICIENT_ADA_ERROR_MSG, LOVELACE_MARGIN, UNAUTHORIZED_OWNER_ERROR_MSG } from "../constants.js";
 
 export function ok<T>(x: T): Result<T> {
   return {
@@ -497,3 +498,53 @@ export function genericCatch(error: any): Result<any> {
     error: new Error(errorToString(error)),
   };
 }
+
+export const validateUTxOAndConfig = (
+  utxo: UTxO,
+  configKind: "simple" | "advanced",
+  configOutRef: OutRef,
+  simpleOutputBuilder: (u: UTxO, sF: SimpleDatumFields) => Result<InputUTxOAndItsOutputInfo>,
+  advancedOutputBuilder: (u: UTxO, aF: AdvancedDatumFields) => Result<InputUTxOAndItsOutputInfo>,
+  network: Network,
+): Result<InputUTxOAndItsOutputInfo> => {
+  // {{{
+  const configMatchesUTxO =
+    configOutRef.txHash === utxo.txHash &&
+    configOutRef.outputIndex === utxo.outputIndex;
+  if (!configMatchesUTxO) {
+    return {
+      type: "error",
+      error: new Error(
+        "Provided reclaim config does not correspond to the provided UTxO."
+      ),
+    };
+  }
+  if (utxo.datum) {
+    if (configKind == "simple") {
+      const simpleFieldsRes = parseSimpleDatum(utxo.datum, network);
+      if (simpleFieldsRes.type == "ok") {
+        return simpleOutputBuilder(utxo, simpleFieldsRes.data);
+      } else {
+        return genericCatch(new Error("Expected simple datum, but failed to parse"));
+      }
+    } else {
+      const advancedFieldsRes = parseAdvancedDatum(utxo.datum, network);
+      if (advancedFieldsRes.type == "ok") {
+        return advancedOutputBuilder(utxo, advancedFieldsRes.data);
+      } else {
+        return {
+          type: "error",
+          error: new Error(
+            "This advanced UTxO has no owner specified, and therefore cannot be reclaimed."
+          ),
+        };
+      }
+    }
+  } else {
+    return {
+      type: "error",
+      error: new Error("Specified UTxO doesn't have a datum"),
+    };
+  }
+  // }}}
+};

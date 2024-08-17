@@ -20,6 +20,7 @@ import {
   printUTxOOutRef,
   reduceLovelacesOfAssets,
   validateItems,
+  validateUTxOAndConfig,
 } from "../core/utils/index.js";
 import {
   Result,
@@ -28,15 +29,13 @@ import {
   InputUTxOAndItsOutputInfo,
   ReclaimConfig,
 } from "../core/types.js";
-import { parseAdvancedDatum, parseSimpleDatum } from "../core/contract.types.js";
+import { AdvancedDatumFields, SimpleDatumFields, parseAdvancedDatum, parseSimpleDatum } from "../core/contract.types.js";
+import {UNAUTHORIZED_OWNER_ERROR_MSG} from "../index.js";
 // }}}
 // ----------------------------------------------------------------------------
 
 // UTILITY FUNCTIONS ----------------------------------------------------------
 // {{{
-const UNAUTHORIZED_OWNER_ERROR_MSG: string =
-  "Signer is not authorized to claim the UTxO";
-
 /**
  * Given a UTxO and its corresponding `ReclaimConfig`, this function returns an
  * `InputUTxOAndItsOutputInfo` which carries enough information for the tx
@@ -57,89 +56,84 @@ const utxoToOutputInfo = (
   network: Network
 ): Result<InputUTxOAndItsOutputInfo> => {
   // {{{
-  const configMatchesUTxO =
-    reclaimConfig.data.requestOutRef.txHash === utxo.txHash &&
-    reclaimConfig.data.requestOutRef.outputIndex === utxo.outputIndex;
-  if (!configMatchesUTxO) {
-    return {
-      type: "error",
-      error: new Error(
-        "Provided reclaim config does not correspond to the provided UTxO."
-      ),
-    };
-  }
-
-  if (utxo.datum) {
-    if (reclaimConfig.kind == "simple") {
-      const simpleFieldsRes = parseSimpleDatum(utxo.datum, network);
-      if (simpleFieldsRes.type == "ok") {
-        const datumBelongsToOwner =
-          paymentCredentialOf(simpleFieldsRes.data.owner) == paymentCredentialOf(selectedWalletAddress);
-        if (datumBelongsToOwner) {
-          return {
-            type: "ok",
-            data: {
-              utxo,
-              redeemerBuilder: {
-                kind: "self",
-                makeRedeemer: (_ownIndex) => Data.to(new Constr(1, [])),
-              },
-            },
-          };
-        } else {
-          return {
-            type: "error",
-            error: new Error(UNAUTHORIZED_OWNER_ERROR_MSG),
-          };
-        }
-      } else {
-        return genericCatch(new Error("Expected simple datum, but failed to parse"));
-      }
-    } else {
-      const advancedFieldsRes = parseAdvancedDatum(utxo.datum, network);
-      if (advancedFieldsRes.type == "ok" && advancedFieldsRes.data.mOwner) {
-        const outputAssetsRes = reduceLovelacesOfAssets(
-          utxo.assets,
-          advancedFieldsRes.data.reclaimRouterFee,
-          reclaimConfig.data.extraLovelacesToBeLocked,
-        );
-        if (outputAssetsRes.type == "error") return outputAssetsRes;
+  return validateUTxOAndConfig(
+    utxo,
+    reclaimConfig.kind,
+    reclaimConfig.data.requestOutRef,
+    (u: UTxO, simpleFields: SimpleDatumFields): Result<InputUTxOAndItsOutputInfo> => {
+      // {{{
+      const datumBelongsToOwner =
+        paymentCredentialOf(simpleFields.owner) == paymentCredentialOf(selectedWalletAddress);
+      if (datumBelongsToOwner) {
         return {
           type: "ok",
           data: {
-            utxo,
+            utxo: u,
             redeemerBuilder: {
               kind: "self",
-              // If the UTxO is spent from a `single` smart handles, use
-              // `AdvancedReclaim`, Otherwise use `ReclaimSmart` of the batch
-              // spend validator.
-              makeRedeemer: (ownIndex) =>
-                Data.to(
-                  forSingle ? new Constr(2, [ownIndex, 0n]) : new Constr(1, [])
-                ),
-            },
-            outputAddress: advancedFieldsRes.data.mOwner,
-            scriptOutput: {
-              outputAssets: outputAssetsRes.data,
-              outputDatum: reclaimConfig.data.outputDatum,
+              makeRedeemer: (_ownIndex) => Data.to(new Constr(1, [])),
             },
           },
         };
       } else {
         return {
           type: "error",
+          error: new Error(UNAUTHORIZED_OWNER_ERROR_MSG),
+        };
+      }
+      // }}}
+    },
+    (u: UTxO, advancedFields: AdvancedDatumFields): Result<InputUTxOAndItsOutputInfo> => {
+      // {{{
+      if (reclaimConfig.kind == "advanced") {
+        if (advancedFields.mOwner) {
+          const outputAssetsRes = reduceLovelacesOfAssets(
+            utxo.assets,
+            advancedFields.reclaimRouterFee,
+            reclaimConfig.kind == "advanced" ? reclaimConfig.data.extraLovelacesToBeLocked : 0n,
+          );
+          if (outputAssetsRes.type == "error") return outputAssetsRes;
+          return {
+            type: "ok",
+            data: {
+              utxo: u,
+              redeemerBuilder: {
+                kind: "self",
+                // If the UTxO is spent from a `single` smart handles, use
+                // `AdvancedReclaim`, Otherwise use `ReclaimSmart` of the batch
+                // spend validator.
+                makeRedeemer: (ownIndex) =>
+                  Data.to(
+                    forSingle ? new Constr(2, [ownIndex, 0n]) : new Constr(1, [])
+                  ),
+              },
+              outputAddress: advancedFields.mOwner,
+              scriptOutput: {
+                outputAssets: outputAssetsRes.data,
+                outputDatum: reclaimConfig.data.outputDatum,
+              },
+            },
+          };
+        } else {
+          return {
+            type: "error",
+            error: new Error(
+              "This advanced UTxO has no owner specified, and therefore cannot be reclaimed."
+            ),
+          };
+        }
+      } else {
+        return {
+          type: "error",
           error: new Error(
-            "This advanced UTxO has no owner specified, and therefore cannot be reclaimed."
+            "Bad config (expected advanced, but got simple)"
           ),
         };
       }
-    }
-  } else {
-    return {
-      type: "error",
-      error: new Error("Specified UTxO doesn't have a datum"),
-    };
-  }
+      // }}}
+    },
+    network,
+  );
   // }}}
 };
 

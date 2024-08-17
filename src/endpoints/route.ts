@@ -54,11 +54,6 @@ const utxoToOutputInfo = async (
   forSingle: boolean
 ): Promise<Result<InputUTxOAndItsOutputInfo>> => {
   // {{{
-  const datum = parseSafeDatum(utxo.datum, SmartHandleDatum);
-  if (datum.type == "left")
-    return { type: "error", error: new Error(datum.value) };
-  const smartHandleDatum = datum.value;
-
   const configMatchesUTxO =
     routeConfig.requestOutRef.txHash === utxo.txHash &&
     routeConfig.requestOutRef.outputIndex === utxo.outputIndex;
@@ -70,6 +65,11 @@ const utxoToOutputInfo = async (
       ),
     };
   }
+
+  const datum = parseSafeDatum(utxo.datum, SmartHandleDatum);
+  if (datum.type == "left")
+    return { type: "error", error: new Error(datum.value) };
+  const smartHandleDatum = datum.value;
 
   let outputAssetsRes: Result<Assets>;
   let outputDatumRes: Result<OutputDatum>;

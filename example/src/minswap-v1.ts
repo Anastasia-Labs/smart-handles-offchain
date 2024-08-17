@@ -581,6 +581,7 @@ export const mkSingleRouteConfig = async (
  *   - fromAsset: Unit of the asset A to be converted
  *   - quantity: Amount of asset A
  *   - toAsset: Unit of desired asset B
+ * @param network - Target network, used for figuring out the swap address
  */
 export const mkBatchRequestConfig = async (
   swapRequests: SwapRequest[],

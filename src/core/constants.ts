@@ -12,3 +12,5 @@ export const INSUFFICIENT_ADA_ERROR_MSG = "Insufficient ADA";
  */
 export const ROUTER_FEE = 1_000_000n;
 
+export const UNAUTHORIZED_OWNER_ERROR_MSG: string =
+  "Signer is not authorized to claim the UTxO";
