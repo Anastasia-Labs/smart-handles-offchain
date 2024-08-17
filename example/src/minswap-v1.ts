@@ -9,8 +9,7 @@ import {
 } from "@minswap/sdk";
 import {
   Address,
-  AdvancedDatum,
-  AdvancedOutputDatumMaker,
+  AdvancedDatumFields,
   AdvancedReclaimConfig,
   AdvancedRouteRequest,
   Asset,
@@ -24,6 +23,7 @@ import {
   Network,
   OutRef,
   OutputDatum,
+  OutputDatumMaker,
   ROUTER_FEE,
   ReclaimConfig,
   Result,
@@ -31,18 +31,23 @@ import {
   RouteRequest,
   SingleReclaimConfig,
   SingleRequestConfig,
+  SingleRouteConfig,
   SmartHandleDatum,
   UTxO,
   Unit,
+  applyParamsToScript,
   collectErrorMsgs,
   errorToString,
   fetchBatchRequestUTxOs,
+  fetchSingleRequestOutRefs,
   fromAddress,
+  fromAddressToData,
   fromUnit,
   genericCatch,
+  ok,
+  parseAdvancedDatum,
   parseSafeDatum,
   toAddress,
-  toUnit,
   validateItems,
 } from "../../src/index.js";
 import {
@@ -64,6 +69,22 @@ import stakingValidator from "./uplc/smartHandleStake.json";
 
 // UTILITY FUNCTIONS ----------------------------------------------------------
 // {{{
+const applyMinswapAddressToCBOR = (
+  cbor: string,
+  network: Network
+): Result<string> => {
+  // {{{
+  const addressRes = fromAddressToData(
+    network === "Mainnet" ? MINSWAP_ADDRESS_MAINNET : MINSWAP_ADDRESS_PREPROD
+  );
+  if (addressRes.type == "error") return addressRes;
+  return {
+    type: "ok",
+    data: applyParamsToScript(cbor, [addressRes.data]),
+  };
+  // }}}
+};
+
 const CACHE_REFETCH_THRESHOLD = 600000;
 let CACHED_POOL_STATES: PoolState[] = [];
 let pool_states_cache_date = new Date(0);
@@ -191,43 +212,82 @@ export type SwapRequest = {
  * Helper function for creating a `RouteRequest` for a swap request. `Asset` is
  * identical to "unit," i.e. concatenation of asset's policy with its token name
  * in hex format.
+ *
+ * This function uses Blockfrost to determine the exchange rate, and stores it
+ * in the `minimumReceive` field of `extraInfo`.
+ *
  * @param swapRequest - Consists of 3 fields:
  *   - fromAsset: Unit of the asset A to be converted
  *   - quantity: Amount of asset A
  *   - toAsset: Unit of desired asset B
+ * @param network - Target network
  */
-const mkRouteRequest = ({
-  fromAsset,
-  quantity,
-  toAsset,
-}: SwapRequest): RouteRequest => {
+const mkRouteRequest = async (
+  { fromAsset, quantity, toAsset }: SwapRequest,
+  network: Network
+): Promise<Result<RouteRequest>> => {
   // {{{
   const minLovelaces = MINSWAP_BATCHER_FEE + MINSWAP_DEPOSIT + ROUTER_FEE;
-  const splitUnit = fromUnit(toAsset);
+  const valueToLock =
+    fromAsset === "lovelace"
+      ? {
+          lovelace: minLovelaces + quantity,
+        }
+      : {
+          lovelace: minLovelaces,
+          [fromAsset]: quantity,
+        };
+
+  const blockfrostKey = process.env.BLOCKFROST_KEY;
+  if (!blockfrostKey)
+    return {
+      type: "error",
+      error: new Error("No Blockfrost API key was found"),
+    };
+  const blockfrostAdapter = new BlockfrostAdapter({
+    blockFrost: new BlockFrostAPI({
+      projectId: blockfrostKey,
+      network: network === "Mainnet" ? "mainnet" : "preprod",
+    }),
+  });
+  const poolStateRes = await getPoolStateFromAssets(
+    blockfrostAdapter,
+    fromAsset,
+    toAsset
+  );
+  if (poolStateRes.type == "error") return poolStateRes;
+  const poolState = poolStateRes.data;
+
+  const { amountOut } = calculateSwapExactIn({
+    amountIn: quantity,
+    reserveIn: poolState.reserveA,
+    reserveOut: poolState.reserveB,
+  });
+
+  const { policyId, assetName } =
+    toAsset === "" ? { policyId: "", assetName: "" } : fromUnit(toAsset);
   const advancedRouteRequest: AdvancedRouteRequest = {
-    valueToLock:
-      fromAsset === "lovelace"
-        ? {
-            lovelace: minLovelaces + quantity,
-          }
-        : {
-            lovelace: minLovelaces,
-            [fromAsset]: quantity,
-          },
+    valueToLock,
     markWalletAsOwner: true,
     routerFee: ROUTER_FEE,
     reclaimRouterFee: 0n,
     extraInfo: Data.to(
       {
-        desiredAssetSymbol: splitUnit.policyId,
-        desiredAssetTokenName: splitUnit.assetName ?? "",
+        desiredAssetSymbol: policyId,
+        desiredAssetTokenName: assetName ?? "",
+        receiverDatumHash: null,
+        minimumReceive: amountOut,
       },
       MinswapRequestInfo
     ),
   };
+
   return {
-    kind: "advanced",
-    data: advancedRouteRequest,
+    type: "ok",
+    data: {
+      kind: "advanced",
+      data: advancedRouteRequest,
+    },
   };
   // }}}
 };
@@ -253,15 +313,19 @@ const mkReclaimConfig = (requestOutRef: OutRef): ReclaimConfig => {
 };
 
 /**
- * Given a `slippageTolerance` and UTxO `outRef`, this function determines asset
- * "A" from value of the UTxO, to be converted to desired asset "B" specified in
- * datum of the UTxO, and uses Blockfrost to find the current exchange rate.
+ * Given a `slippageTolerance` and UTxO `outRef`, this function provides the
+ * output datum maker required by `RouteConfig` based on the stored
+ * `MinswapRequestInfo` stored in the UTxO fetched using `outRef`.
+ *
+ * Two additional checks are: there are no more than 2 assets stored in the
+ * UTxO, and that an owner is specified in the input advanced datum.
+ *
  * @param slippageTolerance - Swap slippage tolerance in percentages
  *        (e.g. 10 -> 10%)
  * @param outRef - Output reference of the UTxO at smart handles instance to be
  *        swapped
- * @param network - Target network, used for both Blockfrost, and generating
- *        Bech32 address of the owner, extracted from input datum
+ * @param network - Target network, used for generating Bech32 address of the
+ *        owner, extracted from input datum
  */
 const mkRouteConfig = async (
   slippageTolerance: bigint,
@@ -269,23 +333,9 @@ const mkRouteConfig = async (
   network: Network
 ): Promise<Result<RouteConfig>> => {
   // {{{
-  const blockfrostKey = process.env.BLOCKFROST_KEY;
-  if (!blockfrostKey)
-    return {
-      type: "error",
-      error: new Error("No Blockfrost API key was found"),
-    };
-
-  const blockfrostAdapter = new BlockfrostAdapter({
-    blockFrost: new BlockFrostAPI({
-      projectId: blockfrostKey,
-      network: network === "Mainnet" ? "mainnet" : "preprod",
-    }),
-  });
-
   const outputDatumMaker = async (
     inputAssets: Assets,
-    inputDatum: AdvancedDatum
+    inputDatum: SmartHandleDatum
   ): Promise<Result<OutputDatum>> => {
     // {{{
     const units = Object.keys(inputAssets);
@@ -296,47 +346,23 @@ const mkRouteConfig = async (
         error: new Error("More than 2 assets were found in the smart UTxO"),
       };
 
-    const fromAssetStr =
-      units.length == 2
-        ? units.filter((k: string) => k != "lovelace")[0]
-        : "lovelace";
-
-    const amountIn =
-      fromAssetStr == "lovelace"
-        ? inputAssets["lovelace"] -
-          MINSWAP_BATCHER_FEE -
-          MINSWAP_DEPOSIT -
-          inputDatum.routerFee
-        : inputAssets[fromAssetStr];
+    if ("Owner" in inputDatum)
+      return {
+        type: "error",
+        error: new Error(
+          "Advanced datum expected, but simple datum was encountered"
+        ),
+      };
 
     const minswapRequestInfo = parseSafeDatum(
-      Data.from(Data.to(inputDatum.extraInfo)),
+      Data.from(Data.to(inputDatum.ExtraInfo)),
       MinswapRequestInfo
     );
 
     if (minswapRequestInfo.type == "left")
       return { type: "error", error: new Error(minswapRequestInfo.value) };
 
-    const poolStateRes = await getPoolStateFromAssets(
-      blockfrostAdapter,
-      fromAssetStr,
-      toUnit(
-        minswapRequestInfo.value.desiredAssetSymbol,
-        minswapRequestInfo.value.desiredAssetTokenName
-      )
-    );
-
-    if (poolStateRes.type == "error") return poolStateRes;
-
-    const poolState = poolStateRes.data;
-
-    const { amountOut } = calculateSwapExactIn({
-      amountIn,
-      reserveIn: poolState.reserveA,
-      reserveOut: poolState.reserveB,
-    });
-
-    if (inputDatum.mOwner === null)
+    if (inputDatum.MOwner === null)
       return {
         type: "error",
         error: new Error("Locked UTxO encountered: no owners are specified"),
@@ -347,8 +373,9 @@ const mkRouteConfig = async (
         policyId: minswapRequestInfo.value.desiredAssetSymbol,
         tokenName: minswapRequestInfo.value.desiredAssetTokenName,
       },
-      toAddress(inputDatum.mOwner, network),
-      (amountOut * (100n - slippageTolerance)) / 100n
+      toAddress(inputDatum.MOwner, network),
+      (minswapRequestInfo.value.minimumReceive * (100n - slippageTolerance)) /
+        100n
     );
     const outputDatum: OutputDatum = {
       kind: "inline",
@@ -364,50 +391,55 @@ const mkRouteConfig = async (
   return {
     type: "ok",
     data: {
-      kind: "advanced",
-      data: {
-        requestOutRef: outRef,
-        extraLovelacesToBeLocked: MINSWAP_DEPOSIT + MINSWAP_BATCHER_FEE,
-        additionalAction: (tx, _utxo) => tx,
-        outputDatumMaker: outputDatumMaker as AdvancedOutputDatumMaker,
-      },
+      requestOutRef: outRef,
+      extraLovelacesToBeLocked: MINSWAP_DEPOSIT + MINSWAP_BATCHER_FEE,
+      additionalAction: (tx, _utxo) => tx,
+      outputDatumMaker: outputDatumMaker as OutputDatumMaker,
     },
   };
   // }}}
 };
 
 const fetchUsersRequestUTxOs = async (
+  forSingle: boolean,
   scriptCBOR: CBORHex,
   lucid: LucidEvolution,
-  userAddress: Address
+  userAddress: Address,
 ): Promise<MinswapV1RequestUTxO[]> => {
   // {{{
-  const allBatchRequests: UTxO[] = await fetchBatchRequestUTxOs(
-    lucid,
-    scriptCBOR,
-    "Preprod"
-  );
-  console.log("Fetch completed:");
+  const network = lucid.config().network;
+  const allRequests: UTxO[] = forSingle
+    ? await fetchSingleRequestOutRefs(lucid, scriptCBOR, network)
+    : await fetchBatchRequestUTxOs(lucid, scriptCBOR, network);
+  console.log("Fetch completed:", allRequests);
   const initUsersRequests: (MinswapV1RequestUTxO | undefined)[] =
-    allBatchRequests.map((utxo) => {
-      const datumRes = parseSafeDatum<SmartHandleDatum>(
-        utxo.datum,
-        SmartHandleDatum
-      );
-      if (datumRes.type == "right") {
-        if ("mOwner" in datumRes.value && datumRes.value.mOwner) {
-          if (toAddress(datumRes.value.mOwner, "Preprod") == userAddress) {
-            return { ...utxo, datum: datumRes.value };
+    allRequests.map((utxo) => {
+      if (utxo.datum) {
+        const advancedRes: Result<AdvancedDatumFields> = parseAdvancedDatum(
+          utxo.datum,
+          network
+        );
+        if (advancedRes.type == "error") {
+          return undefined;
+        } else {
+          if (advancedRes.data.mOwner == userAddress) {
+            return {
+              outRef: {
+                txHash: utxo.txHash,
+                outputIndex: utxo.outputIndex,
+              },
+              datum: advancedRes.data,
+              assets: utxo.assets,
+            };
           } else {
             return undefined;
           }
-        } else {
-          return undefined;
         }
       } else {
         return undefined;
       }
     });
+  // @ts-ignore
   return initUsersRequests.filter((u) => u !== undefined);
   // }}}
 };
@@ -424,22 +456,30 @@ const fetchUsersRequestUTxOs = async (
  *   - quantity: Amount of asset A
  *   - toAsset: Unit of desired asset B
  */
-export const mkSingleRequestConfig = (
-  swapRequest: SwapRequest
-): SingleRequestConfig => {
+export const mkSingleRequestConfig = async (
+  swapRequest: SwapRequest,
+  network: Network
+): Promise<Result<SingleRequestConfig>> => {
   // {{{
-  return {
-    scriptCBOR: singleSpendingValidator.cborHex,
-    routeRequest: mkRouteRequest(swapRequest),
+  const routeRequestRes = await mkRouteRequest(swapRequest, network);
+  if (routeRequestRes.type == "error") return routeRequestRes;
+  const appliedSpendingCBORRes = applyMinswapAddressToCBOR(
+    singleSpendingValidator.cborHex,
+    network
+  );
+  if (appliedSpendingCBORRes.type == "error") return appliedSpendingCBORRes;
+  return ok({
+    scriptCBOR: appliedSpendingCBORRes.data,
+    routeRequest: routeRequestRes.data,
     additionalRequiredLovelaces: 0n,
-  };
+  });
   // }}}
 };
 
 /**
  * Looks up all the UTxOs sitting at Minswap V1 instance of smart handles'
  * single spend script, and only keeps the ones with `AdvancedDatum`s, which
- * their `mOwner` field equals the given `userAddress` in `Preprod` network.
+ * their `MOwner` field equals the given `userAddress` in `network`.
  * @param lucid - LucidEvolution API object
  * @param userAddress - Address of the user who had previously submitted request
  *        UTxOs at Minswap V1 instance of smart handles' batch spend script
@@ -447,14 +487,25 @@ export const mkSingleRequestConfig = (
  */
 export const fetchUsersSingleRequestUTxOs = async (
   lucid: LucidEvolution,
-  userAddress: Address
-): Promise<MinswapV1RequestUTxO[]> => {
+  userAddress: Address,
+): Promise<Result<MinswapV1RequestUTxO[]>> => {
   // {{{
-  return await fetchUsersRequestUTxOs(
+  const appliedSpendingCBORRes = applyMinswapAddressToCBOR(
     singleSpendingValidator.cborHex,
-    lucid,
-    userAddress
+    lucid.config().network
   );
+  if (appliedSpendingCBORRes.type == "error") return appliedSpendingCBORRes;
+  try {
+    const userRequests = await fetchUsersRequestUTxOs(
+        true,
+        appliedSpendingCBORRes.data,
+        lucid,
+        userAddress,
+      );
+    return ok(userRequests);
+  } catch(e) {
+    return genericCatch(e);
+  }
   // }}}
 };
 
@@ -465,13 +516,19 @@ export const fetchUsersSingleRequestUTxOs = async (
  *        handles
  */
 export const mkSingleReclaimConfig = (
-  requestOutRef: OutRef
-): SingleReclaimConfig => {
+  requestOutRef: OutRef,
+  network: Network,
+): Result<SingleReclaimConfig> => {
   // {{{
-  return {
-    scriptCBOR: singleSpendingValidator.cborHex,
+  const appliedSpendingCBORRes = applyMinswapAddressToCBOR(
+    singleSpendingValidator.cborHex,
+    network
+  );
+  if (appliedSpendingCBORRes.type == "error") return appliedSpendingCBORRes;
+  return ok({
+    scriptCBOR: appliedSpendingCBORRes.data,
     reclaimConfig: mkReclaimConfig(requestOutRef),
-  };
+  });
   // }}}
 };
 
@@ -488,45 +545,27 @@ export const mkSingleReclaimConfig = (
  */
 export const mkSingleRouteConfig = async (
   slippageTolerance: bigint,
-  outRefs: OutRef[],
+  outRef: OutRef,
   network: Network
-): Promise<Result<BatchRouteConfig>> => {
+): Promise<Result<SingleRouteConfig>> => {
   // {{{
-  const allRouteConfigRes = await Promise.all(
-    outRefs.map(async (outRef) => {
-      return await mkRouteConfig(slippageTolerance, outRef, network);
-    })
+  const routeConfigRes = await mkRouteConfig(
+    slippageTolerance,
+    outRef,
+    network
   );
-  const allRouteConfigs: RouteConfig[] = [];
-  const allFailures = validateItems(
-    allRouteConfigRes,
-    (routeConfigRes) => {
-      if (routeConfigRes.type == "error") {
-        return errorToString(routeConfigRes.error);
-      } else {
-        allRouteConfigs.push(routeConfigRes.data);
-      }
-    },
-    true
+  if (routeConfigRes.type == "error") return routeConfigRes;
+  const appliedSpendingCBORRes = applyMinswapAddressToCBOR(
+    singleSpendingValidator.cborHex,
+    network
   );
-  if (allFailures.length > 0) {
-    return {
-      type: "error",
-      error: collectErrorMsgs(allFailures, "mkBatchRouteConfig"),
-    };
-  } else {
-    return {
-      type: "ok",
-      data: {
-        stakingScriptCBOR: stakingValidator.cborHex,
-        routeAddress:
-          network === "Mainnet"
-            ? MINSWAP_ADDRESS_MAINNET
-            : MINSWAP_ADDRESS_PREPROD,
-        routeConfigs: allRouteConfigs,
-      },
-    };
-  }
+  if (appliedSpendingCBORRes.type == "error") return appliedSpendingCBORRes;
+  return ok({
+    scriptCBOR: appliedSpendingCBORRes.data,
+    routeAddress:
+      network === "Mainnet" ? MINSWAP_ADDRESS_MAINNET : MINSWAP_ADDRESS_PREPROD,
+    routeConfig: routeConfigRes.data,
+  });
   // }}}
 };
 // }}}
@@ -543,22 +582,52 @@ export const mkSingleRouteConfig = async (
  *   - quantity: Amount of asset A
  *   - toAsset: Unit of desired asset B
  */
-export const mkBatchRequestConfig = (
-  swapRequests: SwapRequest[]
-): BatchRequestConfig => {
+export const mkBatchRequestConfig = async (
+  swapRequests: SwapRequest[],
+  network: Network
+): Promise<Result<BatchRequestConfig>> => {
   // {{{
-  return {
-    stakingScriptCBOR: stakingValidator.cborHex,
-    routeRequests: swapRequests.map(mkRouteRequest),
-    additionalRequiredLovelaces: 0n,
-  };
+  const allRequestConfigRes = await Promise.all(
+    swapRequests.map(async (swapRequest) => {
+      return await mkRouteRequest(swapRequest, network);
+    })
+  );
+  const allRequestConfigs: RouteRequest[] = [];
+  const allFailures = validateItems(
+    allRequestConfigRes,
+    (requestConfigRes) => {
+      if (requestConfigRes.type == "error") {
+        return errorToString(requestConfigRes.error);
+      } else {
+        allRequestConfigs.push(requestConfigRes.data);
+      }
+    },
+    true
+  );
+  if (allFailures.length > 0) {
+    return {
+      type: "error",
+      error: collectErrorMsgs(allFailures, "mkBatchRouteConfig"),
+    };
+  } else {
+    const appliedStakingCBORRes = applyMinswapAddressToCBOR(
+      stakingValidator.cborHex,
+      network
+    );
+    if (appliedStakingCBORRes.type == "error") return appliedStakingCBORRes;
+    return ok({
+      stakingScriptCBOR: appliedStakingCBORRes.data,
+      routeRequests: allRequestConfigs,
+      additionalRequiredLovelaces: 0n,
+    });
+  }
   // }}}
 };
 
 /**
  * Looks up all the UTxOs sitting at Minswap V1 instance of smart handles'
  * batch spend script, and only keeps the ones with `AdvancedDatum`s, which
- * their `mOwner` field equals the given `userAddress` in `Preprod` network.
+ * their `MOwner` field equals the given `userAddress` in `network`.
  * @param lucid - LucidEvolution API object
  * @param userAddress - Address of the user who had previously submitted request
  *        UTxOs at Minswap V1 instance of smart handles' batch spend script
@@ -566,14 +635,25 @@ export const mkBatchRequestConfig = (
  */
 export const fetchUsersBatchRequestUTxOs = async (
   lucid: LucidEvolution,
-  userAddress: Address
-): Promise<MinswapV1RequestUTxO[]> => {
+  userAddress: Address,
+): Promise<Result<MinswapV1RequestUTxO[]>> => {
   // {{{
-  return await fetchUsersRequestUTxOs(
+  const appliedStakingCBORRes = applyMinswapAddressToCBOR(
     stakingValidator.cborHex,
-    lucid,
-    userAddress
+    lucid.config().network
   );
+  if (appliedStakingCBORRes.type == "error") return appliedStakingCBORRes;
+  try {
+    const userRequests = await fetchUsersRequestUTxOs(
+      false,
+      appliedStakingCBORRes.data,
+      lucid,
+      userAddress,
+    );
+    return ok(userRequests);
+  } catch(e) {
+    return genericCatch(e);
+  }
   // }}}
 };
 
@@ -583,13 +663,19 @@ export const fetchUsersBatchRequestUTxOs = async (
  * @param requestOutRefs - List of output references of UTxOs at smart handles
  */
 export const mkBatchReclaimConfig = (
-  requestOutRefs: OutRef[]
-): BatchReclaimConfig => {
+  requestOutRefs: OutRef[],
+  network: Network
+): Result<BatchReclaimConfig> => {
   // {{{
-  return {
-    stakingScriptCBOR: stakingValidator.cborHex,
+  const appliedStakingCBORRes = applyMinswapAddressToCBOR(
+    stakingValidator.cborHex,
+    network
+  );
+  if (appliedStakingCBORRes.type == "error") return appliedStakingCBORRes;
+  return ok({
+    stakingScriptCBOR: appliedStakingCBORRes.data,
     reclaimConfigs: requestOutRefs.map(mkReclaimConfig),
-  };
+  });
   // }}}
 };
 
@@ -634,17 +720,19 @@ export const mkBatchRouteConfig = async (
       error: collectErrorMsgs(allFailures, "mkBatchRouteConfig"),
     };
   } else {
-    return {
-      type: "ok",
-      data: {
-        stakingScriptCBOR: stakingValidator.cborHex,
-        routeAddress:
-          network === "Mainnet"
-            ? MINSWAP_ADDRESS_MAINNET
-            : MINSWAP_ADDRESS_PREPROD,
-        routeConfigs: allRouteConfigs,
-      },
-    };
+    const appliedStakingCBORRes = applyMinswapAddressToCBOR(
+      stakingValidator.cborHex,
+      network
+    );
+    if (appliedStakingCBORRes.type == "error") return appliedStakingCBORRes;
+    return ok({
+      stakingScriptCBOR: appliedStakingCBORRes.data,
+      routeAddress:
+        network === "Mainnet"
+          ? MINSWAP_ADDRESS_MAINNET
+          : MINSWAP_ADDRESS_PREPROD,
+      routeConfigs: allRouteConfigs,
+    });
   }
   // }}}
 };

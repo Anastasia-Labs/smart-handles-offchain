@@ -2,12 +2,12 @@
 // {{{
 import {
   Address,
+  Constr,
   Data,
   LucidEvolution,
   TxSignBuilder,
 } from "@lucid-evolution/lucid";
 import { INSUFFICIENT_ADA_ERROR_MSG, ROUTER_FEE } from "../core/constants.js";
-import { SmartHandleDatum } from "../core/contract.types.js";
 import {
   Result,
   BatchRequestConfig,
@@ -18,7 +18,7 @@ import {
 import {
   collectErrorMsgs,
   enoughLovelacesAreInAssets,
-  fromAddress,
+  fromAddressToData,
   genericCatch,
   getBatchVAs,
   getSingleValidatorVA,
@@ -53,23 +53,39 @@ const enoughLovelacesAreGettingLocked = (
 };
 
 const simpleDatumBuilder = (ownAddress: string): string => {
-  const simpleDatum: SmartHandleDatum = {
-    owner: fromAddress(ownAddress),
-  };
-  return Data.to(simpleDatum, SmartHandleDatum);
+  // const simpleDatum: SmartHandleDatum = {
+  //   Owner: fromAddress(ownAddress),
+  // };
+  const addrRes = fromAddressToData(ownAddress);
+  if (addrRes.type == "error") {
+    return Data.to(new Constr(0, [""]));
+  } else {
+    return Data.to(new Constr(0, [addrRes.data]));
+  }
 };
 
 const advancedDatumBuilder = (
   ownAddress: string,
   routeRequest: AdvancedRouteRequest
 ): string => {
-  const advancedDatum: SmartHandleDatum = {
-    mOwner: routeRequest.markWalletAsOwner ? fromAddress(ownAddress) : null,
-    routerFee: routeRequest.routerFee,
-    reclaimRouterFee: routeRequest.reclaimRouterFee,
-    extraInfo: routeRequest.extraInfo,
-  };
-  return Data.to(advancedDatum, SmartHandleDatum);
+  // const advancedDatum: SmartHandleDatum = {
+  //   MOwner: routeRequest.markWalletAsOwner ? fromAddress(ownAddress) : null,
+  //   RouterFee: routeRequest.routerFee,
+  //   ReclaimRouterFee: routeRequest.reclaimRouterFee,
+  //   ExtraInfo: routeRequest.extraInfo,
+  // };
+  // return Data.to(advancedDatum, SmartHandleDatum);
+  const addrRes = fromAddressToData(ownAddress);
+  let addr: Data = ""
+  if (addrRes.type == "ok") {
+    addr = addrRes.data;
+  }
+  return Data.to(new Constr(1, [
+    routeRequest.markWalletAsOwner ? new Constr(0, [addr]) : new Constr(1, []),
+    routeRequest.routerFee,
+    routeRequest.reclaimRouterFee,
+    routeRequest.extraInfo,
+  ]));
 };
 // }}}
 // ----------------------------------------------------------------------------
@@ -98,6 +114,8 @@ export const singleRequest = async (
 
   try {
     const ownAddress = await lucid.wallet().address();
+    const addrRes = fromAddressToData(ownAddress);
+    if (addrRes.type == "error") return addrRes;
 
     // Implicit assumption that who creates the transaction is the owner.
     // In case of the `Advanced` datum, whether an owner is specified depends on

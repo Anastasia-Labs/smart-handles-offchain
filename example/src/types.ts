@@ -1,7 +1,5 @@
 import {Data} from "@lucid-evolution/lucid";
-import {SmartHandleDatum} from "./index.js";
-import {ReadableUTxO} from "./index.js";
-import {AdvancedDatum} from "./index.js";
+import {AdvancedDatumFields, ReadableUTxO} from "../../src/index.js";
 
 export const CredentialSchema = Data.Enum([
   Data.Object({
@@ -51,6 +49,8 @@ export const AssetClassD = AssetClassSchema as unknown as AssetClassD;
 export const MinswapRequestInfoSchema = Data.Object({
   desiredAssetSymbol: Data.Bytes(),
   desiredAssetTokenName: Data.Bytes(),
+  receiverDatumHash: Data.Nullable(Data.Bytes()),
+  minimumReceive: Data.Integer(),
 });
 export type MinswapRequestInfo = Data.Static<typeof MinswapRequestInfoSchema>;
 export const MinswapRequestInfo =
@@ -76,4 +76,4 @@ export const OrderDatumSchema = Data.Object({
 export type OrderDatum = Data.Static<typeof OrderDatumSchema>;
 export const OrderDatum = OrderDatumSchema as unknown as OrderDatum;
 
-export type MinswapV1RequestUTxO = ReadableUTxO<AdvancedDatum>;
+export type MinswapV1RequestUTxO = ReadableUTxO<AdvancedDatumFields>;

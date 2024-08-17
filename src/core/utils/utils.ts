@@ -20,6 +20,13 @@ import { AddressD, Value } from "../contract.types.js";
 import { Either, ReadableUTxO, Result } from "../types.js";
 import { INSUFFICIENT_ADA_ERROR_MSG, LOVELACE_MARGIN } from "../constants.js";
 
+export function ok<T>(x: T): Result<T> {
+  return {
+    type: "ok",
+    data: x,
+  };
+}
+
 export const utxosAtScript = async (
   lucid: LucidEvolution,
   script: string,

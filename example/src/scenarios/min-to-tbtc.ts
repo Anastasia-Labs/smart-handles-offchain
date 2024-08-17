@@ -50,7 +50,7 @@ export const run = async (
 
     lucid.selectWallet.fromSeed(seedPhrase);
 
-    const requestConfig: BatchRequestConfig = mkBatchRequestConfig(
+    const requestConfigRes = await mkBatchRequestConfig(
       [6_000_000, 4_000_000].map((l) => ({
         fromAsset: toUnit(MIN_SYMBOL_PREPROD, MIN_TOKEN_NAME),
         quantity: BigInt(l),
@@ -58,8 +58,11 @@ export const run = async (
           "e16c2dc8ae937e8d3790c7fd7168d7b994621ba14ca11415f39fed72",
           "74425443"
         ),
-      }))
+      })),
+      "Preprod"
     );
+    if (requestConfigRes.type == "error") throw requestConfigRes.error;
+    const requestConfig: BatchRequestConfig = requestConfigRes.data;
 
     const requestTxUnsignedRes = await batchRequest(lucid, requestConfig);
 
@@ -73,8 +76,12 @@ export const run = async (
     console.log("(switched to the routing agent's wallet)");
 
     console.log("Fetching user's batch requests...");
-    const usersRequests: MinswapV1RequestUTxO[] =
-      await fetchUsersBatchRequestUTxOs(lucid, userAddress);
+    const usersRequestsRes = await fetchUsersBatchRequestUTxOs(
+      lucid,
+      userAddress
+    );
+    if (usersRequestsRes.type == "error") throw usersRequestsRes.error;
+    const usersRequests: MinswapV1RequestUTxO[] = usersRequestsRes.data;
     console.log(usersRequests);
 
     const batchRouteConfigRes = await mkBatchRouteConfig(

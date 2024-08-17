@@ -60,8 +60,8 @@ const utxoToOutputInfo = async (
   const smartHandleDatum = datum.value;
 
   const configMatchesUTxO =
-    routeConfig.data.requestOutRef.txHash === utxo.txHash &&
-    routeConfig.data.requestOutRef.outputIndex === utxo.outputIndex;
+    routeConfig.requestOutRef.txHash === utxo.txHash &&
+    routeConfig.requestOutRef.outputIndex === utxo.outputIndex;
   if (!configMatchesUTxO) {
     return {
       type: "error",
@@ -73,33 +73,26 @@ const utxoToOutputInfo = async (
 
   let outputAssetsRes: Result<Assets>;
   let outputDatumRes: Result<OutputDatum>;
-  if (routeConfig.kind == "simple" && "owner" in smartHandleDatum) {
+  if ("Owner" in smartHandleDatum) {
     outputAssetsRes = reduceLovelacesOfAssets(
       utxo.assets,
       ROUTER_FEE,
-      routeConfig.data.extraLovelacesToBeLocked
+      routeConfig.extraLovelacesToBeLocked
     );
-    outputDatumRes = await routeConfig.data.outputDatumMaker(
-      utxo.assets,
-      smartHandleDatum
-    );
-  } else if (routeConfig.kind == "advanced" && "mOwner" in smartHandleDatum) {
-    outputAssetsRes = reduceLovelacesOfAssets(
-      utxo.assets,
-      smartHandleDatum.routerFee,
-      routeConfig.data.extraLovelacesToBeLocked
-    );
-    outputDatumRes = await routeConfig.data.outputDatumMaker(
+    outputDatumRes = await routeConfig.outputDatumMaker(
       utxo.assets,
       smartHandleDatum
     );
   } else {
-    return {
-      type: "error",
-      error: new Error(
-        "Mismatch of UTxO and `ReclaimConfig`: One is `Simple` while the other is `Advanced`."
-      ),
-    };
+    outputAssetsRes = reduceLovelacesOfAssets(
+      utxo.assets,
+      smartHandleDatum.RouterFee,
+      routeConfig.extraLovelacesToBeLocked
+    );
+    outputDatumRes = await routeConfig.outputDatumMaker(
+      utxo.assets,
+      smartHandleDatum
+    );
   }
   if (outputAssetsRes.type == "error") return outputAssetsRes;
   if (outputDatumRes.type == "error") return outputDatumRes;
@@ -135,7 +128,7 @@ export const singleRoute = async (
 
   try {
     const [utxoToSpend] = await lucid.utxosByOutRef([
-      config.routeConfig.data.requestOutRef,
+      config.routeConfig.requestOutRef,
     ]);
 
     if (!utxoToSpend)
@@ -171,7 +164,7 @@ export const singleRoute = async (
         inOutInfo.scriptOutput!.outputDatum,
         inOutInfo.scriptOutput!.outputAssets
       );
-    const finalTx = config.routeConfig.data.additionalAction(tx, utxoToSpend);
+    const finalTx = config.routeConfig.additionalAction(tx, utxoToSpend);
     return { type: "ok", data: await finalTx.complete() };
   } catch (error) {
     return genericCatch(error);
@@ -194,7 +187,7 @@ export const batchRoute = async (
 
   try {
     const utxosToSpend = await lucid.utxosByOutRef(
-      config.routeConfigs.map((rC: RouteConfig) => rC.data.requestOutRef)
+      config.routeConfigs.map((rC: RouteConfig) => rC.requestOutRef)
     );
 
     if (!utxosToSpend || utxosToSpend.length !== config.routeConfigs.length)
@@ -263,7 +256,7 @@ export const batchRoute = async (
       .attach.WithdrawalValidator(batchVAs.stakeVA.validator);
 
     inUTxOAndOutInfos.map((inOutInfo: InputUTxOAndItsOutputInfo, i: number) => {
-      tx = config.routeConfigs[i].data.additionalAction(tx, inOutInfo.utxo);
+      tx = config.routeConfigs[i].additionalAction(tx, inOutInfo.utxo);
     });
 
     return {

@@ -9,7 +9,7 @@ import {
   UTxO,
   Unit,
 } from "@lucid-evolution/lucid";
-import { AdvancedDatum, SimpleDatum } from "./contract.types.js";
+import { SmartHandleDatum } from "./contract.types.js";
 
 export type RawHex = string;
 export type POSIXTime = number;
@@ -105,33 +105,17 @@ export type BatchReclaimConfig = {
   reclaimConfigs: ReclaimConfig[];
 };
 
-export type CommonRoutingConfig = {
+export type OutputDatumMaker = (
+  inputAssets: Assets,
+  inputDatum: SmartHandleDatum
+) => Promise<Result<OutputDatum>>;
+
+export type RouteConfig = {
   requestOutRef: OutRef;
   extraLovelacesToBeLocked: bigint;
+  outputDatumMaker: OutputDatumMaker;
   additionalAction: (tx: TxBuilder, utxo: UTxO) => TxBuilder;
 };
-
-export type SimpleOutputDatumMaker = (
-  inputAssets: Assets,
-  inputDatum: SimpleDatum
-) => Promise<Result<OutputDatum>>;
-
-export type AdvancedOutputDatumMaker = (
-  inputAssets: Assets,
-  inputDatum: AdvancedDatum
-) => Promise<Result<OutputDatum>>;
-
-export type SimpleRouteConfig = CommonRoutingConfig & {
-  outputDatumMaker: SimpleOutputDatumMaker;
-};
-
-export type AdvancedRouteConfig = CommonRoutingConfig & {
-  outputDatumMaker: AdvancedOutputDatumMaker;
-};
-
-export type RouteConfig =
-  | { kind: "simple"; data: SimpleRouteConfig }
-  | { kind: "advanced"; data: AdvancedRouteConfig };
 
 export type SingleRouteConfig = {
   scriptCBOR: CBORHex;

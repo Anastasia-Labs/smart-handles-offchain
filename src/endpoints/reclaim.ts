@@ -17,10 +17,8 @@ import {
   genericCatch,
   getBatchVAs,
   getSingleValidatorVA,
-  parseSafeDatum,
   printUTxOOutRef,
   reduceLovelacesOfAssets,
-  toAddress,
   validateItems,
 } from "../core/utils/index.js";
 import {
@@ -30,7 +28,7 @@ import {
   InputUTxOAndItsOutputInfo,
   ReclaimConfig,
 } from "../core/types.js";
-import { SimpleDatum, SmartHandleDatum } from "../core/contract.types.js";
+import { parseAdvancedDatum, parseSimpleDatum } from "../core/contract.types.js";
 // }}}
 // ----------------------------------------------------------------------------
 
@@ -38,17 +36,6 @@ import { SimpleDatum, SmartHandleDatum } from "../core/contract.types.js";
 // {{{
 const UNAUTHORIZED_OWNER_ERROR_MSG: string =
   "Signer is not authorized to claim the UTxO";
-
-const simpleDatumBelongsToOwner = (
-  d: SimpleDatum,
-  ownerAddress: string
-): boolean => {
-  return (
-    "PublicKeyCredential" in d.owner.paymentCredential &&
-    d.owner.paymentCredential.PublicKeyCredential[0] ==
-      paymentCredentialOf(ownerAddress).hash
-  );
-};
 
 /**
  * Given a UTxO and its corresponding `ReclaimConfig`, this function returns an
@@ -70,11 +57,6 @@ const utxoToOutputInfo = (
   network: Network
 ): Result<InputUTxOAndItsOutputInfo> => {
   // {{{
-  const datum = parseSafeDatum(utxo.datum, SmartHandleDatum);
-  if (datum.type == "left")
-    return { type: "error", error: new Error(datum.value) };
-  const smartHandleDatum = datum.value;
-
   const configMatchesUTxO =
     reclaimConfig.data.requestOutRef.txHash === utxo.txHash &&
     reclaimConfig.data.requestOutRef.outputIndex === utxo.outputIndex;
@@ -86,67 +68,76 @@ const utxoToOutputInfo = (
       ),
     };
   }
-  if (reclaimConfig.kind == "simple" && "owner" in smartHandleDatum) {
-    if (simpleDatumBelongsToOwner(smartHandleDatum, selectedWalletAddress)) {
-      return {
-        type: "ok",
-        data: {
-          utxo,
-          redeemerBuilder: {
-            kind: "self",
-            makeRedeemer: (_ownIndex) => Data.to(new Constr(1, [])),
-          },
-        },
-      };
+
+  if (utxo.datum) {
+    if (reclaimConfig.kind == "simple") {
+      const simpleFieldsRes = parseSimpleDatum(utxo.datum, network);
+      if (simpleFieldsRes.type == "ok") {
+        const datumBelongsToOwner =
+          paymentCredentialOf(simpleFieldsRes.data.owner) == paymentCredentialOf(selectedWalletAddress);
+        if (datumBelongsToOwner) {
+          return {
+            type: "ok",
+            data: {
+              utxo,
+              redeemerBuilder: {
+                kind: "self",
+                makeRedeemer: (_ownIndex) => Data.to(new Constr(1, [])),
+              },
+            },
+          };
+        } else {
+          return {
+            type: "error",
+            error: new Error(UNAUTHORIZED_OWNER_ERROR_MSG),
+          };
+        }
+      } else {
+        return genericCatch(new Error("Expected simple datum, but failed to parse"));
+      }
     } else {
-      return {
-        type: "error",
-        error: new Error(UNAUTHORIZED_OWNER_ERROR_MSG),
-      };
-    }
-  } else if (reclaimConfig.kind == "advanced" && "mOwner" in smartHandleDatum) {
-    if (smartHandleDatum.mOwner) {
-      const outputAssetsRes = reduceLovelacesOfAssets(
-        utxo.assets,
-        smartHandleDatum.reclaimRouterFee,
-        reclaimConfig.data.extraLovelacesToBeLocked,
-      );
-      if (outputAssetsRes.type == "error") return outputAssetsRes;
-      return {
-        type: "ok",
-        data: {
-          utxo,
-          redeemerBuilder: {
-            kind: "self",
-            // If the UTxO is spent from a `single` smart handles, use
-            // `AdvancedReclaim`, Otherwise use `ReclaimSmart` of the batch
-            // spend validator.
-            makeRedeemer: (ownIndex) =>
-              Data.to(
-                forSingle ? new Constr(2, [ownIndex, 0n]) : new Constr(1, [])
-              ),
+      const advancedFieldsRes = parseAdvancedDatum(utxo.datum, network);
+      if (advancedFieldsRes.type == "ok" && advancedFieldsRes.data.mOwner) {
+        const outputAssetsRes = reduceLovelacesOfAssets(
+          utxo.assets,
+          advancedFieldsRes.data.reclaimRouterFee,
+          reclaimConfig.data.extraLovelacesToBeLocked,
+        );
+        if (outputAssetsRes.type == "error") return outputAssetsRes;
+        return {
+          type: "ok",
+          data: {
+            utxo,
+            redeemerBuilder: {
+              kind: "self",
+              // If the UTxO is spent from a `single` smart handles, use
+              // `AdvancedReclaim`, Otherwise use `ReclaimSmart` of the batch
+              // spend validator.
+              makeRedeemer: (ownIndex) =>
+                Data.to(
+                  forSingle ? new Constr(2, [ownIndex, 0n]) : new Constr(1, [])
+                ),
+            },
+            outputAddress: advancedFieldsRes.data.mOwner,
+            scriptOutput: {
+              outputAssets: outputAssetsRes.data,
+              outputDatum: reclaimConfig.data.outputDatum,
+            },
           },
-          outputAddress: toAddress(smartHandleDatum.mOwner, network),
-          scriptOutput: {
-            outputAssets: outputAssetsRes.data,
-            outputDatum: reclaimConfig.data.outputDatum,
-          },
-        },
-      };
-    } else {
-      return {
-        type: "error",
-        error: new Error(
-          "This advanced UTxO has no owner specified, and therefore cannot be reclaimed."
-        ),
-      };
+        };
+      } else {
+        return {
+          type: "error",
+          error: new Error(
+            "This advanced UTxO has no owner specified, and therefore cannot be reclaimed."
+          ),
+        };
+      }
     }
   } else {
     return {
       type: "error",
-      error: new Error(
-        "Mismatch of UTxO and `ReclaimConfig`: One is `Simple` while the other is `Advanced`."
-      ),
+      error: new Error("Specified UTxO doesn't have a datum"),
     };
   }
   // }}}

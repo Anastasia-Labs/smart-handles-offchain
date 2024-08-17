@@ -1,4 +1,6 @@
-import { Data } from "@lucid-evolution/lucid";
+import { Address, Constr, Data, Network } from "@lucid-evolution/lucid";
+import {Result} from "./types.js";
+import {genericCatch, toAddress} from "./utils/utils.js";
 
 export const OutputReferenceSchema = Data.Object({
   txHash: Data.Object({ hash: Data.Bytes({ minLength: 32, maxLength: 32 }) }),
@@ -57,25 +59,82 @@ export const ValueSchema = Data.Map(
 export type Value = Data.Static<typeof ValueSchema>;
 export const Value = ValueSchema as unknown as Value;
 
-export const SimpleDatumSchema = Data.Object({
-  owner: AddressSchema,
-});
-export type SimpleDatum = Data.Static<typeof SimpleDatumSchema>;
-export const SimpleDatum = SimpleDatumSchema as unknown as SimpleDatum;
-
-export const AdvancedDatumSchema = Data.Object({
-  mOwner: Data.Nullable(AddressSchema),
-  routerFee: Data.Integer(),
-  reclaimRouterFee: Data.Integer(),
-  extraInfo: Data.Any(),
-});
-export type AdvancedDatum = Data.Static<typeof AdvancedDatumSchema>;
-export const AdvancedDatum = AdvancedDatumSchema as unknown as AdvancedDatum;
-
 export const SmartHandleDatumSchema = Data.Enum([
-  SimpleDatumSchema,
-  AdvancedDatumSchema,
+  Data.Object({
+    Owner: AddressSchema,
+  }),
+  Data.Object({
+    MOwner: Data.Nullable(AddressSchema),
+    RouterFee: Data.Integer(),
+    ReclaimRouterFee: Data.Integer(),
+    ExtraInfo: Data.Any(),
+  }),
 ]);
 export type SmartHandleDatum = Data.Static<typeof SmartHandleDatumSchema>;
 export const SmartHandleDatum =
   SmartHandleDatumSchema as unknown as SmartHandleDatum;
+
+export type SimpleDatumFields = {
+  owner: Address;
+}
+
+export type AdvancedDatumFields = {
+  mOwner: Address | null;
+  routerFee: bigint;
+  reclaimRouterFee: bigint;
+  extraInfo: Data;
+}
+
+export const parseSimpleDatum = (
+  cbor: string,
+  network: Network
+): Result<SimpleDatumFields> => {
+  const x0 = Data.from(cbor, Constr<Data>);
+  const x1 = x0 instanceof Constr && x0.index === 0 ? x0.fields : [];
+  const x2 = x1[0] instanceof Constr ? x1[0].fields : [];
+  try {
+    const x3: AddressD = Data.from(Data.to(x2[0]), AddressD);
+    return {
+      type: "ok",
+      data: { owner: toAddress(x3, network) },
+    };
+  } catch (e) {
+    return genericCatch(e);
+  }
+};
+
+export const parseAdvancedDatum = (
+  cbor: string,
+  network: Network
+): Result<AdvancedDatumFields> => {
+  const x0 = Data.from(cbor, Constr<Data>);
+  const x1 = x0 instanceof Constr && x0.index === 1 ? x0.fields : [];
+  if ((x1[1] || x1[1] === 0n) && (x1[2] || x1[2] === 0n) && x1[3]) {
+    const initMOwner =
+      x1[0] instanceof Constr
+        ? x1[0].index === 0
+          ? x1[0].fields[0]
+          : null
+        : null;
+    const routerFee = x1[1] ?? 0n;
+    const reclaimRouterFee = x1[2] ?? 0n;
+    const extraInfo = x1[3];
+    try {
+      return {
+        type: "ok",
+        data: {
+          mOwner: initMOwner
+            ? toAddress(Data.from(Data.to(initMOwner), AddressD), network)
+            : null,
+          routerFee,
+          reclaimRouterFee,
+          extraInfo,
+        },
+      };
+    } catch (e) {
+      return genericCatch(e);
+    }
+  } else {
+    return genericCatch(Error("Couldn't parse advanced datum"));
+  }
+};

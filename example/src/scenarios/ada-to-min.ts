@@ -10,16 +10,15 @@ import {
   LucidEvolution,
   getBatchVAs,
   BatchVAs,
-  SmartHandleDatum,
-  parseSafeDatum,
-  UTxO,
   errorToString,
-  fetchBatchRequestUTxOs,
-  toAddress,
   // } from "@anastasia-labs/smart-handles-offchain";
 } from "../../../src/index.js";
 import { MIN_SYMBOL_PREPROD, MIN_TOKEN_NAME } from "../constants.js";
-import { fetchUsersBatchRequestUTxOs, mkBatchRequestConfig, mkBatchRouteConfig } from "../minswap-v1.js";
+import {
+  fetchUsersBatchRequestUTxOs,
+  mkBatchRequestConfig,
+  mkBatchRouteConfig,
+} from "../minswap-v1.js";
 import { MinswapV1RequestUTxO } from "../types.js";
 
 const registerRewardAddress = async (
@@ -66,15 +65,20 @@ export const run = async (
 
     lucid.selectWallet.fromSeed(seedPhrase);
 
-    const requestConfig: BatchRequestConfig = mkBatchRequestConfig(
+    const requestConfigRes = await mkBatchRequestConfig(
       [50_000_000, 100_000_000, 150_000_000, 200_000_000, 250_000_000].map(
         (l) => ({
           fromAsset: "lovelace",
           quantity: BigInt(l),
           toAsset: toUnit(MIN_SYMBOL_PREPROD, MIN_TOKEN_NAME),
         })
-      )
+      ),
+      "Preprod"
     );
+
+    if (requestConfigRes.type == "error") throw requestConfigRes.error;
+
+    const requestConfig: BatchRequestConfig = requestConfigRes.data;
 
     const requestTxUnsignedRes = await batchRequest(lucid, requestConfig);
 
@@ -104,8 +108,12 @@ export const run = async (
     console.log("(switched to the routing agent's wallet)");
 
     console.log("Fetching user's batch requests...");
-    const usersRequests: MinswapV1RequestUTxO[] =
-      await fetchUsersBatchRequestUTxOs(lucid, userAddress);
+    const usersRequestsRes = await fetchUsersBatchRequestUTxOs(
+      lucid,
+      userAddress
+    );
+    if (usersRequestsRes.type == "error") throw usersRequestsRes.error;
+    const usersRequests: MinswapV1RequestUTxO[] = usersRequestsRes.data;
     console.log(usersRequests);
 
     const batchRouteConfigRes = await mkBatchRouteConfig(
