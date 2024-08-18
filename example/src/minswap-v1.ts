@@ -33,6 +33,7 @@ import {
   SingleRequestConfig,
   SingleRouteConfig,
   SmartHandleDatum,
+  TxSignBuilder,
   UTxO,
   Unit,
   applyParamsToScript,
@@ -330,7 +331,6 @@ const mkReclaimConfig = (requestOutRef: OutRef): ReclaimConfig => {
 const mkRouteConfig = async (
   slippageTolerance: bigint,
   outRef: OutRef,
-  network: Network
 ): Promise<Result<RouteConfig>> => {
   // {{{
   const outputDatumMaker: AdvancedOutputDatumMaker = async (
@@ -373,10 +373,7 @@ const mkRouteConfig = async (
       kind: "inline",
       value: Data.to(orderDatum, OrderDatum),
     };
-    return {
-      type: "ok",
-      data: outputDatum,
-    };
+    return ok(outputDatum);
     // }}}
   };
 
@@ -434,6 +431,23 @@ const fetchUsersRequestUTxOs = async (
   // @ts-ignore
   return initUsersRequests.filter((u) => u !== undefined);
   // }}}
+};
+
+/**
+ * Sign and submit a completed transaction.
+ * @param lucid - Lucid Evolution API object, implicit assumption that signer is
+ *        already selected
+ * @param txRes - Completed transaction, wrapped under a `Result`
+ */
+export const signAndSubmitTxRes = async (
+  lucid: LucidEvolution,
+  txRes: Result<TxSignBuilder>
+): Promise<string> => {
+  if (txRes.type == "error") throw txRes.error;
+  const txSigned = await txRes.data.sign.withWallet().complete();
+  const txHash = await txSigned.submit();
+  await lucid.awaitTx(txHash);
+  return txHash;
 };
 // }}}
 // ----------------------------------------------------------------------------
@@ -544,7 +558,6 @@ export const mkSingleRouteConfig = async (
   const routeConfigRes = await mkRouteConfig(
     slippageTolerance,
     outRef,
-    network
   );
   if (routeConfigRes.type == "error") return routeConfigRes;
   const appliedSpendingCBORRes = applyMinswapAddressToCBOR(
@@ -692,7 +705,7 @@ export const mkBatchRouteConfig = async (
   // {{{
   const allRouteConfigRes = await Promise.all(
     outRefs.map(async (outRef) => {
-      return await mkRouteConfig(slippageTolerance, outRef, network);
+      return await mkRouteConfig(slippageTolerance, outRef);
     })
   );
   const allRouteConfigs: RouteConfig[] = [];

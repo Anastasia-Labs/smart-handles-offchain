@@ -5,9 +5,6 @@ import {
   Lucid,
   toUnit,
   batchRoute,
-  Result,
-  TxSignBuilder,
-  LucidEvolution,
   errorToString,
   // } from "@anastasia-labs/smart-handles-offchain";
 } from "../../../src/index.js";
@@ -16,23 +13,9 @@ import {
   fetchUsersBatchRequestUTxOs,
   mkBatchRequestConfig,
   mkBatchRouteConfig,
+  signAndSubmitTxRes,
 } from "../minswap-v1.js";
 import { MinswapV1RequestUTxO } from "../types.js";
-
-const signAndSubmitTxRes = async (
-  lucid: LucidEvolution,
-  txRes: Result<TxSignBuilder>
-): Promise<string> => {
-  if (txRes.type == "error") throw txRes.error;
-
-  const txSigned = await txRes.data.sign.withWallet().complete();
-
-  const txHash = await txSigned.submit();
-
-  await lucid.awaitTx(txHash);
-
-  return txHash;
-};
 
 export const run = async (
   blockfrostKey: string,
@@ -61,7 +44,7 @@ export const run = async (
       })),
       "Preprod"
     );
-    if (requestConfigRes.type == "error") throw requestConfigRes.error;
+    if (requestConfigRes.type == "error") return requestConfigRes.error;
     const requestConfig: BatchRequestConfig = requestConfigRes.data;
 
     const requestTxUnsignedRes = await batchRequest(lucid, requestConfig);
@@ -80,7 +63,7 @@ export const run = async (
       lucid,
       userAddress
     );
-    if (usersRequestsRes.type == "error") throw usersRequestsRes.error;
+    if (usersRequestsRes.type == "error") return usersRequestsRes.error;
     const usersRequests: MinswapV1RequestUTxO[] = usersRequestsRes.data;
     console.log(usersRequests);
 

@@ -5,12 +5,11 @@ import {
   Lucid,
   toUnit,
   batchRoute,
-  Result,
-  TxSignBuilder,
   LucidEvolution,
   getBatchVAs,
   BatchVAs,
   errorToString,
+  registerRewardAddress,
   // } from "@anastasia-labs/smart-handles-offchain";
 } from "../../../src/index.js";
 import { MIN_SYMBOL_PREPROD, MIN_TOKEN_NAME } from "../constants.js";
@@ -18,36 +17,9 @@ import {
   fetchUsersBatchRequestUTxOs,
   mkBatchRequestConfig,
   mkBatchRouteConfig,
+  signAndSubmitTxRes,
 } from "../minswap-v1.js";
 import { MinswapV1RequestUTxO } from "../types.js";
-
-const registerRewardAddress = async (
-  lucid: LucidEvolution,
-  rewardAddress: string
-): Promise<void> => {
-  const tx = await lucid.newTx().registerStake(rewardAddress).complete();
-
-  const signedTx = await tx.sign.withWallet().complete();
-
-  const txHash = await signedTx.submit();
-
-  await lucid.awaitTx(txHash);
-};
-
-const signAndSubmitTxRes = async (
-  lucid: LucidEvolution,
-  txRes: Result<TxSignBuilder>
-): Promise<string> => {
-  if (txRes.type == "error") throw txRes.error;
-
-  const txSigned = await txRes.data.sign.withWallet().complete();
-
-  const txHash = await txSigned.submit();
-
-  await lucid.awaitTx(txHash);
-
-  return txHash;
-};
 
 export const run = async (
   blockfrostKey: string,
@@ -76,7 +48,7 @@ export const run = async (
       "Preprod"
     );
 
-    if (requestConfigRes.type == "error") throw requestConfigRes.error;
+    if (requestConfigRes.type == "error") return requestConfigRes.error;
 
     const requestConfig: BatchRequestConfig = requestConfigRes.data;
 
@@ -89,14 +61,11 @@ export const run = async (
     // --- REWARD ADDRESS REGISTRATION -----------------------------------------
     // Commented out as the Minswap version of the smart handles contract is
     // already registered on preprod.
-
     const batchVAs: BatchVAs = getBatchVAs(
       requestConfig.stakingScriptCBOR,
       "Preprod"
     );
-
     const rewardAddress = batchVAs.stakeVA.address;
-
     console.log("Registering the staking validator...");
     await registerRewardAddress(lucid, rewardAddress);
     console.log(`Staking validator successfully registered: ${rewardAddress}`);
@@ -112,7 +81,7 @@ export const run = async (
       lucid,
       userAddress
     );
-    if (usersRequestsRes.type == "error") throw usersRequestsRes.error;
+    if (usersRequestsRes.type == "error") return usersRequestsRes.error;
     const usersRequests: MinswapV1RequestUTxO[] = usersRequestsRes.data;
     console.log(usersRequests);
 

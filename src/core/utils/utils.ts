@@ -571,3 +571,20 @@ export const validateUTxOAndConfig = async (
   }
   // }}}
 };
+
+/**
+ * Helper function for submitting a reward address registration contract. Costs
+ * about 2.2 ADA.
+ * @param lucid - Lucid Evolution API object, selected wallet will sign/pay
+ * @param rewardAddress - Bech32 address of the staking key about to be
+ *        registered
+ */
+export const registerRewardAddress = async (
+  lucid: LucidEvolution,
+  rewardAddress: string
+): Promise<void> => {
+  const tx = await lucid.newTx().registerStake(rewardAddress).complete();
+  const signedTx = await tx.sign.withWallet().complete();
+  const txHash = await signedTx.submit();
+  await lucid.awaitTx(txHash);
+};
