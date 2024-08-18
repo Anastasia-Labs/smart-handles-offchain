@@ -1,5 +1,5 @@
 import {MIN_SYMBOL_PREPROD, MIN_TOKEN_NAME} from "../example/src/constants.js";
-import {mkSingleRequestConfig} from "../example/src/minswap-v1.js";
+import {mkBatchRequestConfig, mkSingleRequestConfig} from "../example/src/minswap-v1.js";
 import {
   Emulator,
   LucidEvolution,
@@ -8,6 +8,7 @@ import {
   Result,
   toUnit,
   singleRequest,
+  batchRequest,
 } from "../src/index.js";
 
 export type LucidContext = {
@@ -17,7 +18,7 @@ export type LucidContext = {
 };
 
 export const createUser = () => {
-  return generateEmulatorAccount({ lovelace: BigInt(100_000_000) });
+  return generateEmulatorAccount({ lovelace: BigInt(200_000_000) });
 };
 
 export const getWalletUTxOs = async (lucid: LucidEvolution) => {
@@ -40,7 +41,7 @@ export function unsafeFromOk<T>(res: Result<T>): T {
   }
 }
 
-export const submitAdaToMinRequest = async (
+export const submitAdaToMinSingleRequest = async (
   emulator: Emulator,
   lucid: LucidEvolution,
   userSeedPhrase: string,
@@ -66,5 +67,25 @@ export const submitAdaToMinRequest = async (
   const requestTxHash = await requestSigned.submit();
   console.log("SINGLE REQUEST TX HASH:", requestTxHash);
 
+  emulator.awaitBlock(100);
+};
+
+export const submitAdaToMinBatchRequests = async (
+  lucid: LucidEvolution,
+  emulator: Emulator,
+  userSeedPhrase: string,
+  lovelaces: number[]
+) => {
+  lucid.selectWallet.fromSeed(userSeedPhrase);
+  const requestConfig = unsafeFromOk(await mkBatchRequestConfig(lovelaces.map(l => ({
+    fromAsset: "lovelace",
+    quantity: BigInt(l),
+    toAsset: toUnit(MIN_SYMBOL_PREPROD, MIN_TOKEN_NAME),
+  })), "Custom"));
+  const requestUnsigned = unsafeFromOk(await batchRequest(lucid, requestConfig));
+  const requestSigned = await requestUnsigned.sign
+    .withWallet()
+    .complete();
+  const requestTxHash = await requestSigned.submit();
   emulator.awaitBlock(100);
 };

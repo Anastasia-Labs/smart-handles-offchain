@@ -10,6 +10,7 @@ import {
 import {
   Address,
   AdvancedDatumFields,
+  AdvancedOutputDatumMaker,
   AdvancedReclaimConfig,
   AdvancedRouteRequest,
   Asset,
@@ -23,7 +24,6 @@ import {
   Network,
   OutRef,
   OutputDatum,
-  OutputDatumMaker,
   ROUTER_FEE,
   ReclaimConfig,
   Result,
@@ -69,7 +69,7 @@ import stakingValidator from "./uplc/smartHandleStake.json";
 
 // UTILITY FUNCTIONS ----------------------------------------------------------
 // {{{
-const applyMinswapAddressToCBOR = (
+export const applyMinswapAddressToCBOR = (
   cbor: string,
   network: Network
 ): Result<string> => {
@@ -333,9 +333,9 @@ const mkRouteConfig = async (
   network: Network
 ): Promise<Result<RouteConfig>> => {
   // {{{
-  const outputDatumMaker = async (
+  const outputDatumMaker: AdvancedOutputDatumMaker = async (
     inputAssets: Assets,
-    inputDatum: SmartHandleDatum
+    inputDatum: AdvancedDatumFields
   ): Promise<Result<OutputDatum>> => {
     // {{{
     const units = Object.keys(inputAssets);
@@ -346,23 +346,15 @@ const mkRouteConfig = async (
         error: new Error("More than 2 assets were found in the smart UTxO"),
       };
 
-    if ("Owner" in inputDatum)
-      return {
-        type: "error",
-        error: new Error(
-          "Advanced datum expected, but simple datum was encountered"
-        ),
-      };
-
     const minswapRequestInfo = parseSafeDatum(
-      Data.from(Data.to(inputDatum.ExtraInfo)),
+      Data.from(Data.to(inputDatum.extraInfo)),
       MinswapRequestInfo
     );
 
     if (minswapRequestInfo.type == "left")
       return { type: "error", error: new Error(minswapRequestInfo.value) };
 
-    if (inputDatum.MOwner === null)
+    if (inputDatum.mOwner === null)
       return {
         type: "error",
         error: new Error("Locked UTxO encountered: no owners are specified"),
@@ -373,7 +365,7 @@ const mkRouteConfig = async (
         policyId: minswapRequestInfo.value.desiredAssetSymbol,
         tokenName: minswapRequestInfo.value.desiredAssetTokenName,
       },
-      toAddress(inputDatum.MOwner, network),
+      inputDatum.mOwner,
       (minswapRequestInfo.value.minimumReceive * (100n - slippageTolerance)) /
         100n
     );
@@ -388,15 +380,15 @@ const mkRouteConfig = async (
     // }}}
   };
 
-  return {
-    type: "ok",
+  return ok({
+    kind: "advanced",
     data: {
       requestOutRef: outRef,
       extraLovelacesToBeLocked: MINSWAP_DEPOSIT + MINSWAP_BATCHER_FEE,
       additionalAction: (tx, _utxo) => tx,
-      outputDatumMaker: outputDatumMaker as OutputDatumMaker,
+      outputDatumMaker: outputDatumMaker,
     },
-  };
+  });
   // }}}
 };
 

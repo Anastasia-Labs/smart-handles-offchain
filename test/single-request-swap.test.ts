@@ -7,7 +7,7 @@ import { Emulator, Lucid, singleReclaim, singleRoute } from "../src/index.js";
 import {
   LucidContext,
   createUser,
-  submitAdaToMinRequest,
+  submitAdaToMinSingleRequest,
   unsafeFromOk,
 } from "./utils.js";
 import { beforeEach, expect, test } from "vitest";
@@ -35,7 +35,7 @@ const ciEnv = process.env.NODE_ENV === "CI";
 test.skipIf(ciEnv)<LucidContext>(
   "Test - Single Request, Swap",
   async ({ lucid, users, emulator }) => {
-    await submitAdaToMinRequest(emulator, lucid, users.user.seedPhrase);
+    await submitAdaToMinSingleRequest(emulator, lucid, users.user.seedPhrase);
 
     const userRequests = unsafeFromOk(
       await fetchUsersSingleRequestUTxOs(lucid, users.user.address)

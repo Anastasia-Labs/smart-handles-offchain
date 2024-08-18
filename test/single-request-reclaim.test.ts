@@ -1,23 +1,20 @@
 import {
   Emulator,
   Lucid,
-  SingleReclaimConfig,
-  singleRequest,
   singleReclaim,
-  toUnit,
   paymentCredentialOf,
 } from "../src/index.js";
 import { beforeEach, expect, test } from "vitest";
-import { LucidContext, createUser, submitAdaToMinRequest, unsafeFromOk } from "./utils.js";
+import {
+  LucidContext,
+  createUser,
+  submitAdaToMinSingleRequest,
+  unsafeFromOk,
+} from "./utils.js";
 import {
   fetchUsersSingleRequestUTxOs,
   mkSingleReclaimConfig,
-  mkSingleRequestConfig,
 } from "../example/src/minswap-v1.js";
-import {
-  MIN_SYMBOL_PREPROD,
-  MIN_TOKEN_NAME,
-} from "../example/src/constants.js";
 
 //NOTE: INITIALIZE EMULATOR + ACCOUNTS
 beforeEach<LucidContext>(async (context) => {
@@ -36,12 +33,11 @@ test<LucidContext>("Test - Request Single Swap, Reclaim", async ({
   users,
   emulator,
 }) => {
-  await submitAdaToMinRequest(emulator, lucid, users.user1.seedPhrase);
+  await submitAdaToMinSingleRequest(emulator, lucid, users.user1.seedPhrase);
 
-  const userRequests1 = unsafeFromOk(await fetchUsersSingleRequestUTxOs(
-    lucid,
-    users.user1.address,
-  ));
+  const userRequests1 = unsafeFromOk(
+    await fetchUsersSingleRequestUTxOs(lucid, users.user1.address)
+  );
 
   console.log(
     "REQUESTS OF USER WITH PAYMENT CRED. OF:",
@@ -49,10 +45,9 @@ test<LucidContext>("Test - Request Single Swap, Reclaim", async ({
   );
   console.log(userRequests1);
 
-  const reclaimConfig = unsafeFromOk(mkSingleReclaimConfig(
-    userRequests1[0].outRef,
-    "Custom"
-  ));
+  const reclaimConfig = unsafeFromOk(
+    mkSingleReclaimConfig(userRequests1[0].outRef, "Custom")
+  );
 
   // NOTE: Invalid Reclaim 1
   lucid.selectWallet.fromSeed(users.user2.seedPhrase);
@@ -66,11 +61,11 @@ test<LucidContext>("Test - Request Single Swap, Reclaim", async ({
 
   // NOTE: Valid Reclaim 1
   lucid.selectWallet.fromSeed(users.user1.seedPhrase);
-  const reclaimUnsigned1 = unsafeFromOk(await singleReclaim(lucid, reclaimConfig));
+  const reclaimUnsigned1 = unsafeFromOk(
+    await singleReclaim(lucid, reclaimConfig)
+  );
 
   // Typescript seems to be confused without this check.
-  const reclaimSigned1 = await reclaimUnsigned1.sign
-    .withWallet()
-    .complete();
+  const reclaimSigned1 = await reclaimUnsigned1.sign.withWallet().complete();
   const reclaimSignedHash1 = await reclaimSigned1.submit();
 }, 60_000);
