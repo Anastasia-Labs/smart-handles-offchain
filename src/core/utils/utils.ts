@@ -15,11 +15,22 @@ import {
   LucidEvolution,
   scriptHashToCredential,
   credentialToAddress,
-  paymentCredentialOf,
 } from "@lucid-evolution/lucid";
-import { AddressD, AdvancedDatumFields, SimpleDatumFields, Value, parseAdvancedDatum, parseSimpleDatum } from "../contract.types.js";
-import { Either, InputUTxOAndItsOutputInfo, ReadableUTxO, Result } from "../types.js";
-import { INSUFFICIENT_ADA_ERROR_MSG, LOVELACE_MARGIN, UNAUTHORIZED_OWNER_ERROR_MSG } from "../constants.js";
+import {
+  AddressD,
+  AdvancedDatumFields,
+  SimpleDatumFields,
+  Value,
+  parseAdvancedDatum,
+  parseSimpleDatum,
+} from "../contract.types.js";
+import {
+  Either,
+  InputUTxOAndItsOutputInfo,
+  ReadableUTxO,
+  Result,
+} from "../types.js";
+import { INSUFFICIENT_ADA_ERROR_MSG, LOVELACE_MARGIN } from "../constants.js";
 
 export function ok<T>(x: T): Result<T> {
   return {
@@ -284,13 +295,13 @@ export function reduceLovelacesOfAssets(
   if (newLovelaceCount >= (extraLovelacesToBeLocked ?? 0n) + LOVELACE_MARGIN) {
     return {
       type: "ok",
-      data: {...assets, lovelace: newLovelaceCount},
+      data: { ...assets, lovelace: newLovelaceCount },
     };
   } else {
     return {
       type: "error",
       error: new Error(INSUFFICIENT_ADA_ERROR_MSG),
-    }
+    };
   }
 }
 
@@ -499,14 +510,24 @@ export function genericCatch(error: any): Result<any> {
   };
 }
 
-export const validateUTxOAndConfig = (
+/**
+ * An abstract helper, primarily implemented because of types failing to cast
+ * our "enum" smart handle datum.
+ */
+export const validateUTxOAndConfig = async (
   utxo: UTxO,
   configKind: "simple" | "advanced",
   configOutRef: OutRef,
-  simpleOutputBuilder: (u: UTxO, sF: SimpleDatumFields) => Result<InputUTxOAndItsOutputInfo>,
-  advancedOutputBuilder: (u: UTxO, aF: AdvancedDatumFields) => Result<InputUTxOAndItsOutputInfo>,
-  network: Network,
-): Result<InputUTxOAndItsOutputInfo> => {
+  simpleOutputBuilder: (
+    u: UTxO,
+    sF: SimpleDatumFields
+  ) => Promise<Result<InputUTxOAndItsOutputInfo>>,
+  advancedOutputBuilder: (
+    u: UTxO,
+    aF: AdvancedDatumFields
+  ) => Promise<Result<InputUTxOAndItsOutputInfo>>,
+  network: Network
+): Promise<Result<InputUTxOAndItsOutputInfo>> => {
   // {{{
   const configMatchesUTxO =
     configOutRef.txHash === utxo.txHash &&
@@ -525,7 +546,9 @@ export const validateUTxOAndConfig = (
       if (simpleFieldsRes.type == "ok") {
         return simpleOutputBuilder(utxo, simpleFieldsRes.data);
       } else {
-        return genericCatch(new Error("Expected simple datum, but failed to parse"));
+        return genericCatch(
+          new Error("Expected simple datum, but failed to parse")
+        );
       }
     } else {
       const advancedFieldsRes = parseAdvancedDatum(utxo.datum, network);

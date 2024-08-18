@@ -12,6 +12,7 @@ import {
   paymentCredentialOf,
 } from "@lucid-evolution/lucid";
 import {
+  asyncValidateItems,
   collectErrorMsgs,
   errorToString,
   genericCatch,
@@ -19,7 +20,6 @@ import {
   getSingleValidatorVA,
   printUTxOOutRef,
   reduceLovelacesOfAssets,
-  validateItems,
   validateUTxOAndConfig,
 } from "../core/utils/index.js";
 import {
@@ -29,8 +29,11 @@ import {
   InputUTxOAndItsOutputInfo,
   ReclaimConfig,
 } from "../core/types.js";
-import { AdvancedDatumFields, SimpleDatumFields, parseAdvancedDatum, parseSimpleDatum } from "../core/contract.types.js";
-import {UNAUTHORIZED_OWNER_ERROR_MSG} from "../index.js";
+import {
+  AdvancedDatumFields,
+  SimpleDatumFields,
+} from "../core/contract.types.js";
+import { UNAUTHORIZED_OWNER_ERROR_MSG } from "../index.js";
 // }}}
 // ----------------------------------------------------------------------------
 
@@ -48,22 +51,26 @@ import {UNAUTHORIZED_OWNER_ERROR_MSG} from "../index.js";
  * @param forSingle - Flag to distinguish between single or batch variants
  * @param network - Target network, used for getting Bech32 address of `mOwner`
  */
-const utxoToOutputInfo = (
+const utxoToOutputInfo = async (
   utxo: UTxO,
   reclaimConfig: ReclaimConfig,
   selectedWalletAddress: Address,
   forSingle: boolean,
   network: Network
-): Result<InputUTxOAndItsOutputInfo> => {
+): Promise<Result<InputUTxOAndItsOutputInfo>> => {
   // {{{
-  return validateUTxOAndConfig(
+  return await validateUTxOAndConfig(
     utxo,
     reclaimConfig.kind,
     reclaimConfig.data.requestOutRef,
-    (u: UTxO, simpleFields: SimpleDatumFields): Result<InputUTxOAndItsOutputInfo> => {
+    async (
+      u: UTxO,
+      simpleFields: SimpleDatumFields
+    ): Promise<Result<InputUTxOAndItsOutputInfo>> => {
       // {{{
       const datumBelongsToOwner =
-        paymentCredentialOf(simpleFields.owner) == paymentCredentialOf(selectedWalletAddress);
+        paymentCredentialOf(simpleFields.owner) ==
+        paymentCredentialOf(selectedWalletAddress);
       if (datumBelongsToOwner) {
         return {
           type: "ok",
@@ -83,14 +90,19 @@ const utxoToOutputInfo = (
       }
       // }}}
     },
-    (u: UTxO, advancedFields: AdvancedDatumFields): Result<InputUTxOAndItsOutputInfo> => {
+    async (
+      u: UTxO,
+      advancedFields: AdvancedDatumFields
+    ): Promise<Result<InputUTxOAndItsOutputInfo>> => {
       // {{{
       if (reclaimConfig.kind == "advanced") {
         if (advancedFields.mOwner) {
           const outputAssetsRes = reduceLovelacesOfAssets(
             utxo.assets,
             advancedFields.reclaimRouterFee,
-            reclaimConfig.kind == "advanced" ? reclaimConfig.data.extraLovelacesToBeLocked : 0n,
+            reclaimConfig.kind == "advanced"
+              ? reclaimConfig.data.extraLovelacesToBeLocked
+              : 0n
           );
           if (outputAssetsRes.type == "error") return outputAssetsRes;
           return {
@@ -104,7 +116,9 @@ const utxoToOutputInfo = (
                 // spend validator.
                 makeRedeemer: (ownIndex) =>
                   Data.to(
-                    forSingle ? new Constr(2, [ownIndex, 0n]) : new Constr(1, [])
+                    forSingle
+                      ? new Constr(2, [ownIndex, 0n])
+                      : new Constr(1, [])
                   ),
               },
               outputAddress: advancedFields.mOwner,
@@ -125,14 +139,12 @@ const utxoToOutputInfo = (
       } else {
         return {
           type: "error",
-          error: new Error(
-            "Bad config (expected advanced, but got simple)"
-          ),
+          error: new Error("Bad config (expected advanced, but got simple)"),
         };
       }
       // }}}
     },
-    network,
+    network
   );
   // }}}
 };
@@ -184,7 +196,7 @@ export const singleReclaim = async (
 
     const walletAddress = await lucid.wallet().address();
 
-    const inUTxOAndOutInfoRes = utxoToOutputInfo(
+    const inUTxOAndOutInfoRes = await utxoToOutputInfo(
       utxoToSpend,
       config.reclaimConfig,
       walletAddress,
@@ -255,10 +267,10 @@ export const batchReclaim = async (
 
     const inUTxOAndOutInfos: InputUTxOAndItsOutputInfo[] = [];
 
-    const badReclaimErrorMsgs: string[] = validateItems(
+    const badReclaimErrorMsgs: string[] = await asyncValidateItems(
       utxosAndReclaimConfigs,
-      ({ utxo: utxoToSpend, reclaimConfig }) => {
-        const inUTxOAndOutInfoRes = utxoToOutputInfo(
+      async ({ utxo: utxoToSpend, reclaimConfig }) => {
+        const inUTxOAndOutInfoRes = await utxoToOutputInfo(
           utxoToSpend,
           reclaimConfig,
           walletAddress,

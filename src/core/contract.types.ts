@@ -1,6 +1,6 @@
 import { Address, Constr, Data, Network } from "@lucid-evolution/lucid";
-import {Result} from "./types.js";
-import {genericCatch, toAddress} from "./utils/utils.js";
+import { Result } from "./types.js";
+import { genericCatch, toAddress } from "./utils/utils.js";
 
 export const OutputReferenceSchema = Data.Object({
   txHash: Data.Object({ hash: Data.Bytes({ minLength: 32, maxLength: 32 }) }),
@@ -76,14 +76,14 @@ export const SmartHandleDatum =
 
 export type SimpleDatumFields = {
   owner: Address;
-}
+};
 
 export type AdvancedDatumFields = {
   mOwner: Address | null;
   routerFee: bigint;
   reclaimRouterFee: bigint;
   extraInfo: Data;
-}
+};
 
 export const parseSimpleDatum = (
   cbor: string,

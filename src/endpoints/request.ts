@@ -52,6 +52,7 @@ const enoughLovelacesAreGettingLocked = (
   }
 };
 
+// Types don't seem to work here, for now we're using manual data encoding.
 const simpleDatumBuilder = (ownAddress: string): string => {
   // const simpleDatum: SmartHandleDatum = {
   //   Owner: fromAddress(ownAddress),
@@ -64,6 +65,7 @@ const simpleDatumBuilder = (ownAddress: string): string => {
   }
 };
 
+// Types don't seem to work here, for now we're using manual data encoding.
 const advancedDatumBuilder = (
   ownAddress: string,
   routeRequest: AdvancedRouteRequest
@@ -76,16 +78,20 @@ const advancedDatumBuilder = (
   // };
   // return Data.to(advancedDatum, SmartHandleDatum);
   const addrRes = fromAddressToData(ownAddress);
-  let addr: Data = ""
+  let addr: Data = "";
   if (addrRes.type == "ok") {
     addr = addrRes.data;
   }
-  return Data.to(new Constr(1, [
-    routeRequest.markWalletAsOwner ? new Constr(0, [addr]) : new Constr(1, []),
-    routeRequest.routerFee,
-    routeRequest.reclaimRouterFee,
-    routeRequest.extraInfo,
-  ]));
+  return Data.to(
+    new Constr(1, [
+      routeRequest.markWalletAsOwner
+        ? new Constr(0, [addr])
+        : new Constr(1, []),
+      routeRequest.routerFee,
+      routeRequest.reclaimRouterFee,
+      routeRequest.extraInfo,
+    ])
+  );
 };
 // }}}
 // ----------------------------------------------------------------------------
