@@ -61,10 +61,7 @@ async function registerRewardAddress(
   await signedTx.submit();
 }
 
-const ciEnv = process.env.NODE_ENV === "CI";
-
-// Avoid running the test in CI due to requirement for a Blockfrost key.
-test.skipIf(ciEnv)<LucidContext>(
+test<LucidContext>(
   "Test - Batch Request, Swap",
   async ({ lucid, users, emulator }) => {
     console.log("MAX CPU", emulator.protocolParameters.maxTxExSteps);

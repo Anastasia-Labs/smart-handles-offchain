@@ -1,5 +1,11 @@
-import {MIN_SYMBOL_PREPROD, MIN_TOKEN_NAME} from "../example/src/constants.js";
-import {mkBatchRequestConfig, mkSingleRequestConfig} from "../example/src/minswap-v1.js";
+import {
+  MIN_SYMBOL_PREPROD,
+  MIN_TOKEN_NAME,
+} from "../example/src/constants.js";
+import {
+  mkBatchRequestConfig,
+  mkSingleRequestConfig,
+} from "../example/src/minswap-v1.js";
 import {
   Emulator,
   LucidEvolution,
@@ -13,7 +19,7 @@ import {
 
 export type LucidContext = {
   lucid: LucidEvolution;
-  users: {[key: string]: EmulatorAccount};
+  users: { [key: string]: EmulatorAccount };
   emulator: Emulator;
 };
 
@@ -44,25 +50,28 @@ export function unsafeFromOk<T>(res: Result<T>): T {
 export const submitAdaToMinSingleRequest = async (
   emulator: Emulator,
   lucid: LucidEvolution,
-  userSeedPhrase: string,
+  userSeedPhrase: string
 ) => {
-  const requestConfig = unsafeFromOk(await mkSingleRequestConfig(
-    {
-      fromAsset: "lovelace",
-      quantity: BigInt(50_000_000),
-      toAsset: toUnit(MIN_SYMBOL_PREPROD, MIN_TOKEN_NAME),
-    },
-    "Custom"
-  ));
+  const requestConfig = unsafeFromOk(
+    await mkSingleRequestConfig(
+      {
+        fromAsset: "lovelace",
+        quantity: BigInt(50_000_000),
+        toAsset: toUnit(MIN_SYMBOL_PREPROD, MIN_TOKEN_NAME),
+      },
+      "Custom",
+      BigInt(2_500_000)
+    )
+  );
 
   lucid.selectWallet.fromSeed(userSeedPhrase);
 
   // NOTE: Singular Swap Request 1
-  const requestUnsigned = unsafeFromOk(await singleRequest(lucid, requestConfig));
+  const requestUnsigned = unsafeFromOk(
+    await singleRequest(lucid, requestConfig)
+  );
   // console.log(requestUnsigned.data.txComplete.to_json());
-  const requestSigned = await requestUnsigned.sign
-    .withWallet()
-    .complete();
+  const requestSigned = await requestUnsigned.sign.withWallet().complete();
   console.log("SINGLE REQUEST TX:", requestSigned.toCBOR());
   const requestTxHash = await requestSigned.submit();
   console.log("SINGLE REQUEST TX HASH:", requestTxHash);
@@ -77,15 +86,21 @@ export const submitAdaToMinBatchRequests = async (
   lovelaces: number[]
 ) => {
   lucid.selectWallet.fromSeed(userSeedPhrase);
-  const requestConfig = unsafeFromOk(await mkBatchRequestConfig(lovelaces.map(l => ({
-    fromAsset: "lovelace",
-    quantity: BigInt(l),
-    toAsset: toUnit(MIN_SYMBOL_PREPROD, MIN_TOKEN_NAME),
-  })), "Custom"));
-  const requestUnsigned = unsafeFromOk(await batchRequest(lucid, requestConfig));
-  const requestSigned = await requestUnsigned.sign
-    .withWallet()
-    .complete();
+  const requestConfig = unsafeFromOk(
+    await mkBatchRequestConfig(
+      lovelaces.map((l) => ({
+        fromAsset: "lovelace",
+        quantity: BigInt(l),
+        toAsset: toUnit(MIN_SYMBOL_PREPROD, MIN_TOKEN_NAME),
+      })),
+      "Custom",
+      lovelaces.map((l) => BigInt(Math.round(l * 0.05)))
+    )
+  );
+  const requestUnsigned = unsafeFromOk(
+    await batchRequest(lucid, requestConfig)
+  );
+  const requestSigned = await requestUnsigned.sign.withWallet().complete();
   const requestTxHash = await requestSigned.submit();
   emulator.awaitBlock(100);
 };

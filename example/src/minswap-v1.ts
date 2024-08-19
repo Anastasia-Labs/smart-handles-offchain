@@ -32,7 +32,6 @@ import {
   SingleReclaimConfig,
   SingleRequestConfig,
   SingleRouteConfig,
-  SmartHandleDatum,
   TxSignBuilder,
   UTxO,
   Unit,
@@ -48,7 +47,6 @@ import {
   ok,
   parseAdvancedDatum,
   parseSafeDatum,
-  toAddress,
   validateItems,
 } from "../../src/index.js";
 import {
@@ -215,17 +213,20 @@ export type SwapRequest = {
  * in hex format.
  *
  * This function uses Blockfrost to determine the exchange rate, and stores it
- * in the `minimumReceive` field of `extraInfo`.
+ * in the `minimumReceive` field of `extraInfo`. @private
  *
  * @param swapRequest - Consists of 3 fields:
  *   - fromAsset: Unit of the asset A to be converted
  *   - quantity: Amount of asset A
  *   - toAsset: Unit of desired asset B
  * @param network - Target network
+ * @param manualMinimumReceive - Optional argument to disregard current market
+ *        exchange rate (consequently won't query Blockfrost)
  */
 const mkRouteRequest = async (
   { fromAsset, quantity, toAsset }: SwapRequest,
-  network: Network
+  network: Network,
+  manualMinimumReceive?: bigint
 ): Promise<Result<RouteRequest>> => {
   // {{{
   const minLovelaces = MINSWAP_BATCHER_FEE + MINSWAP_DEPOSIT + ROUTER_FEE;
@@ -239,31 +240,38 @@ const mkRouteRequest = async (
           [fromAsset]: quantity,
         };
 
-  const blockfrostKey = process.env.BLOCKFROST_KEY;
-  if (!blockfrostKey)
-    return {
-      type: "error",
-      error: new Error("No Blockfrost API key was found"),
-    };
-  const blockfrostAdapter = new BlockfrostAdapter({
-    blockFrost: new BlockFrostAPI({
-      projectId: blockfrostKey,
-      network: network === "Mainnet" ? "mainnet" : "preprod",
-    }),
-  });
-  const poolStateRes = await getPoolStateFromAssets(
-    blockfrostAdapter,
-    fromAsset,
-    toAsset
-  );
-  if (poolStateRes.type == "error") return poolStateRes;
-  const poolState = poolStateRes.data;
+  let minimumReceive: bigint;
 
-  const { amountOut } = calculateSwapExactIn({
-    amountIn: quantity,
-    reserveIn: poolState.reserveA,
-    reserveOut: poolState.reserveB,
-  });
+  if (manualMinimumReceive === undefined) {
+    const blockfrostKey = process.env.BLOCKFROST_KEY;
+    if (!blockfrostKey)
+      return {
+        type: "error",
+        error: new Error("No Blockfrost API key was found"),
+      };
+    const blockfrostAdapter = new BlockfrostAdapter({
+      blockFrost: new BlockFrostAPI({
+        projectId: blockfrostKey,
+        network: network === "Mainnet" ? "mainnet" : "preprod",
+      }),
+    });
+    const poolStateRes = await getPoolStateFromAssets(
+      blockfrostAdapter,
+      fromAsset,
+      toAsset
+    );
+    if (poolStateRes.type == "error") return poolStateRes;
+    const poolState = poolStateRes.data;
+
+    const { amountOut } = calculateSwapExactIn({
+      amountIn: quantity,
+      reserveIn: poolState.reserveA,
+      reserveOut: poolState.reserveB,
+    });
+    minimumReceive = amountOut;
+  } else {
+    minimumReceive = manualMinimumReceive;
+  }
 
   const { policyId, assetName } =
     toAsset === "" ? { policyId: "", assetName: "" } : fromUnit(toAsset);
@@ -277,7 +285,7 @@ const mkRouteRequest = async (
         desiredAssetSymbol: policyId,
         desiredAssetTokenName: assetName ?? "",
         receiverDatumHash: null,
-        minimumReceive: amountOut,
+        minimumReceive,
       },
       MinswapRequestInfo
     ),
@@ -330,7 +338,7 @@ const mkReclaimConfig = (requestOutRef: OutRef): ReclaimConfig => {
  */
 const mkRouteConfig = async (
   slippageTolerance: bigint,
-  outRef: OutRef,
+  outRef: OutRef
 ): Promise<Result<RouteConfig>> => {
   // {{{
   const outputDatumMaker: AdvancedOutputDatumMaker = async (
@@ -393,7 +401,7 @@ const fetchUsersRequestUTxOs = async (
   forSingle: boolean,
   scriptCBOR: CBORHex,
   lucid: LucidEvolution,
-  userAddress: Address,
+  userAddress: Address
 ): Promise<MinswapV1RequestUTxO[]> => {
   // {{{
   const network = lucid.config().network;
@@ -461,13 +469,21 @@ export const signAndSubmitTxRes = async (
  *   - fromAsset: Unit of the asset A to be converted
  *   - quantity: Amount of asset A
  *   - toAsset: Unit of desired asset B
+ * @param network - Target network
+ * @param manualMinimumReceive - Optional argument to disregard current market
+ *        exchange rate (consequently won't query Blockfrost)
  */
 export const mkSingleRequestConfig = async (
   swapRequest: SwapRequest,
-  network: Network
+  network: Network,
+  manualMinimumReceive?: bigint
 ): Promise<Result<SingleRequestConfig>> => {
   // {{{
-  const routeRequestRes = await mkRouteRequest(swapRequest, network);
+  const routeRequestRes = await mkRouteRequest(
+    swapRequest,
+    network,
+    manualMinimumReceive
+  );
   if (routeRequestRes.type == "error") return routeRequestRes;
   const appliedSpendingCBORRes = applyMinswapAddressToCBOR(
     singleSpendingValidator.cborHex,
@@ -493,7 +509,7 @@ export const mkSingleRequestConfig = async (
  */
 export const fetchUsersSingleRequestUTxOs = async (
   lucid: LucidEvolution,
-  userAddress: Address,
+  userAddress: Address
 ): Promise<Result<MinswapV1RequestUTxO[]>> => {
   // {{{
   const appliedSpendingCBORRes = applyMinswapAddressToCBOR(
@@ -503,13 +519,13 @@ export const fetchUsersSingleRequestUTxOs = async (
   if (appliedSpendingCBORRes.type == "error") return appliedSpendingCBORRes;
   try {
     const userRequests = await fetchUsersRequestUTxOs(
-        true,
-        appliedSpendingCBORRes.data,
-        lucid,
-        userAddress,
-      );
+      true,
+      appliedSpendingCBORRes.data,
+      lucid,
+      userAddress
+    );
     return ok(userRequests);
-  } catch(e) {
+  } catch (e) {
     return genericCatch(e);
   }
   // }}}
@@ -523,7 +539,7 @@ export const fetchUsersSingleRequestUTxOs = async (
  */
 export const mkSingleReclaimConfig = (
   requestOutRef: OutRef,
-  network: Network,
+  network: Network
 ): Result<SingleReclaimConfig> => {
   // {{{
   const appliedSpendingCBORRes = applyMinswapAddressToCBOR(
@@ -555,10 +571,7 @@ export const mkSingleRouteConfig = async (
   network: Network
 ): Promise<Result<SingleRouteConfig>> => {
   // {{{
-  const routeConfigRes = await mkRouteConfig(
-    slippageTolerance,
-    outRef,
-  );
+  const routeConfigRes = await mkRouteConfig(slippageTolerance, outRef);
   if (routeConfigRes.type == "error") return routeConfigRes;
   const appliedSpendingCBORRes = applyMinswapAddressToCBOR(
     singleSpendingValidator.cborHex,
@@ -587,15 +600,24 @@ export const mkSingleRouteConfig = async (
  *   - quantity: Amount of asset A
  *   - toAsset: Unit of desired asset B
  * @param network - Target network, used for figuring out the swap address
+ * @param manualMinimumReceives - Optional argument to disregard current market
+ *        exchange rates (consequently won't query Blockfrost)
  */
 export const mkBatchRequestConfig = async (
   swapRequests: SwapRequest[],
-  network: Network
+  network: Network,
+  manualMinimumReceives?: bigint[]
 ): Promise<Result<BatchRequestConfig>> => {
   // {{{
   const allRequestConfigRes = await Promise.all(
-    swapRequests.map(async (swapRequest) => {
-      return await mkRouteRequest(swapRequest, network);
+    swapRequests.map(async (swapRequest, index) => {
+      return await mkRouteRequest(
+        swapRequest,
+        network,
+        manualMinimumReceives !== undefined
+          ? manualMinimumReceives[index]
+          : undefined
+      );
     })
   );
   const allRequestConfigs: RouteRequest[] = [];
@@ -641,7 +663,7 @@ export const mkBatchRequestConfig = async (
  */
 export const fetchUsersBatchRequestUTxOs = async (
   lucid: LucidEvolution,
-  userAddress: Address,
+  userAddress: Address
 ): Promise<Result<MinswapV1RequestUTxO[]>> => {
   // {{{
   const appliedStakingCBORRes = applyMinswapAddressToCBOR(
@@ -654,10 +676,10 @@ export const fetchUsersBatchRequestUTxOs = async (
       false,
       appliedStakingCBORRes.data,
       lucid,
-      userAddress,
+      userAddress
     );
     return ok(userRequests);
-  } catch(e) {
+  } catch (e) {
     return genericCatch(e);
   }
   // }}}

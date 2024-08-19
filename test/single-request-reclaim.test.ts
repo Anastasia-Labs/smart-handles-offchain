@@ -28,7 +28,7 @@ beforeEach<LucidContext>(async (context) => {
   context.lucid = await Lucid(context.emulator, "Custom");
 });
 
-test<LucidContext>("Test - Request Single Swap, Reclaim", async ({
+test<LucidContext>("Test - Single Request, Reclaim", async ({
   lucid,
   users,
   emulator,

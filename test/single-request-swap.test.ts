@@ -29,10 +29,7 @@ beforeEach<LucidContext>(async (context) => {
   context.lucid = await Lucid(context.emulator, "Custom");
 });
 
-const ciEnv = process.env.NODE_ENV === "CI";
-
-// Avoid running the test in CI due to requirement for a Blockfrost key.
-test.skipIf(ciEnv)<LucidContext>(
+test<LucidContext>(
   "Test - Single Request, Swap",
   async ({ lucid, users, emulator }) => {
     await submitAdaToMinSingleRequest(emulator, lucid, users.user.seedPhrase);

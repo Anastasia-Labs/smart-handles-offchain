@@ -5,7 +5,6 @@ import {
   Lucid,
   toUnit,
   batchRoute,
-  LucidEvolution,
   getBatchVAs,
   BatchVAs,
   errorToString,
