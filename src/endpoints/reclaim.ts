@@ -77,6 +77,7 @@ const utxoToOutputInfo = async (
             kind: "self",
             makeRedeemer: (_ownIndex) => Data.to(new Constr(1, [])),
           },
+          additionalAction: (tx, _utxo) => tx.addSigner(selectedWalletAddress),
         });
       } else {
         return {
@@ -153,24 +154,23 @@ const utxoToOutputInfo = async (
  * outputs, and any additional actions specified by the `advanced` case, and
  * returns the complemented transaction.
  */
-const complementTxWithReclaimConfigAndOutputInfo = (
+const complementTx = (
   tx: TxBuilder,
-  walletAddress: Address,
   inOutInfo: InputUTxOAndItsOutputInfo,
 ): TxBuilder => {
   // {{{
-  if (!inOutInfo.additionalAction) {
-    return tx.addSigner(walletAddress);
-  } else if (inOutInfo.outputAddress && inOutInfo.scriptOutput) {
-    tx.pay.ToContract(
+  let finalTx = tx;
+  if (inOutInfo.additionalAction) {
+    finalTx = inOutInfo.additionalAction(tx, inOutInfo.utxo);
+  }
+  if (inOutInfo.outputAddress && inOutInfo.scriptOutput) {
+    finalTx = finalTx.pay.ToContract(
       inOutInfo.outputAddress,
       inOutInfo.scriptOutput.outputDatum,
       inOutInfo.scriptOutput.outputAssets
     );
-    return inOutInfo.additionalAction(tx, inOutInfo.utxo);
-  } else {
-    return tx;
   }
+  return finalTx;
   // }}}
 };
 // }}}
@@ -210,9 +210,8 @@ export const singleReclaim = async (
       .collectFrom([utxoToSpend], inOutInfo.redeemerBuilder)
       .attach.SpendingValidator(va.validator);
 
-    const finalTx: TxBuilder = complementTxWithReclaimConfigAndOutputInfo(
+    const finalTx: TxBuilder = complementTx(
       tx,
-      walletAddress,
       inOutInfo,
     );
 
@@ -304,9 +303,8 @@ export const batchReclaim = async (
     // Add corresponding output UTxOs for each reclaimed UTxO. It'll fail if any
     // irreclaimable UTxOs are encountered.
     inUTxOAndOutInfos.map((inOutInfo: InputUTxOAndItsOutputInfo) => {
-      tx = complementTxWithReclaimConfigAndOutputInfo(
+      tx = complementTx(
         tx,
-        walletAddress,
         inOutInfo,
       );
     });
