@@ -561,7 +561,7 @@ export const mkSingleRouteConfig = (
     scriptCBOR: appliedSpendingCBORRes.data,
     routeAddress:
       network === "Mainnet" ? MINSWAP_ADDRESS_MAINNET : MINSWAP_ADDRESS_PREPROD,
-    routeConfig,
+    advancedRouteConfig: routeConfig,
   });
   // }}}
 };
