@@ -18,6 +18,7 @@ import {
   genericCatch,
   getBatchVAs,
   getSingleValidatorVA,
+  ok,
   printUTxOOutRef,
   reduceLovelacesOfAssets,
   validateUTxOAndConfig,
@@ -27,7 +28,7 @@ import {
   BatchReclaimConfig,
   SingleReclaimConfig,
   InputUTxOAndItsOutputInfo,
-  ReclaimConfig,
+  AdvancedReclaimConfig,
 } from "../core/types.js";
 import {
   AdvancedDatumFields,
@@ -46,14 +47,14 @@ import { UNAUTHORIZED_OWNER_ERROR_MSG } from "../index.js";
  * UTxO with a proper datum attached.
  *
  * @param utxo - The UTxO about to be spent
- * @param reclaimConfig - `simple` or `advanced` route config
+ * @param reclaimConfig - Optional advanced reclaim config
  * @param selectedWalletAddress - Selected wallet of `lucid`, i.e. signer
  * @param forSingle - Flag to distinguish between single or batch variants
  * @param network - Target network, used for getting Bech32 address of `mOwner`
  */
 const utxoToOutputInfo = async (
   utxo: UTxO,
-  reclaimConfig: ReclaimConfig,
+  reclaimConfig: AdvancedReclaimConfig | undefined,
   selectedWalletAddress: Address,
   forSingle: boolean,
   network: Network
@@ -61,8 +62,6 @@ const utxoToOutputInfo = async (
   // {{{
   return await validateUTxOAndConfig(
     utxo,
-    reclaimConfig.kind,
-    reclaimConfig.data.requestOutRef,
     async (
       u: UTxO,
       simpleFields: SimpleDatumFields
@@ -72,16 +71,13 @@ const utxoToOutputInfo = async (
         paymentCredentialOf(simpleFields.owner) ==
         paymentCredentialOf(selectedWalletAddress);
       if (datumBelongsToOwner) {
-        return {
-          type: "ok",
-          data: {
-            utxo: u,
-            redeemerBuilder: {
-              kind: "self",
-              makeRedeemer: (_ownIndex) => Data.to(new Constr(1, [])),
-            },
+        return ok({
+          utxo: u,
+          redeemerBuilder: {
+            kind: "self",
+            makeRedeemer: (_ownIndex) => Data.to(new Constr(1, [])),
           },
-        };
+        });
       } else {
         return {
           type: "error",
@@ -95,19 +91,20 @@ const utxoToOutputInfo = async (
       advancedFields: AdvancedDatumFields
     ): Promise<Result<InputUTxOAndItsOutputInfo>> => {
       // {{{
-      if (reclaimConfig.kind == "advanced") {
+      if (reclaimConfig) {
         if (advancedFields.mOwner) {
           const outputAssetsRes = reduceLovelacesOfAssets(
             utxo.assets,
             advancedFields.reclaimRouterFee,
-            reclaimConfig.kind == "advanced"
-              ? reclaimConfig.data.extraLovelacesToBeLocked
-              : 0n
           );
-          if (outputAssetsRes.type == "error") return outputAssetsRes;
-          return {
-            type: "ok",
-            data: {
+          try {
+            const outputDatumRes = await reclaimConfig.outputDatumMaker(
+              utxo.assets,
+              advancedFields,
+            );
+            if (outputAssetsRes.type == "error") return outputAssetsRes;
+            if (outputDatumRes.type == "error") return outputDatumRes;
+            return ok({
               utxo: u,
               redeemerBuilder: {
                 kind: "self",
@@ -116,18 +113,19 @@ const utxoToOutputInfo = async (
                 // spend validator.
                 makeRedeemer: (ownIndex) =>
                   Data.to(
-                    forSingle
-                      ? new Constr(2, [ownIndex, 0n])
-                      : new Constr(1, [])
+                    forSingle ? new Constr(2, [ownIndex, 0n]) : new Constr(1, [])
                   ),
               },
               outputAddress: advancedFields.mOwner,
               scriptOutput: {
                 outputAssets: outputAssetsRes.data,
-                outputDatum: reclaimConfig.data.outputDatum,
+                outputDatum: outputDatumRes.data,
               },
-            },
-          };
+              additionalAction: reclaimConfig.additionalAction,
+            });
+          } catch(e) {
+            return genericCatch(e);
+          }
         } else {
           return {
             type: "error",
@@ -139,7 +137,7 @@ const utxoToOutputInfo = async (
       } else {
         return {
           type: "error",
-          error: new Error("Bad config (expected advanced, but got simple)"),
+          error: new Error("Failed to reclaim an advanced datum as no advanced reclaim logic was provided"),
         };
       }
       // }}}
@@ -159,10 +157,9 @@ const complementTxWithReclaimConfigAndOutputInfo = (
   tx: TxBuilder,
   walletAddress: Address,
   inOutInfo: InputUTxOAndItsOutputInfo,
-  reclaimConfig: ReclaimConfig
 ): TxBuilder => {
   // {{{
-  if (reclaimConfig.kind == "simple") {
+  if (!inOutInfo.additionalAction) {
     return tx.addSigner(walletAddress);
   } else if (inOutInfo.outputAddress && inOutInfo.scriptOutput) {
     tx.pay.ToContract(
@@ -170,7 +167,7 @@ const complementTxWithReclaimConfigAndOutputInfo = (
       inOutInfo.scriptOutput.outputDatum,
       inOutInfo.scriptOutput.outputAssets
     );
-    return reclaimConfig.data.additionalAction(tx, inOutInfo.utxo);
+    return inOutInfo.additionalAction(tx, inOutInfo.utxo);
   } else {
     return tx;
   }
@@ -188,7 +185,7 @@ export const singleReclaim = async (
 
   try {
     const [utxoToSpend] = await lucid.utxosByOutRef([
-      config.reclaimConfig.data.requestOutRef,
+      config.requestOutRef
     ]);
 
     if (!utxoToSpend)
@@ -198,7 +195,7 @@ export const singleReclaim = async (
 
     const inUTxOAndOutInfoRes = await utxoToOutputInfo(
       utxoToSpend,
-      config.reclaimConfig,
+      config.advancedReclaimConfig,
       walletAddress,
       true,
       lucid.config().network
@@ -217,13 +214,9 @@ export const singleReclaim = async (
       tx,
       walletAddress,
       inOutInfo,
-      config.reclaimConfig
     );
 
-    return {
-      type: "ok",
-      data: await finalTx.complete(),
-    };
+    return ok(await finalTx.complete());
   } catch (error) {
     return genericCatch(error);
   }
@@ -239,40 +232,30 @@ export const batchReclaim = async (
 
   const batchVAs = getBatchVAs(config.stakingScriptCBOR, network);
 
-  if (config.reclaimConfigs.length < 1)
-    return { type: "error", error: new Error("No reclaim configs provided.") };
+  if (config.requestOutRefs.length < 1)
+    return { type: "error", error: new Error("No out refs provided.") };
 
   try {
-    const utxosToSpend = await lucid.utxosByOutRef(
-      config.reclaimConfigs.map((rC: ReclaimConfig) => rC.data.requestOutRef)
-    );
+    const utxosToSpend = await lucid.utxosByOutRef(config.requestOutRefs);
 
-    if (!utxosToSpend || utxosToSpend.length !== config.reclaimConfigs.length)
+    if (!utxosToSpend)
       return {
         type: "error",
         error: new Error(
-          "One or more of the specified UTxOs could not be found."
+          "None of the specified UTxOs could be fetched."
         ),
       };
 
     const walletAddress = await lucid.wallet().address();
 
-    const utxosAndReclaimConfigs: {
-      utxo: UTxO;
-      reclaimConfig: ReclaimConfig;
-    }[] = utxosToSpend.map((u: UTxO, i: number) => ({
-      utxo: u,
-      reclaimConfig: config.reclaimConfigs[i],
-    }));
-
     const inUTxOAndOutInfos: InputUTxOAndItsOutputInfo[] = [];
 
     const badReclaimErrorMsgs: string[] = await asyncValidateItems(
-      utxosAndReclaimConfigs,
-      async ({ utxo: utxoToSpend, reclaimConfig }) => {
+      utxosToSpend,
+      async (utxoToSpend: UTxO) => {
         const inUTxOAndOutInfoRes = await utxoToOutputInfo(
           utxoToSpend,
-          reclaimConfig,
+          config.advancedReclaimConfig,
           walletAddress,
           false,
           network
@@ -320,19 +303,15 @@ export const batchReclaim = async (
 
     // Add corresponding output UTxOs for each reclaimed UTxO. It'll fail if any
     // irreclaimable UTxOs are encountered.
-    inUTxOAndOutInfos.map((inOutInfo: InputUTxOAndItsOutputInfo, i: number) => {
+    inUTxOAndOutInfos.map((inOutInfo: InputUTxOAndItsOutputInfo) => {
       tx = complementTxWithReclaimConfigAndOutputInfo(
         tx,
         walletAddress,
         inOutInfo,
-        config.reclaimConfigs[i]
       );
     });
 
-    return {
-      type: "ok",
-      data: await tx.complete(),
-    };
+    return ok(await tx.complete());
   } catch (error) {
     return genericCatch(error);
   }

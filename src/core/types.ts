@@ -49,6 +49,7 @@ export type InputUTxOAndItsOutputInfo = {
     outputAssets: Assets;
     outputDatum: OutputDatum;
   };
+  additionalAction?: (tx: TxBuilder, utxo: UTxO) => TxBuilder;
 };
 
 /**
@@ -81,30 +82,6 @@ export type BatchRequestConfig = {
   additionalRequiredLovelaces: bigint;
 };
 
-export type SimpleReclaimConfig = {
-  requestOutRef: OutRef;
-};
-
-export type AdvancedReclaimConfig = SimpleReclaimConfig & {
-  outputDatum: OutputDatum;
-  extraLovelacesToBeLocked: bigint;
-  additionalAction: (tx: TxBuilder, utxo: UTxO) => TxBuilder;
-};
-
-export type ReclaimConfig =
-  | { kind: "simple"; data: SimpleReclaimConfig }
-  | { kind: "advanced"; data: AdvancedReclaimConfig };
-
-export type SingleReclaimConfig = {
-  scriptCBOR: CBORHex;
-  reclaimConfig: ReclaimConfig;
-};
-
-export type BatchReclaimConfig = {
-  stakingScriptCBOR: CBORHex;
-  reclaimConfigs: ReclaimConfig[];
-};
-
 export type SimpleOutputDatumMaker = (
   inputAssets: Assets,
   inputDatum: SimpleDatumFields
@@ -115,32 +92,47 @@ export type AdvancedOutputDatumMaker = (
   inputDatum: AdvancedDatumFields
 ) => Promise<Result<OutputDatum>>;
 
-export type CommonRouteConfig = {
-  requestOutRef: OutRef;
-  extraLovelacesToBeLocked: bigint;
+export type AdvancedReclaimConfig = {
+  outputDatumMaker: AdvancedOutputDatumMaker;
   additionalAction: (tx: TxBuilder, utxo: UTxO) => TxBuilder;
+};
+
+export type CommonSingle = {
+  scriptCBOR: CBORHex;
+  requestOutRef: OutRef;
 }
 
-export type SimpleRouteConfig = CommonRouteConfig & {
+export type CommonBatch = {
+  stakingScriptCBOR: CBORHex;
+  requestOutRefs: OutRef[];
+}
+
+export type SingleReclaimConfig = CommonSingle & {
+  advancedReclaimConfig?: AdvancedReclaimConfig;
+};
+
+export type BatchReclaimConfig = CommonBatch & {
+  advancedReclaimConfig?: AdvancedReclaimConfig;
+};
+
+export type SimpleRouteConfig = {
+  additionalAction: (tx: TxBuilder, utxo: UTxO) => TxBuilder;
   outputDatumMaker: SimpleOutputDatumMaker;
 };
 
-export type AdvancedRouteConfig = CommonRouteConfig & {
+export type AdvancedRouteConfig = {
+  additionalAction: (tx: TxBuilder, utxo: UTxO) => TxBuilder;
   outputDatumMaker: AdvancedOutputDatumMaker;
 };
 
-export type RouteConfig =
-  | { kind: "simple", data: SimpleRouteConfig }
-  | { kind: "advanced", data: AdvancedRouteConfig }
-
-export type SingleRouteConfig = {
-  scriptCBOR: CBORHex;
+export type SingleRouteConfig = CommonSingle & {
   routeAddress: Address;
-  routeConfig: RouteConfig;
+  simpleRouteConfig?: SimpleRouteConfig;
+  advancedRouteConfig?: AdvancedRouteConfig;
 };
 
-export type BatchRouteConfig = {
-  stakingScriptCBOR: CBORHex;
+export type BatchRouteConfig = CommonBatch & {
   routeAddress: Address;
-  routeConfigs: RouteConfig[];
+  simpleRouteConfig?: SimpleRouteConfig;
+  advancedRouteConfig?: AdvancedRouteConfig;
 };

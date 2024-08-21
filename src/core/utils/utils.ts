@@ -516,8 +516,6 @@ export function genericCatch(error: any): Result<any> {
  */
 export const validateUTxOAndConfig = async (
   utxo: UTxO,
-  configKind: "simple" | "advanced",
-  configOutRef: OutRef,
   simpleOutputBuilder: (
     u: UTxO,
     sF: SimpleDatumFields
@@ -529,27 +527,10 @@ export const validateUTxOAndConfig = async (
   network: Network
 ): Promise<Result<InputUTxOAndItsOutputInfo>> => {
   // {{{
-  const configMatchesUTxO =
-    configOutRef.txHash === utxo.txHash &&
-    configOutRef.outputIndex === utxo.outputIndex;
-  if (!configMatchesUTxO) {
-    return {
-      type: "error",
-      error: new Error(
-        "Provided reclaim config does not correspond to the provided UTxO."
-      ),
-    };
-  }
   if (utxo.datum) {
-    if (configKind == "simple") {
-      const simpleFieldsRes = parseSimpleDatum(utxo.datum, network);
-      if (simpleFieldsRes.type == "ok") {
-        return simpleOutputBuilder(utxo, simpleFieldsRes.data);
-      } else {
-        return genericCatch(
-          new Error("Expected simple datum, but failed to parse")
-        );
-      }
+    const simpleFieldsRes = parseSimpleDatum(utxo.datum, network);
+    if (simpleFieldsRes.type == "ok") {
+      return simpleOutputBuilder(utxo, simpleFieldsRes.data);
     } else {
       const advancedFieldsRes = parseAdvancedDatum(utxo.datum, network);
       if (advancedFieldsRes.type == "ok") {
@@ -558,7 +539,7 @@ export const validateUTxOAndConfig = async (
         return {
           type: "error",
           error: new Error(
-            "This advanced UTxO has no owner specified, and therefore cannot be reclaimed."
+            "Failed to parse the UTxO's datum to either simple or advanced datum."
           ),
         };
       }

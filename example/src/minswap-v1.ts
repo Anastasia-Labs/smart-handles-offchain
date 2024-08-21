@@ -12,6 +12,7 @@ import {
   AdvancedDatumFields,
   AdvancedOutputDatumMaker,
   AdvancedReclaimConfig,
+  AdvancedRouteConfig,
   AdvancedRouteRequest,
   Asset,
   Assets,
@@ -25,9 +26,7 @@ import {
   OutRef,
   OutputDatum,
   ROUTER_FEE,
-  ReclaimConfig,
   Result,
-  RouteConfig,
   RouteRequest,
   SingleReclaimConfig,
   SingleRequestConfig,
@@ -39,7 +38,7 @@ import {
   collectErrorMsgs,
   errorToString,
   fetchBatchRequestUTxOs,
-  fetchSingleRequestOutRefs,
+  fetchSingleRequestUTxOs,
   fromAddress,
   fromAddressToData,
   fromUnit,
@@ -291,34 +290,20 @@ const mkRouteRequest = async (
     ),
   };
 
-  return {
-    type: "ok",
-    data: {
-      kind: "advanced",
-      data: advancedRouteRequest,
-    },
-  };
+  return ok({
+    kind: "advanced",
+    data: advancedRouteRequest,
+  });
   // }}}
 };
 
 /**
- * Helper function for creating a `ReclaimConfig` which should be used to
- * cancel a swap request.
- * @param requestOutRef - Output reference of the UTxO at smart handles
+ * `AdvancedReclaimConfig` which should be used to cancel a swap request.
  */
-const mkReclaimConfig = (requestOutRef: OutRef): ReclaimConfig => {
-  // {{{
-  const advancedReclaimConfig: AdvancedReclaimConfig = {
-    requestOutRef,
-    outputDatum: { kind: "inline", value: Data.void() },
-    extraLovelacesToBeLocked: 0n,
-    additionalAction: (tx, _utxo) => tx,
-  };
-  return {
-    kind: "advanced",
-    data: advancedReclaimConfig,
-  };
-  // }}}
+const advancedReclaimConfig: AdvancedReclaimConfig = {
+  outputDatumMaker: async (_inputAssets, _inputDatum) =>
+    ok({ kind: "inline", value: Data.void() }),
+  additionalAction: (tx, _utxo) => tx,
 };
 
 /**
@@ -336,10 +321,7 @@ const mkReclaimConfig = (requestOutRef: OutRef): ReclaimConfig => {
  * @param network - Target network, used for generating Bech32 address of the
  *        owner, extracted from input datum
  */
-const mkRouteConfig = async (
-  slippageTolerance: bigint,
-  outRef: OutRef
-): Promise<Result<RouteConfig>> => {
+const mkRouteConfig = (slippageTolerance: bigint): AdvancedRouteConfig => {
   // {{{
   const outputDatumMaker: AdvancedOutputDatumMaker = async (
     inputAssets: Assets,
@@ -385,15 +367,10 @@ const mkRouteConfig = async (
     // }}}
   };
 
-  return ok({
-    kind: "advanced",
-    data: {
-      requestOutRef: outRef,
-      extraLovelacesToBeLocked: MINSWAP_DEPOSIT + MINSWAP_BATCHER_FEE,
-      additionalAction: (tx, _utxo) => tx,
-      outputDatumMaker: outputDatumMaker,
-    },
-  });
+  return {
+    additionalAction: (tx, _utxo) => tx,
+    outputDatumMaker: outputDatumMaker,
+  };
   // }}}
 };
 
@@ -406,7 +383,7 @@ const fetchUsersRequestUTxOs = async (
   // {{{
   const network = lucid.config().network;
   const allRequests: UTxO[] = forSingle
-    ? await fetchSingleRequestOutRefs(lucid, scriptCBOR, network)
+    ? await fetchSingleRequestUTxOs(lucid, scriptCBOR, network)
     : await fetchBatchRequestUTxOs(lucid, scriptCBOR, network);
   console.log("Fetch completed:", allRequests);
   const initUsersRequests: (MinswapV1RequestUTxO | undefined)[] =
@@ -536,6 +513,7 @@ export const fetchUsersSingleRequestUTxOs = async (
  * Minswap V1 instance of smart handles.
  * @param requestOutRef - Output reference of the swap request UTxO at smart
  *        handles
+ * @param network - Target network, used for determining the route address
  */
 export const mkSingleReclaimConfig = (
   requestOutRef: OutRef,
@@ -548,8 +526,9 @@ export const mkSingleReclaimConfig = (
   );
   if (appliedSpendingCBORRes.type == "error") return appliedSpendingCBORRes;
   return ok({
+    requestOutRef,
     scriptCBOR: appliedSpendingCBORRes.data,
-    reclaimConfig: mkReclaimConfig(requestOutRef),
+    advancedReclaimConfig,
   });
   // }}}
 };
@@ -565,24 +544,24 @@ export const mkSingleReclaimConfig = (
  * @param network - Target network, used for both Blockfrost, and generating
  *        Bech32 address of the owner, extracted from input datum
  */
-export const mkSingleRouteConfig = async (
+export const mkSingleRouteConfig = (
   slippageTolerance: bigint,
   outRef: OutRef,
   network: Network
-): Promise<Result<SingleRouteConfig>> => {
+): Result<SingleRouteConfig> => {
   // {{{
-  const routeConfigRes = await mkRouteConfig(slippageTolerance, outRef);
-  if (routeConfigRes.type == "error") return routeConfigRes;
+  const routeConfig = mkRouteConfig(slippageTolerance);
   const appliedSpendingCBORRes = applyMinswapAddressToCBOR(
     singleSpendingValidator.cborHex,
     network
   );
   if (appliedSpendingCBORRes.type == "error") return appliedSpendingCBORRes;
   return ok({
+    requestOutRef: outRef,
     scriptCBOR: appliedSpendingCBORRes.data,
     routeAddress:
       network === "Mainnet" ? MINSWAP_ADDRESS_MAINNET : MINSWAP_ADDRESS_PREPROD,
-    routeConfig: routeConfigRes.data,
+    routeConfig,
   });
   // }}}
 };
@@ -689,6 +668,7 @@ export const fetchUsersBatchRequestUTxOs = async (
  * Given a list of request `OutRef` values, this function returns a
  * `BatchReclaimConfig` for Minswap V1 instance of smart handles.
  * @param requestOutRefs - List of output references of UTxOs at smart handles
+ * @param network - Target network, used for determining the route address
  */
 export const mkBatchReclaimConfig = (
   requestOutRefs: OutRef[],
@@ -701,8 +681,9 @@ export const mkBatchReclaimConfig = (
   );
   if (appliedStakingCBORRes.type == "error") return appliedStakingCBORRes;
   return ok({
+    requestOutRefs,
     stakingScriptCBOR: appliedStakingCBORRes.data,
-    reclaimConfigs: requestOutRefs.map(mkReclaimConfig),
+    advancedReclaimConfig,
   });
   // }}}
 };
@@ -719,49 +700,25 @@ export const mkBatchReclaimConfig = (
  * @param network - Target network, used for both Blockfrost, and generating
  *        Bech32 address of the owner, extracted from input datum
  */
-export const mkBatchRouteConfig = async (
+export const mkBatchRouteConfig = (
   slippageTolerance: bigint,
   outRefs: OutRef[],
   network: Network
-): Promise<Result<BatchRouteConfig>> => {
+): Result<BatchRouteConfig> => {
   // {{{
-  const allRouteConfigRes = await Promise.all(
-    outRefs.map(async (outRef) => {
-      return await mkRouteConfig(slippageTolerance, outRef);
-    })
+  const routeConfig = mkRouteConfig(slippageTolerance);
+  const appliedStakingCBORRes = applyMinswapAddressToCBOR(
+    stakingValidator.cborHex,
+    network
   );
-  const allRouteConfigs: RouteConfig[] = [];
-  const allFailures = validateItems(
-    allRouteConfigRes,
-    (routeConfigRes) => {
-      if (routeConfigRes.type == "error") {
-        return errorToString(routeConfigRes.error);
-      } else {
-        allRouteConfigs.push(routeConfigRes.data);
-      }
-    },
-    true
-  );
-  if (allFailures.length > 0) {
-    return {
-      type: "error",
-      error: collectErrorMsgs(allFailures, "mkBatchRouteConfig"),
-    };
-  } else {
-    const appliedStakingCBORRes = applyMinswapAddressToCBOR(
-      stakingValidator.cborHex,
-      network
-    );
-    if (appliedStakingCBORRes.type == "error") return appliedStakingCBORRes;
-    return ok({
-      stakingScriptCBOR: appliedStakingCBORRes.data,
-      routeAddress:
-        network === "Mainnet"
-          ? MINSWAP_ADDRESS_MAINNET
-          : MINSWAP_ADDRESS_PREPROD,
-      routeConfigs: allRouteConfigs,
-    });
-  }
+  if (appliedStakingCBORRes.type == "error") return appliedStakingCBORRes;
+  return ok({
+    requestOutRefs: outRefs,
+    stakingScriptCBOR: appliedStakingCBORRes.data,
+    routeAddress:
+      network === "Mainnet" ? MINSWAP_ADDRESS_MAINNET : MINSWAP_ADDRESS_PREPROD,
+    advancedRouteConfig: routeConfig,
+  });
   // }}}
 };
 // }}}

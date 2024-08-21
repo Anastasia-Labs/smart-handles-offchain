@@ -10,6 +10,7 @@ import {
   UTxO,
   OutputDatum,
   Network,
+  TxBuilder,
 } from "@lucid-evolution/lucid";
 import { LOVELACE_MARGIN, ROUTER_FEE } from "../core/constants.js";
 import {
@@ -20,8 +21,9 @@ import {
   BatchRouteConfig,
   Result,
   SingleRouteConfig,
-  RouteConfig,
   InputUTxOAndItsOutputInfo,
+  SimpleRouteConfig,
+  AdvancedRouteConfig,
 } from "../core/types.js";
 import {
   asyncValidateItems,
@@ -46,8 +48,9 @@ const outputHelper = (
   forSingle: boolean,
   routeAddress: Address,
   outputAssetsRes: Result<Assets>,
-  outputDatumRes: Result<OutputDatum>
-): Result<InputUTxOAndItsOutputInfo> => {
+  outputDatumRes: Result<OutputDatum>,
+  additionalAction: (tx: TxBuilder, utxo: UTxO) => TxBuilder
+): Result<Required<InputUTxOAndItsOutputInfo>> => {
   if (outputAssetsRes.type == "error") return outputAssetsRes;
   if (outputDatumRes.type == "error") return outputDatumRes;
   return ok({
@@ -62,6 +65,7 @@ const outputHelper = (
       outputAssets: outputAssetsRes.data,
       outputDatum: outputDatumRes.data,
     },
+    additionalAction,
   });
 };
 
@@ -80,32 +84,31 @@ const outputHelper = (
  */
 const utxoToOutputInfo = async (
   utxo: UTxO,
-  routeConfig: RouteConfig,
   routeAddress: Address,
+  simpleRouteConfig: SimpleRouteConfig | undefined,
+  advancedRouteConfig: AdvancedRouteConfig | undefined,
   forSingle: boolean,
   network: Network
 ): Promise<Result<InputUTxOAndItsOutputInfo>> => {
   return await validateUTxOAndConfig(
     utxo,
-    routeConfig.kind,
-    routeConfig.data.requestOutRef,
     async (u: UTxO, simpleFields: SimpleDatumFields) => {
       // {{{
-      if (routeConfig.kind == "simple") {
+      if (simpleRouteConfig) {
         try {
           const outputAssetsRes: Result<Assets> = reduceLovelacesOfAssets(
             utxo.assets,
-            ROUTER_FEE,
-            routeConfig.data.extraLovelacesToBeLocked
+            ROUTER_FEE
           );
           const outputDatumRes: Result<OutputDatum> =
-            await routeConfig.data.outputDatumMaker(utxo.assets, simpleFields);
+            await simpleRouteConfig.outputDatumMaker(utxo.assets, simpleFields);
           return outputHelper(
             u,
             forSingle,
             routeAddress,
             outputAssetsRes,
-            outputDatumRes
+            outputDatumRes,
+            simpleRouteConfig.additionalAction
           );
         } catch (e) {
           return genericCatch(e);
@@ -113,21 +116,20 @@ const utxoToOutputInfo = async (
       } else {
         return {
           type: "error",
-          error: new Error("Bad route config encountered (simple expected)"),
+          error: new Error("No simple route config was provided."),
         };
       }
       // }}}
     },
     async (u: UTxO, advancedFields: AdvancedDatumFields) => {
       // {{{
-      if (routeConfig.kind == "advanced") {
+      if (advancedRouteConfig) {
         try {
           const outputAssetsRes = reduceLovelacesOfAssets(
             utxo.assets,
-            advancedFields.routerFee,
-            routeConfig.data.extraLovelacesToBeLocked
+            advancedFields.routerFee
           );
-          const outputDatumRes = await routeConfig.data.outputDatumMaker(
+          const outputDatumRes = await advancedRouteConfig.outputDatumMaker(
             u.assets,
             advancedFields
           );
@@ -136,7 +138,8 @@ const utxoToOutputInfo = async (
             forSingle,
             routeAddress,
             outputAssetsRes,
-            outputDatumRes
+            outputDatumRes,
+            advancedRouteConfig.additionalAction
           );
         } catch (e) {
           return genericCatch(e);
@@ -144,7 +147,7 @@ const utxoToOutputInfo = async (
       } else {
         return {
           type: "error",
-          error: new Error("Bad route config encountered (advanced expected)"),
+          error: new Error("No advanced route config was provided."),
         };
       }
       // }}}
@@ -164,12 +167,13 @@ export const singleRoute = async (
   const va = getSingleValidatorVA(config.scriptCBOR, network);
 
   try {
-    const [utxoToSpend] = await lucid.utxosByOutRef([
-      config.routeConfig.data.requestOutRef,
-    ]);
+    const [utxoToSpend] = await lucid.utxosByOutRef([config.requestOutRef]);
 
     if (!utxoToSpend)
-      return { type: "error", error: new Error("No UTxO with that TxOutRef") };
+      return {
+        type: "error",
+        error: new Error("Failed to fetch the specified UTxO."),
+      };
 
     const walletUTxOs = await lucid.wallet().getUtxos();
 
@@ -178,8 +182,9 @@ export const singleRoute = async (
 
     const inUTxOAndOutInfoRes = await utxoToOutputInfo(
       utxoToSpend,
-      config.routeConfig,
       config.routeAddress,
+      config.simpleRouteConfig,
+      config.advancedRouteConfig,
       true,
       network
     );
@@ -202,8 +207,8 @@ export const singleRoute = async (
         inOutInfo.scriptOutput!.outputDatum,
         inOutInfo.scriptOutput!.outputAssets
       );
-    const finalTx = config.routeConfig.data.additionalAction(tx, utxoToSpend);
-    return { type: "ok", data: await finalTx.complete() };
+    const finalTx = inOutInfo.additionalAction!(tx, utxoToSpend);
+    return ok(await finalTx.complete());
   } catch (error) {
     return genericCatch(error);
   }
@@ -220,50 +225,43 @@ export const batchRoute = async (
     lucid.config().network
   );
 
-  if (config.routeConfigs.length < 1)
-    return { type: "error", error: new Error("No route configs provided.") };
+  if (config.requestOutRefs.length < 1)
+    return { type: "error", error: new Error("No request out refs provided.") };
 
   try {
-    const utxosToSpend = await lucid.utxosByOutRef(
-      config.routeConfigs.map((rC: RouteConfig) => rC.data.requestOutRef)
-    );
+    const utxosToSpend = await lucid.utxosByOutRef(config.requestOutRefs);
 
-    if (!utxosToSpend || utxosToSpend.length !== config.routeConfigs.length)
+    if (!utxosToSpend)
       return {
         type: "error",
-        error: new Error(
-          "One or more of the specified UTxOs could not be found."
-        ),
+        error: new Error("None of the specified UTxOs could be found."),
       };
-
-    const utxosAndRouteConfigs: {
-      utxo: UTxO;
-      routeConfig: RouteConfig;
-    }[] = utxosToSpend.map((u: UTxO, i: number) => ({
-      utxo: u,
-      routeConfig: config.routeConfigs[i],
-    }));
 
     const inUTxOAndOutInfos: InputUTxOAndItsOutputInfo[] = [];
 
     const badRouteErrorMsgs: string[] = await asyncValidateItems(
-      utxosAndRouteConfigs,
-      async ({ utxo: utxoToSpend, routeConfig }) => {
-        const inUTxOAndOutInfoRes = await utxoToOutputInfo(
-          utxoToSpend,
-          routeConfig,
-          config.routeAddress,
-          false,
-          lucid.config().network
-        );
+      utxosToSpend,
+      async (utxoToSpend: UTxO) => {
+        try {
+          const inUTxOAndOutInfoRes = await utxoToOutputInfo(
+            utxoToSpend,
+            config.routeAddress,
+            config.simpleRouteConfig,
+            config.advancedRouteConfig,
+            false,
+            lucid.config().network
+          );
 
-        if (inUTxOAndOutInfoRes.type == "error") {
-          return `${printUTxOOutRef(utxoToSpend)}: ${errorToString(
-            inUTxOAndOutInfoRes.error
-          )}`;
-        } else {
-          inUTxOAndOutInfos.push(inUTxOAndOutInfoRes.data);
-          return undefined;
+          if (inUTxOAndOutInfoRes.type == "error") {
+            return `${printUTxOOutRef(utxoToSpend)}: ${errorToString(
+              inUTxOAndOutInfoRes.error
+            )}`;
+          } else {
+            inUTxOAndOutInfos.push(inUTxOAndOutInfoRes.data);
+            return undefined;
+          }
+        } catch(e) {
+          return errorToString(e);
         }
       }
     );
@@ -294,14 +292,11 @@ export const batchRoute = async (
       })
       .attach.WithdrawalValidator(batchVAs.stakeVA.validator);
 
-    inUTxOAndOutInfos.map((inOutInfo: InputUTxOAndItsOutputInfo, i: number) => {
-      tx = config.routeConfigs[i].data.additionalAction(tx, inOutInfo.utxo);
+    inUTxOAndOutInfos.map((inOutInfo: InputUTxOAndItsOutputInfo) => {
+      tx = inOutInfo.additionalAction!(tx, inOutInfo.utxo);
     });
 
-    return {
-      type: "ok",
-      data: await tx.complete(),
-    };
+    return ok(await tx.complete());
   } catch (error) {
     return genericCatch(error);
   }

@@ -1,7 +1,7 @@
 import { CBORHex, LucidEvolution, Network, UTxO } from "@lucid-evolution/lucid";
 import { getSingleValidatorVA, getBatchVAs } from "../core/utils/index.js";
 
-export const fetchSingleRequestOutRefs = async (
+export const fetchSingleRequestUTxOs = async (
   lucid: LucidEvolution,
   spendingScriptCBOR: CBORHex,
   network: Network

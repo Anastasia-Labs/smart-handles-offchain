@@ -115,7 +115,7 @@ test<LucidContext>(
 
     emulator.awaitBlock(100);
 
-    const swapConfig = unsafeFromOk(await mkBatchRouteConfig(
+    const swapConfig = unsafeFromOk(mkBatchRouteConfig(
       BigInt(20),
       allRequests.map((r) => ({
         txHash: r.txHash,

@@ -84,7 +84,7 @@ export const run = async (
     const usersRequests: MinswapV1RequestUTxO[] = usersRequestsRes.data;
     console.log(usersRequests);
 
-    const batchRouteConfigRes = await mkBatchRouteConfig(
+    const batchRouteConfigRes = mkBatchRouteConfig(
       BigInt(10),
       usersRequests.map((u) => u.outRef),
       "Preprod"

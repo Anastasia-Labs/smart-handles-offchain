@@ -49,7 +49,7 @@ test<LucidContext>(
     // Valid Swap
     lucid.selectWallet.fromSeed(users.router.seedPhrase);
     const routeConfig = unsafeFromOk(
-      await mkSingleRouteConfig(BigInt(20), userRequests[0].outRef, "Custom")
+      mkSingleRouteConfig(BigInt(20), userRequests[0].outRef, "Custom")
     );
 
     const swapTxUnsigned = unsafeFromOk(await singleRoute(lucid, routeConfig));
