@@ -300,7 +300,7 @@ const mkRouteRequest = async (
 /**
  * `AdvancedReclaimConfig` which should be used to cancel a swap request.
  */
-const advancedReclaimConfig: AdvancedReclaimConfig = {
+export const advancedReclaimConfig: AdvancedReclaimConfig = {
   outputDatumMaker: async (_inputAssets, _inputDatum) =>
     ok({ kind: "inline", value: Data.void() }),
   additionalAction: (tx, _utxo) => tx,
@@ -321,7 +321,7 @@ const advancedReclaimConfig: AdvancedReclaimConfig = {
  * @param network - Target network, used for generating Bech32 address of the
  *        owner, extracted from input datum
  */
-const mkRouteConfig = (slippageTolerance: bigint): AdvancedRouteConfig => {
+export const mkRouteConfig = (slippageTolerance: bigint): AdvancedRouteConfig => {
   // {{{
   const outputDatumMaker: AdvancedOutputDatumMaker = async (
     inputAssets: Assets,

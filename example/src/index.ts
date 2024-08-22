@@ -1,10 +1,13 @@
 #!/bin/env node
 
+import * as minswap from "./minswap-v1.js";
 import * as ada2min from "./scenarios/ada-to-min.js";
 import * as min2btc from "./scenarios/min-to-tbtc.js";
 import * as packageJson from "../package.json";
 import { Command } from "commander";
 import * as chalk_ from "chalk";
+
+export const minswapv1 = minswap;
 export const chalk = new chalk_.Chalk();
 
 const logAbort = (msg: string) => {
