@@ -7,18 +7,18 @@ import {
   BatchVAs,
   LucidEvolution,
   batchRoute,
-} from "../src/index.js";
+} from "@anastasia-labs/smart-handles-offchain";
 import {
   applyMinswapAddressToCBOR,
   mkBatchRouteConfig,
-} from "../example/src/minswap-v1.js";
+} from "../src/minswap-v1.js";
 import {
   LucidContext,
   createUser,
   submitAdaToMinBatchRequests,
   unsafeFromOk,
 } from "./utils.js";
-import stakingValidator from "../example/src/uplc/smartHandleStake.json";
+import stakingValidator from "../src/uplc/smartHandleStake.json";
 import { beforeEach, test } from "vitest";
 
 //NOTE: INITIALIZE EMULATOR + ACCOUNTS

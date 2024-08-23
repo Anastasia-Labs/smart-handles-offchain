@@ -1,6 +1,6 @@
-import { Data } from "@lucid-evolution/lucid";
 import {
   AdvancedDatumFields,
+  Data,
   ReadableUTxO,
 } from "@anastasia-labs/smart-handles-offchain";
 

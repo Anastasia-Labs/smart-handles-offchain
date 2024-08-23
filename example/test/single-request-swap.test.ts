@@ -2,8 +2,8 @@ import {
   fetchUsersSingleRequestUTxOs,
   mkSingleReclaimConfig,
   mkSingleRouteConfig,
-} from "../example/src/minswap-v1.js";
-import { Emulator, Lucid, singleReclaim, singleRoute } from "../src/index.js";
+} from "../src/minswap-v1.js";
+import { Emulator, Lucid, singleReclaim, singleRoute } from "@anastasia-labs/smart-handles-offchain";
 import {
   LucidContext,
   createUser,

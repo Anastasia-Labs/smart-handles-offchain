@@ -3,7 +3,7 @@ import {
   Lucid,
   singleReclaim,
   paymentCredentialOf,
-} from "../src/index.js";
+} from "@anastasia-labs/smart-handles-offchain";
 import { beforeEach, expect, test } from "vitest";
 import {
   LucidContext,
@@ -14,7 +14,7 @@ import {
 import {
   fetchUsersSingleRequestUTxOs,
   mkSingleReclaimConfig,
-} from "../example/src/minswap-v1.js";
+} from "../src/minswap-v1.js";
 
 //NOTE: INITIALIZE EMULATOR + ACCOUNTS
 beforeEach<LucidContext>(async (context) => {

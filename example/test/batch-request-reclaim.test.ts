@@ -2,7 +2,7 @@ import {
   applyMinswapAddressToCBOR,
   fetchUsersBatchRequestUTxOs,
   mkBatchReclaimConfig,
-} from "../example/src/minswap-v1.js";
+} from "../src/minswap-v1.js";
 import {
   Emulator,
   Lucid,
@@ -11,14 +11,14 @@ import {
   getBatchVAs,
   registerRewardAddress,
   BatchVAs,
-} from "../src/index.js";
+} from "@anastasia-labs/smart-handles-offchain";
 import {
   LucidContext,
   createUser,
   submitAdaToMinBatchRequests,
   unsafeFromOk,
 } from "./utils.js";
-import stakingValidator from "../example/src/uplc/smartHandleStake.json";
+import stakingValidator from "../src/uplc/smartHandleStake.json";
 import { beforeEach, expect, test } from "vitest";
 
 //NOTE: INITIALIZE EMULATOR + ACCOUNTS

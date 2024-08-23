@@ -34,7 +34,7 @@ import {
   AdvancedDatumFields,
   SimpleDatumFields,
 } from "../core/contract.types.js";
-import { UNAUTHORIZED_OWNER_ERROR_MSG } from "../index.js";
+import { UNAUTHORIZED_OWNER_ERROR_MSG } from "../core/constants.js";
 // }}}
 // ----------------------------------------------------------------------------
 
