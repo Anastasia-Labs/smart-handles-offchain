@@ -1,6 +1,6 @@
 {
   "name": "@anastasia-labs/smart-handles-offchain",
-  "version": "0.3.0-alpha.0",
+  "version": "0.3.0",
   "description": "https://docs.github.com/en/packages/quickstart",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -9,8 +9,6 @@
     "dist"
   ],
   "scripts": {
-    "test-ci": "export NODE_ENV='CI' && vitest run",
-    "test": "export NODE_ENV='emulator' && vitest run",
     "build": "tsup src/index.ts --minify --format esm,cjs --dts --clean",
     "lint": "eslint",
     "repack": "pnpm run build  && pnpm pack",
@@ -28,11 +26,7 @@
     "eslint-config-prettier": "^9.1.0",
     "ts-node": "^10.9.2",
     "tsup": "^8.0.2",
-    "typescript": "^5.4.2",
-    "vitest": "0.34.6"
-  },
-  "directories": {
-    "test": "test"
+    "typescript": "^5.4.2"
   },
   "dependencies": {
     "@lucid-evolution/lucid": "^0.3.13"

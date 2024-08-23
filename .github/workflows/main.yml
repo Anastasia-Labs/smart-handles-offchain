@@ -16,7 +16,14 @@ jobs:
         with:
           node-version: 20
           cache: 'pnpm'
-      - run: pnpm i
-      - run: pnpm run lint && pnpm run build
-      - run: pnpm test-ci
+      - name: Install dependencies
+        run: pnpm i
+      - name: Pack main package
+        run: pnpm run lint && pnpm run repack
+      - name: Install example dependencies
+        run: pnpm i
+        working-directory: ./example
+      - name: Run example's tests
+        run: pnpm test
+        working-directory: ./example
 
