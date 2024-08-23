@@ -1,5 +1,8 @@
-import {Data} from "@lucid-evolution/lucid";
-import {AdvancedDatumFields, ReadableUTxO} from "../../src/index.js";
+import { Data } from "@lucid-evolution/lucid";
+import {
+  AdvancedDatumFields,
+  ReadableUTxO,
+} from "@anastasia-labs/smart-handles-offchain";
 
 export const CredentialSchema = Data.Enum([
   Data.Object({
@@ -15,7 +18,6 @@ export const CredentialSchema = Data.Enum([
 ]);
 export type CredentialD = Data.Static<typeof CredentialSchema>;
 export const CredentialD = CredentialSchema as unknown as CredentialD;
-
 
 export const AddressSchema = Data.Object({
   paymentCredential: CredentialSchema,
@@ -37,14 +39,12 @@ export const AddressSchema = Data.Object({
 export type AddressD = Data.Static<typeof AddressSchema>;
 export const AddressD = AddressSchema as unknown as AddressD;
 
-
 export const AssetClassSchema = Data.Object({
   symbol: Data.Bytes(),
   name: Data.Bytes(),
 });
 export type AssetClassD = Data.Static<typeof AssetClassSchema>;
 export const AssetClassD = AssetClassSchema as unknown as AssetClassD;
-
 
 export const MinswapRequestInfoSchema = Data.Object({
   desiredAssetSymbol: Data.Bytes(),
@@ -56,14 +56,12 @@ export type MinswapRequestInfo = Data.Static<typeof MinswapRequestInfoSchema>;
 export const MinswapRequestInfo =
   MinswapRequestInfoSchema as unknown as MinswapRequestInfo;
 
-
 export const OrderTypeSchema = Data.Object({
   desiredAsset: AssetClassSchema,
   minReceive: Data.Integer(),
 });
 export type OrderType = Data.Static<typeof OrderTypeSchema>;
 export const OrderType = OrderTypeSchema as unknown as OrderType;
-
 
 export const OrderDatumSchema = Data.Object({
   sender: AddressSchema,

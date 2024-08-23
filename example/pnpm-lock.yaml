@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@anastasia-labs/smart-handles-offchain':
+        specifier: file:../
+        version: file:..
       '@blockfrost/blockfrost-js':
         specifier: ^5.5.0
         version: 5.5.0
@@ -32,6 +35,9 @@ importers:
         version: 5.4.5
 
 packages:
+
+  '@anastasia-labs/smart-handles-offchain@file:..':
+    resolution: {directory: .., type: directory}
 
   '@blockfrost/blockfrost-js@5.5.0':
     resolution: {integrity: sha512-9UZIo6jRDSkRJt1r9sU2YPlz9MC3Ndh/5nCxS04H9B2MIak/jtPoJ3jTvn5dED06P8lPSKPn0QYPsIiJQ+8Kew==}
@@ -987,6 +993,8 @@ packages:
     hasBin: true
 
 snapshots:
+
+  '@anastasia-labs/smart-handles-offchain@file:..': {}
 
   '@blockfrost/blockfrost-js@5.5.0':
     dependencies:

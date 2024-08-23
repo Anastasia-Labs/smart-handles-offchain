@@ -47,7 +47,7 @@ import {
   parseAdvancedDatum,
   parseSafeDatum,
   validateItems,
-} from "../../src/index.js";
+} from "@anastasia-labs/smart-handles-offchain";
 import {
   MinswapRequestInfo,
   MinswapV1RequestUTxO,

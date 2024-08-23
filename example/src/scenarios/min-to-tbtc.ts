@@ -6,8 +6,7 @@ import {
   toUnit,
   batchRoute,
   errorToString,
-  // } from "@anastasia-labs/smart-handles-offchain";
-} from "../../../src/index.js";
+} from "@anastasia-labs/smart-handles-offchain";
 import { MIN_SYMBOL_PREPROD, MIN_TOKEN_NAME } from "../constants.js";
 import {
   fetchUsersBatchRequestUTxOs,
