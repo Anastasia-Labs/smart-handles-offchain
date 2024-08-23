@@ -20,7 +20,6 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@lucid-evolution/lucid": "^0.3.13",
     "@sinclair/typebox": "^0.32.15",
     "@types/node": "^20.11.26",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
@@ -34,6 +33,9 @@
   },
   "directories": {
     "test": "test"
+  },
+  "dependencies": {
+    "@lucid-evolution/lucid": "^0.3.13"
   },
   "packageManager": "pnpm@9.0.4+sha1.b198ac6d38244fd829253720f9daafd6a606834d"
 }

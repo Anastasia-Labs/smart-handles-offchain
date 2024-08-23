@@ -1,11 +1,11 @@
 import {
   MIN_SYMBOL_PREPROD,
   MIN_TOKEN_NAME,
-} from "../example/src/constants.js";
+} from "../src/constants.js";
 import {
   mkBatchRequestConfig,
   mkSingleRequestConfig,
-} from "../example/src/minswap-v1.js";
+} from "../src/minswap-v1.js";
 import {
   Emulator,
   LucidEvolution,
@@ -15,7 +15,7 @@ import {
   toUnit,
   singleRequest,
   batchRequest,
-} from "../src/index.js";
+} from "@anastasia-labs/smart-handles-offchain";
 
 export type LucidContext = {
   lucid: LucidEvolution;

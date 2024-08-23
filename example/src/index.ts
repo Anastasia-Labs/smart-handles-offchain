@@ -3,7 +3,7 @@
 import * as minswap from "./minswap-v1.js";
 import * as ada2min from "./scenarios/ada-to-min.js";
 import * as min2btc from "./scenarios/min-to-tbtc.js";
-import * as packageJson from "../package.json";
+// import * as packageJson from "../package.json";
 import { Command } from "commander";
 import * as chalk_ from "chalk";
 
@@ -42,8 +42,9 @@ const fromAction = (
 
 const program: Command = new Command();
 
-program.version(packageJson.default.version).description(`
-${packageJson.default.description}
+// program.version(packageJson.default.version).description(`
+// ${packageJson.default.description}
+program.version("0.3.0").description(`
 
 Use either ada2min or min2btc. But make sure you've first set these three
 environment variables:
