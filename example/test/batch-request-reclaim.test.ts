@@ -61,14 +61,15 @@ test<LucidContext>("Test - Batch Swap Request, Reclaim", async ({
   emulator.awaitBlock(100);
 
   // Valid Batch Reclaim
-  const reclaimConfig1 = unsafeFromOk(
+  const user1ReclaimConfig = unsafeFromOk(
     mkBatchReclaimConfig(
       user1Requests.map((u) => u.outRef),
+      users.user1.address,
       "Custom"
     )
   );
 
-  const reclaimUnsigned1 = unsafeFromOk(await batchReclaim(lucid, reclaimConfig1));
+  const reclaimUnsigned1 = unsafeFromOk(await batchReclaim(lucid, user1ReclaimConfig));
 
   const reclaimSigned1 = await reclaimUnsigned1.sign
     .withWallet()
@@ -93,14 +94,15 @@ test<LucidContext>("Test - Batch Swap Request, Reclaim", async ({
 
   // Attempt Batch Reclaim of user1 UTxOs by user2
   lucid.selectWallet.fromSeed(users.user2.seedPhrase);
-  const reclaimConfig2: BatchReclaimConfig = unsafeFromOk(
+  const user2ReclaimConfig: BatchReclaimConfig = unsafeFromOk(
     mkBatchReclaimConfig(
       user1Requests2.map((u) => u.outRef),
+      users.user2.address,
       "Custom"
     )
   );
 
-  const reclaimUnsigned2 = await batchReclaim(lucid, reclaimConfig2);
+  const reclaimUnsigned2 = await batchReclaim(lucid, user2ReclaimConfig);
 
   expect(reclaimUnsigned2.type).toBe("error");
 });

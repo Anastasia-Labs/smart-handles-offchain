@@ -82,16 +82,16 @@ const advancedDatumBuilder = (
   if (addrRes.type == "ok") {
     addr = addrRes.data;
   }
-  return Data.to(
+  const constr =
     new Constr(1, [
       routeRequest.markWalletAsOwner
         ? new Constr(0, [addr])
         : new Constr(1, []),
       routeRequest.routerFee,
       routeRequest.reclaimRouterFee,
-      routeRequest.extraInfo,
+      routeRequest.extraInfoDataBuilder()
     ])
-  );
+  return Data.to(constr);
 };
 // }}}
 // ----------------------------------------------------------------------------

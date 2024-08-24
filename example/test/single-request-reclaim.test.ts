@@ -22,7 +22,6 @@ beforeEach<LucidContext>(async (context) => {
     user1: createUser(),
     user2: createUser(),
   };
-
   context.emulator = new Emulator([context.users.user1, context.users.user2]);
 
   context.lucid = await Lucid(context.emulator, "Custom");
@@ -45,13 +44,16 @@ test<LucidContext>("Test - Single Request, Reclaim", async ({
   );
   console.log(userRequests1);
 
-  const reclaimConfig = unsafeFromOk(
-    mkSingleReclaimConfig(userRequests1[0].outRef, "Custom")
-  );
-
   // NOTE: Invalid Reclaim 1
   lucid.selectWallet.fromSeed(users.user2.seedPhrase);
-  const invalidReclaim = await singleReclaim(lucid, reclaimConfig);
+  const user2ReclaimConfig = unsafeFromOk(
+    mkSingleReclaimConfig(
+      userRequests1[0].outRef,
+      users.user2.address,
+      "Custom"
+    )
+  );
+  const invalidReclaim = await singleReclaim(lucid, user2ReclaimConfig);
 
   if (invalidReclaim.type == "ok") {
     console.log(invalidReclaim.data.toCBOR());
@@ -61,11 +63,29 @@ test<LucidContext>("Test - Single Request, Reclaim", async ({
 
   // NOTE: Valid Reclaim 1
   lucid.selectWallet.fromSeed(users.user1.seedPhrase);
-  const reclaimUnsigned1 = unsafeFromOk(
-    await singleReclaim(lucid, reclaimConfig)
+  const user1ReclaimConfig = unsafeFromOk(
+    mkSingleReclaimConfig(
+      userRequests1[0].outRef,
+      users.user1.address,
+      "Custom"
+    )
   );
+  console.log("VALID RECLAIM CONFIG");
+  console.log(user1ReclaimConfig);
+  const reclaimUnsigned1 = unsafeFromOk(
+    await singleReclaim(lucid, user1ReclaimConfig)
+  );
+  console.log("VALID RECLAIM TX UNSIGNED");
+  console.log(reclaimUnsigned1.toCBOR());
 
   // Typescript seems to be confused without this check.
   const reclaimSigned1 = await reclaimUnsigned1.sign.withWallet().complete();
-  const reclaimSignedHash1 = await reclaimSigned1.submit();
+  console.log("VALID RECLAIM TX SIGNED");
+  console.log(reclaimSigned1.toCBOR());
+  try {
+    const reclaimSignedHash1 = await reclaimSigned1.submit();
+  } catch (e) {
+    console.log(JSON.stringify(e));
+    throw e;
+  }
 }, 60_000);

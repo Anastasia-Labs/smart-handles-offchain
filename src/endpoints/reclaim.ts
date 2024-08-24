@@ -17,6 +17,7 @@ import {
   errorToString,
   genericCatch,
   getBatchVAs,
+  getOneUTxOFromWallet,
   getSingleValidatorVA,
   ok,
   printUTxOOutRef,
@@ -96,12 +97,12 @@ const utxoToOutputInfo = async (
         if (advancedFields.mOwner) {
           const outputAssetsRes = reduceLovelacesOfAssets(
             utxo.assets,
-            advancedFields.reclaimRouterFee,
+            advancedFields.reclaimRouterFee
           );
           try {
             const outputDatumRes = await reclaimConfig.outputDatumMaker(
               utxo.assets,
-              advancedFields,
+              advancedFields
             );
             if (outputAssetsRes.type == "error") return outputAssetsRes;
             if (outputDatumRes.type == "error") return outputDatumRes;
@@ -114,7 +115,9 @@ const utxoToOutputInfo = async (
                 // spend validator.
                 makeRedeemer: (ownIndex) =>
                   Data.to(
-                    forSingle ? new Constr(2, [ownIndex, 0n]) : new Constr(1, [])
+                    forSingle
+                      ? new Constr(2, [ownIndex, 0n])
+                      : new Constr(1, [])
                   ),
               },
               outputAddress: advancedFields.mOwner,
@@ -124,7 +127,7 @@ const utxoToOutputInfo = async (
               },
               additionalAction: reclaimConfig.additionalAction,
             });
-          } catch(e) {
+          } catch (e) {
             return genericCatch(e);
           }
         } else {
@@ -138,7 +141,9 @@ const utxoToOutputInfo = async (
       } else {
         return {
           type: "error",
-          error: new Error("Failed to reclaim an advanced datum as no advanced reclaim logic was provided"),
+          error: new Error(
+            "Failed to reclaim an advanced datum as no advanced reclaim logic was provided"
+          ),
         };
       }
       // }}}
@@ -156,7 +161,7 @@ const utxoToOutputInfo = async (
  */
 const complementTx = (
   tx: TxBuilder,
-  inOutInfo: InputUTxOAndItsOutputInfo,
+  inOutInfo: InputUTxOAndItsOutputInfo
 ): TxBuilder => {
   // {{{
   let finalTx = tx;
@@ -184,12 +189,13 @@ export const singleReclaim = async (
   const va = getSingleValidatorVA(config.scriptCBOR, lucid.config().network);
 
   try {
-    const [utxoToSpend] = await lucid.utxosByOutRef([
-      config.requestOutRef
-    ]);
+    const [utxoToSpend] = await lucid.utxosByOutRef([config.requestOutRef]);
 
     if (!utxoToSpend)
       return { type: "error", error: new Error("No UTxO with that TxOutRef") };
+
+    const feeUTxORes = await getOneUTxOFromWallet(lucid);
+    if (feeUTxORes.type == "error") return feeUTxORes;
 
     const walletAddress = await lucid.wallet().address();
 
@@ -208,12 +214,10 @@ export const singleReclaim = async (
     const tx = lucid
       .newTx()
       .collectFrom([utxoToSpend], inOutInfo.redeemerBuilder)
+      .collectFrom([feeUTxORes.data])
       .attach.SpendingValidator(va.validator);
 
-    const finalTx: TxBuilder = complementTx(
-      tx,
-      inOutInfo,
-    );
+    const finalTx: TxBuilder = complementTx(tx, inOutInfo);
 
     return ok(await finalTx.complete());
   } catch (error) {
@@ -240,9 +244,7 @@ export const batchReclaim = async (
     if (!utxosToSpend)
       return {
         type: "error",
-        error: new Error(
-          "None of the specified UTxOs could be fetched."
-        ),
+        error: new Error("None of the specified UTxOs could be fetched."),
       };
 
     const walletAddress = await lucid.wallet().address();
@@ -303,10 +305,7 @@ export const batchReclaim = async (
     // Add corresponding output UTxOs for each reclaimed UTxO. It'll fail if any
     // irreclaimable UTxOs are encountered.
     inUTxOAndOutInfos.map((inOutInfo: InputUTxOAndItsOutputInfo) => {
-      tx = complementTx(
-        tx,
-        inOutInfo,
-      );
+      tx = complementTx(tx, inOutInfo);
     });
 
     return ok(await tx.complete());

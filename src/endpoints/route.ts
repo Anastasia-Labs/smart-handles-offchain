@@ -31,6 +31,7 @@ import {
   errorToString,
   genericCatch,
   getBatchVAs,
+  getOneUTxOFromWallet,
   getSingleValidatorVA,
   ok,
   printUTxOOutRef,
@@ -260,7 +261,7 @@ export const batchRoute = async (
             inUTxOAndOutInfos.push(inUTxOAndOutInfoRes.data);
             return undefined;
           }
-        } catch(e) {
+        } catch (e) {
           return errorToString(e);
         }
       }
@@ -271,29 +272,38 @@ export const batchRoute = async (
         type: "error",
         error: collectErrorMsgs(badRouteErrorMsgs, "Bad route(s) encountered"),
       };
+    const redeemerBuilder = (inputIndices: bigint[]) =>
+      Data.to(
+        new Constr(0, [
+          inputIndices,
+          Array.from({ length: inputIndices.length }, (_, index) => index).map(
+            BigInt
+          ),
+        ])
+      );
+
+    const feeUTxORes = await getOneUTxOFromWallet(lucid);
+    if (feeUTxORes.type == "error") return feeUTxORes;
 
     let tx = lucid
       .newTx()
       .collectFrom(utxosToSpend, Data.to(new Constr(0, [])))
+      .collectFrom([feeUTxORes.data])
       .attach.SpendingValidator(batchVAs.spendVA.validator)
       .withdraw(batchVAs.stakeVA.address, 0n, {
         kind: "selected",
         inputs: utxosToSpend,
-        makeRedeemer: (inputIndices) =>
-          Data.to(
-            new Constr(0, [
-              inputIndices,
-              Array.from(
-                { length: inputIndices.length },
-                (_, index) => index
-              ).map(BigInt),
-            ])
-          ),
+        makeRedeemer: redeemerBuilder,
       })
       .attach.WithdrawalValidator(batchVAs.stakeVA.validator);
 
     inUTxOAndOutInfos.map((inOutInfo: InputUTxOAndItsOutputInfo) => {
       tx = inOutInfo.additionalAction!(tx, inOutInfo.utxo);
+      tx.pay.ToContract(
+        config.routeAddress,
+        inOutInfo.scriptOutput!.outputDatum,
+        inOutInfo.scriptOutput!.outputAssets
+      );
     });
 
     return ok(await tx.complete());

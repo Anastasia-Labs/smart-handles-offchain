@@ -20,6 +20,7 @@ import {
   BatchRequestConfig,
   BatchRouteConfig,
   CBORHex,
+  Constr,
   Data,
   LucidEvolution,
   Network,
@@ -60,8 +61,8 @@ import {
   MINSWAP_BATCHER_FEE,
   MINSWAP_DEPOSIT,
 } from "./constants.js";
-import singleSpendingValidator from "./uplc/smartHandleSimple.json";
-import stakingValidator from "./uplc/smartHandleStake.json";
+import singleSpendingValidator from "./uplc/smartHandleSimple.json" with {type: "json"};
+import stakingValidator from "./uplc/smartHandleStake.json" with {type: "json"};
 // }}}
 // ----------------------------------------------------------------------------
 
@@ -279,15 +280,14 @@ const mkRouteRequest = async (
     markWalletAsOwner: true,
     routerFee: ROUTER_FEE,
     reclaimRouterFee: 0n,
-    extraInfo: Data.to(
-      {
-        desiredAssetSymbol: policyId,
-        desiredAssetTokenName: assetName ?? "",
-        receiverDatumHash: null,
+    extraInfoDataBuilder: () => {
+      return new Constr(0, [
+        policyId,
+        assetName ?? "",
+        new Constr(1, []),
         minimumReceive,
-      },
-      MinswapRequestInfo
-    ),
+      ]);
+    },
   };
 
   return ok({
@@ -298,12 +298,14 @@ const mkRouteRequest = async (
 };
 
 /**
- * `AdvancedReclaimConfig` which should be used to cancel a swap request.
+ * Helper function for creating an `AdvancedReclaimConfig`.
  */
-export const advancedReclaimConfig: AdvancedReclaimConfig = {
-  outputDatumMaker: async (_inputAssets, _inputDatum) =>
-    ok({ kind: "inline", value: Data.void() }),
-  additionalAction: (tx, _utxo) => tx,
+export const mkReclaimConfig = (owner: Address): AdvancedReclaimConfig => {
+  return {
+    outputDatumMaker: async (_inputAssets, _inputDatum) =>
+      ok({ kind: "inline", value: Data.void() }),
+    additionalAction: (tx, _utxo) => tx.addSigner(owner),
+  };
 };
 
 /**
@@ -337,7 +339,7 @@ export const mkRouteConfig = (slippageTolerance: bigint): AdvancedRouteConfig =>
       };
 
     const minswapRequestInfo = parseSafeDatum(
-      Data.from(Data.to(inputDatum.extraInfo)),
+      Data.to(inputDatum.extraInfo),
       MinswapRequestInfo
     );
 
@@ -356,8 +358,9 @@ export const mkRouteConfig = (slippageTolerance: bigint): AdvancedRouteConfig =>
         tokenName: minswapRequestInfo.value.desiredAssetTokenName,
       },
       inputDatum.mOwner,
-      (minswapRequestInfo.value.minimumReceive * (100n - slippageTolerance)) /
-        100n
+      minswapRequestInfo.value.minimumReceive,
+      // (minswapRequestInfo.value.minimumReceive * (100n - slippageTolerance)) /
+      //   100n
     );
     const outputDatum: OutputDatum = {
       kind: "inline",
@@ -385,7 +388,6 @@ const fetchUsersRequestUTxOs = async (
   const allRequests: UTxO[] = forSingle
     ? await fetchSingleRequestUTxOs(lucid, scriptCBOR, network)
     : await fetchBatchRequestUTxOs(lucid, scriptCBOR, network);
-  console.log("Fetch completed:", allRequests);
   const initUsersRequests: (MinswapV1RequestUTxO | undefined)[] =
     allRequests.map((utxo) => {
       if (utxo.datum) {
@@ -513,22 +515,24 @@ export const fetchUsersSingleRequestUTxOs = async (
  * Minswap V1 instance of smart handles.
  * @param requestOutRef - Output reference of the swap request UTxO at smart
  *        handles
+ * @param owner - Bech32 address of the request owner
  * @param network - Target network, used for determining the route address
  */
 export const mkSingleReclaimConfig = (
   requestOutRef: OutRef,
+  owner: Address,
   network: Network
 ): Result<SingleReclaimConfig> => {
   // {{{
   const appliedSpendingCBORRes = applyMinswapAddressToCBOR(
-    singleSpendingValidator.cborHex,
+    singleSpendingValidator.cborHex!,
     network
   );
   if (appliedSpendingCBORRes.type == "error") return appliedSpendingCBORRes;
   return ok({
     requestOutRef,
     scriptCBOR: appliedSpendingCBORRes.data,
-    advancedReclaimConfig,
+    advancedReclaimConfig: mkReclaimConfig(owner),
   });
   // }}}
 };
@@ -668,10 +672,13 @@ export const fetchUsersBatchRequestUTxOs = async (
  * Given a list of request `OutRef` values, this function returns a
  * `BatchReclaimConfig` for Minswap V1 instance of smart handles.
  * @param requestOutRefs - List of output references of UTxOs at smart handles
+ * @param owner - Bech32 address of the owner of requests (assumes all belong to
+ *        one owner)
  * @param network - Target network, used for determining the route address
  */
 export const mkBatchReclaimConfig = (
   requestOutRefs: OutRef[],
+  owner: Address,
   network: Network
 ): Result<BatchReclaimConfig> => {
   // {{{
@@ -683,7 +690,7 @@ export const mkBatchReclaimConfig = (
   return ok({
     requestOutRefs,
     stakingScriptCBOR: appliedStakingCBORRes.data,
-    advancedReclaimConfig,
+    advancedReclaimConfig: mkReclaimConfig(owner),
   });
   // }}}
 };

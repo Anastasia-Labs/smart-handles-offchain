@@ -2,6 +2,7 @@ import {
   Address,
   Assets,
   CBORHex,
+  Data,
   OutRef,
   OutputDatum,
   RedeemerBuilder,
@@ -63,7 +64,7 @@ export type AdvancedRouteRequest = SimpleRouteRequest & {
   markWalletAsOwner: boolean;
   routerFee: bigint;
   reclaimRouterFee: bigint;
-  extraInfo: CBORHex;
+  extraInfoDataBuilder: () => Data;
 };
 
 export type RouteRequest =

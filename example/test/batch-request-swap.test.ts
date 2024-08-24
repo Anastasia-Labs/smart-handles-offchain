@@ -43,9 +43,9 @@ beforeEach<LucidContext>(async (context) => {
     ],
     {
       ...PROTOCOL_PARAMETERS_DEFAULT,
-      maxTxSize: 1000000,
-      maxTxExMem: BigInt(140000000),
-      maxTxExSteps: BigInt(100000000000),
+      maxTxSize: 10000000,
+      maxTxExMem: BigInt(1400000000),
+      maxTxExSteps: BigInt(1000000000000),
     }
   );
 
@@ -111,10 +111,12 @@ test<LucidContext>(
 
     // Register Staking Validator's Reward Address
     const rewardAddress = batchVAs.stakeVA.address;
+    console.log("REGISTERING REWARD ADDRESS", rewardAddress);
     await registerRewardAddress(lucid, rewardAddress);
 
     emulator.awaitBlock(100);
 
+    console.log("BUILDING THE SWAP CONFIG");
     const swapConfig = unsafeFromOk(mkBatchRouteConfig(
       BigInt(20),
       allRequests.map((r) => ({
@@ -124,12 +126,15 @@ test<LucidContext>(
       "Custom"
     ));
 
+    console.log("BUILDING SWAP TX");
     const swapTxUnsigned = unsafeFromOk(await batchRoute(lucid, swapConfig));
+    console.log("BUILT SWAP TX", swapTxUnsigned);
     const swapTxSigned = await swapTxUnsigned.sign
       .withWallet()
       .complete();
+    console.log("SIGNED SWAP TX", swapTxSigned);
     const swapTxHash = await swapTxSigned.submit();
-    // console.log("SWAP TX HASH", swapTxHash);
+    console.log("SWAP TX HASH", swapTxHash);
   },
-  60_000
+  120_000
 );

@@ -569,3 +569,28 @@ export const registerRewardAddress = async (
   const txHash = await signedTx.submit();
   await lucid.awaitTx(txHash);
 };
+
+/**
+ * Helper function for grabbing a single UTxO from the previously selected
+ * wallet, in order to be used for covering fees.
+ * @param lucid - Lucid Evolution API object, note that the wallet must be
+ *        already selected
+ */
+export const getOneUTxOFromWallet = async (lucid: LucidEvolution): Promise<Result<UTxO>> => {
+  try {
+    const walletsUTxOs = await lucid.wallet().getUtxos();
+
+    if (walletsUTxOs.length < 1) {
+      return {
+        type: "error",
+        error: new Error(
+          "Selected wallet has no UTxOs to cover the fees and/or collateral"
+        ),
+      };
+    } else {
+      return ok(walletsUTxOs[0]);
+    }
+  } catch(e) {
+    return genericCatch(e);
+  }
+};
