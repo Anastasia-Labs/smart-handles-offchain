@@ -245,19 +245,19 @@ const swapTxUnsigned = await batchSwap(lucid, swapConfig);
 
 ### Common
 
-Reward address registration: [`8227766d19fea7523ec78262230dfbc25cc00d238759df967d381dddb655f421`](https://preprod.cexplorer.io/tx/8227766d19fea7523ec78262230dfbc25cc00d238759df967d381dddb655f421)
+Reward address registration: [`4afa5c684ccdc1e8de15cf725165f6222b132227eb61d77bfeea8270948dc1bd`](https://preprod.cexplorer.io/tx/4afa5c684ccdc1e8de15cf725165f6222b132227eb61d77bfeea8270948dc1bd)
 
 ### ADA to MIN
 
-Batch swap requests: [`272c43a0e8427ad69d5321b287ad2ce4135ceeb23d8e6016c53353634fbd8831`](https://preprod.cexplorer.io/tx/272c43a0e8427ad69d5321b287ad2ce4135ceeb23d8e6016c53353634fbd8831)
+Batch swap requests: [`61c085619a4c8090fd5714bc773272228519d4385c6b8cf71e679638a0a4a020`](https://preprod.cexplorer.io/tx/61c085619a4c8090fd5714bc773272228519d4385c6b8cf71e679638a0a4a020)
 
-Batch swap by routing agent: [`cdb903d2e22bed41f52f0afa2fed91da6633a68f858fe587de784fc1bf92b5de`](https://preprod.cexplorer.io/tx/cdb903d2e22bed41f52f0afa2fed91da6633a68f858fe587de784fc1bf92b5de)
+Batch swap by routing agent: [`fbd70545a0c863ac1ce3c851e56ca1498def24acf859db47e961ffb9eb040e06`](https://preprod.cexplorer.io/tx/fbd70545a0c863ac1ce3c851e56ca1498def24acf859db47e961ffb9eb040e06)
 
 ### MIN to tBTC
 
-Batch swap requests: [`4343f9ac73f83b04a37fab998bddf3e1294597f3e81df5b8278860ceeb989668`](https://preprod.cexplorer.io/tx/4343f9ac73f83b04a37fab998bddf3e1294597f3e81df5b8278860ceeb989668)
+Batch swap requests: [`965103c20a4167c6d335c7b48b66ed188d377357faa83383c44a134137fed7cd`](https://preprod.cexplorer.io/tx/965103c20a4167c6d335c7b48b66ed188d377357faa83383c44a134137fed7cd)
 
-Batch swap by routing agent: [`a2c62eb9218110f8d6cc3e55730c310a162ecfc22d38dd2a25e321641a61d873`](https://preprod.cexplorer.io/tx/a2c62eb9218110f8d6cc3e55730c310a162ecfc22d38dd2a25e321641a61d873)
+Batch swap by routing agent: [`044d110852307ca1c3c21ab4af9fb236e4bda851d34709cb4640f93ac24aa2b2`](https://preprod.cexplorer.io/tx/044d110852307ca1c3c21ab4af9fb236e4bda851d34709cb4640f93ac24aa2b2)
 
 ## Future
 

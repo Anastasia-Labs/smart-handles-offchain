@@ -57,16 +57,16 @@ export const run = async (
     console.log(`Request Successfully Submitted: ${requestTxHash}`);
 
     // --- REWARD ADDRESS REGISTRATION -----------------------------------------
-    // Commented out as the Minswap version of the smart handles contract is
-    // already registered on preprod.
-    const batchVAs: BatchVAs = getBatchVAs(
-      requestConfig.stakingScriptCBOR,
-      "Preprod"
-    );
-    const rewardAddress = batchVAs.stakeVA.address;
-    console.log("Registering the staking validator...");
-    await registerRewardAddress(lucid, rewardAddress);
-    console.log(`Staking validator successfully registered: ${rewardAddress}`);
+    // // Commented out as the Minswap version of the smart handles contract is
+    // // already registered on preprod.
+    // const batchVAs: BatchVAs = getBatchVAs(
+    //   requestConfig.stakingScriptCBOR,
+    //   "Preprod"
+    // );
+    // const rewardAddress = batchVAs.stakeVA.address;
+    // console.log("Registering the staking validator...");
+    // await registerRewardAddress(lucid, rewardAddress);
+    // console.log(`Staking validator successfully registered: ${rewardAddress}`);
     // -------------------------------------------------------------------------
 
     const userAddress = await lucid.wallet().address();

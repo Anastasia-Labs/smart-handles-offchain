@@ -50,7 +50,7 @@ packages:
     resolution: {integrity: sha512-2jPbsPErUtPoiqbGZj9D79YYzCotMQ/Gez49p5C1fIcqR4WBNRf3Sq3lyhORdcxcvXVtpHW86mKdj5k5paD7/Q==}
 
   '@anastasia-labs/smart-handles-offchain@file:../anastasia-labs-smart-handles-offchain-0.3.0.tgz':
-    resolution: {integrity: sha512-UyUvMm8D4x1zNLeIaHm0gX+nFmr6SEn3t3mDn9Ek0Xn2JprWgjFNrtR6ggQCMC2vO8ZTrKiYcS+3+wVK8AtOSw==, tarball: file:../anastasia-labs-smart-handles-offchain-0.3.0.tgz}
+    resolution: {integrity: sha512-/tTQfsH3WZCTnb0qQ5KupC5weW6I35hAAxk71/vubMT1mMG8iuq2mApX0iR8FMJ/YXebdzMDjuoVW9HViy+vfw==, tarball: file:../anastasia-labs-smart-handles-offchain-0.3.0.tgz}
     version: 0.3.0
 
   '@blockfrost/blockfrost-js@5.5.0':
