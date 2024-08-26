@@ -44,6 +44,7 @@ test<LucidContext>("Test - Batch Swap Request, Reclaim", async ({
   users,
   emulator,
 }) => {
+  lucid.selectWallet.fromSeed(users.user1.seedPhrase);
   const minswapStakingScript = unsafeFromOk(
     applyMinswapAddressToCBOR(stakingValidator.cborHex, "Custom")
   );
@@ -67,10 +68,10 @@ test<LucidContext>("Test - Batch Swap Request, Reclaim", async ({
   emulator.awaitBlock(100);
 
   // Valid Batch Reclaim
+  lucid.selectWallet.fromSeed(users.user1.seedPhrase);
   const user1ReclaimConfig = unsafeFromOk(
     mkBatchReclaimConfig(
       user1Requests.map((u) => u.outRef),
-      users.user1.address,
       "Custom"
     )
   );
@@ -103,7 +104,6 @@ test<LucidContext>("Test - Batch Swap Request, Reclaim", async ({
   const user2ReclaimConfig: BatchReclaimConfig = unsafeFromOk(
     mkBatchReclaimConfig(
       user1Requests2.map((u) => u.outRef),
-      users.user2.address,
       "Custom"
     )
   );

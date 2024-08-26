@@ -49,7 +49,6 @@ test<LucidContext>("Test - Single Request, Reclaim", async ({
   const user2ReclaimConfig = unsafeFromOk(
     mkSingleReclaimConfig(
       userRequests1[0].outRef,
-      users.user2.address,
       "Custom"
     )
   );
@@ -66,7 +65,6 @@ test<LucidContext>("Test - Single Request, Reclaim", async ({
   const user1ReclaimConfig = unsafeFromOk(
     mkSingleReclaimConfig(
       userRequests1[0].outRef,
-      users.user1.address,
       "Custom"
     )
   );

@@ -102,12 +102,12 @@ export type AdvancedReclaimConfig = {
 export type CommonSingle = {
   scriptCBOR: CBORHex;
   requestOutRef: OutRef;
-}
+};
 
 export type CommonBatch = {
   stakingScriptCBOR: CBORHex;
   requestOutRefs: OutRef[];
-}
+};
 
 export type SingleReclaimConfig = CommonSingle & {
   advancedReclaimConfig?: AdvancedReclaimConfig;
@@ -141,6 +141,15 @@ export type BatchRouteConfig = CommonBatch & {
 
 export type CliTarget = "Single" | "Batch";
 
+export type CliRequestInfo = {
+  lovelace: bigint;
+  asset: Assets;
+  markOwner?: true;
+  routerFee: bigint;
+  reclaimRouterFee: bigint;
+  extraConfig?: { [key: string]: any };
+};
+
 export interface CliConfig {
   network?: Network;
   pollingInterval?: number;
@@ -150,5 +159,7 @@ export interface CliConfig {
   advancedReclaimConfig?: AdvancedReclaimConfig;
   simpleRouteConfig?: SimpleRouteConfig;
   advancedRouteConfig?: AdvancedRouteConfig;
-  extraInfoBuilderForAdvancedRequest?: () => Data;
+  advancedRouteRequestMaker?: (
+    requestInfo: CliRequestInfo
+  ) => Promise<Result<RouteRequest>>;
 }

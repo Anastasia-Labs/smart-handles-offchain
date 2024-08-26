@@ -80,11 +80,13 @@ export const run = async (
       userAddress
     );
     if (usersRequestsRes.type == "error") return usersRequestsRes.error;
-    const usersRequests: MinswapV1RequestUTxO[] = usersRequestsRes.data;
+    const usersRequests: MinswapV1RequestUTxO[] = usersRequestsRes.data.slice(
+      0,
+      5
+    );
     console.log(usersRequests);
 
     const batchRouteConfigRes = mkBatchRouteConfig(
-      BigInt(10),
       usersRequests.map((u) => u.outRef),
       "Preprod"
     );

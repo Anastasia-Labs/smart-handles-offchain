@@ -118,7 +118,6 @@ test<LucidContext>(
 
     console.log("BUILDING THE SWAP CONFIG");
     const swapConfig = unsafeFromOk(mkBatchRouteConfig(
-      BigInt(20),
       allRequests.map((r) => ({
         txHash: r.txHash,
         outputIndex: r.outputIndex,

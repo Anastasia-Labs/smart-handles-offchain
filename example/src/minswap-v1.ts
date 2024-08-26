@@ -32,7 +32,6 @@ import {
   SingleReclaimConfig,
   SingleRequestConfig,
   SingleRouteConfig,
-  TxBuilder,
   TxSignBuilder,
   UTxO,
   Unit,
@@ -208,6 +207,19 @@ export type SwapRequest = {
   toAsset: Asset;
 };
 
+export const mkMinswapRequestInfo = (
+  policyId: string,
+  assetName: string | null,
+  minimumReceive: bigint
+): Data => {
+  return new Constr(0, [
+    policyId,
+    assetName ?? "",
+    new Constr(1, []),
+    minimumReceive,
+  ]);
+};
+
 /**
  * Helper function for creating a `RouteRequest` for a swap request. `Asset` is
  * identical to "unit," i.e. concatenation of asset's policy with its token name
@@ -224,7 +236,7 @@ export type SwapRequest = {
  * @param manualMinimumReceive - Optional argument to disregard current market
  *        exchange rate (consequently won't query Blockfrost)
  */
-const mkRouteRequest = async (
+export const mkRouteRequest = async (
   { fromAsset, quantity, toAsset }: SwapRequest,
   network: Network,
   manualMinimumReceive?: bigint
@@ -282,12 +294,7 @@ const mkRouteRequest = async (
     routerFee: ROUTER_FEE,
     reclaimRouterFee: 0n,
     extraInfoDataBuilder: () => {
-      return new Constr(0, [
-        policyId,
-        assetName ?? "",
-        new Constr(1, []),
-        minimumReceive,
-      ]);
+      return mkMinswapRequestInfo(policyId, assetName, minimumReceive);
     },
   };
 
@@ -313,32 +320,19 @@ export const mkReclaimConfig = (): AdvancedReclaimConfig => {
         } else {
           return {
             type: "error",
-            error: new Error("Failed to fetch wallet address from partially built transaction to specify as owner"),
+            error: new Error(
+              "Failed to fetch wallet address from partially built transaction to specify as owner"
+            ),
           };
         }
-      } catch(e) {
+      } catch (e) {
         return genericCatch(e);
       }
     },
   };
 };
 
-/**
- * Given a `slippageTolerance` and UTxO `outRef`, this function provides the
- * output datum maker required by `RouteConfig` based on the stored
- * `MinswapRequestInfo` stored in the UTxO fetched using `outRef`.
- *
- * Two additional checks are: there are no more than 2 assets stored in the
- * UTxO, and that an owner is specified in the input advanced datum.
- *
- * @param slippageTolerance - Swap slippage tolerance in percentages
- *        (e.g. 10 -> 10%)
- * @param outRef - Output reference of the UTxO at smart handles instance to be
- *        swapped
- * @param network - Target network, used for generating Bech32 address of the
- *        owner, extracted from input datum
- */
-export const mkRouteConfig = (slippageTolerance: bigint): AdvancedRouteConfig => {
+export const mkRouteConfig = (): AdvancedRouteConfig => {
   // {{{
   const outputDatumMaker: AdvancedOutputDatumMaker = async (
     inputAssets: Assets,
@@ -373,7 +367,7 @@ export const mkRouteConfig = (slippageTolerance: bigint): AdvancedRouteConfig =>
         tokenName: minswapRequestInfo.value.desiredAssetTokenName,
       },
       inputDatum.mOwner,
-      minswapRequestInfo.value.minimumReceive,
+      minswapRequestInfo.value.minimumReceive
       // (minswapRequestInfo.value.minimumReceive * (100n - slippageTolerance)) /
       //   100n
     );
@@ -535,7 +529,6 @@ export const fetchUsersSingleRequestUTxOs = async (
  */
 export const mkSingleReclaimConfig = (
   requestOutRef: OutRef,
-  owner: Address,
   network: Network
 ): Result<SingleReclaimConfig> => {
   // {{{
@@ -547,29 +540,26 @@ export const mkSingleReclaimConfig = (
   return ok({
     requestOutRef,
     scriptCBOR: appliedSpendingCBORRes.data,
-    advancedReclaimConfig: mkReclaimConfig(owner),
+    advancedReclaimConfig: mkReclaimConfig(),
   });
   // }}}
 };
 
 /**
- * Given a `slippageTolerance` and UTxO `outRef`, this function determines asset
+ * Given a UTxO `outRef`, this function determines asset
  * "A" from value of the UTxO, to be converted to desired asset "B" specified in
  * datum of the UTxO, and uses Blockfrost to find the current exchange rate.
- * @param slippageTolerance - Swap slippage tolerance in percentages
- *        (e.g. 10 -> 10%)
  * @param outRef - Output reference of the UTxO at smart handles instance to be
  *        swapped
  * @param network - Target network, used for both Blockfrost, and generating
  *        Bech32 address of the owner, extracted from input datum
  */
 export const mkSingleRouteConfig = (
-  slippageTolerance: bigint,
   outRef: OutRef,
   network: Network
 ): Result<SingleRouteConfig> => {
   // {{{
-  const routeConfig = mkRouteConfig(slippageTolerance);
+  const routeConfig = mkRouteConfig();
   const appliedSpendingCBORRes = applyMinswapAddressToCBOR(
     singleSpendingValidator.cborHex,
     network
@@ -693,7 +683,6 @@ export const fetchUsersBatchRequestUTxOs = async (
  */
 export const mkBatchReclaimConfig = (
   requestOutRefs: OutRef[],
-  owner: Address,
   network: Network
 ): Result<BatchReclaimConfig> => {
   // {{{
@@ -705,30 +694,27 @@ export const mkBatchReclaimConfig = (
   return ok({
     requestOutRefs,
     stakingScriptCBOR: appliedStakingCBORRes.data,
-    advancedReclaimConfig: mkReclaimConfig(owner),
+    advancedReclaimConfig: mkReclaimConfig(),
   });
   // }}}
 };
 
 /**
- * Given a `slippageTolerance` and UTxO `outRef`s, this function determines
+ * Given a UTxO `outRef`s, this function determines
  * asset "A" from value of each UTxO, to be converted to desired asset "B"
  * specified in datums of each UTxO, and uses Blockfrost to find current
  * exchange rates.
- * @param slippageTolerance - Swap slippage tolerance in percentages
- *        (e.g. 10 -> 10%), shared for all swaps
  * @param outRefs - Output references of UTxOs at smart handles instance to be
  *        swapped
  * @param network - Target network, used for both Blockfrost, and generating
  *        Bech32 address of the owner, extracted from input datum
  */
 export const mkBatchRouteConfig = (
-  slippageTolerance: bigint,
   outRefs: OutRef[],
   network: Network
 ): Result<BatchRouteConfig> => {
   // {{{
-  const routeConfig = mkRouteConfig(slippageTolerance);
+  const routeConfig = mkRouteConfig();
   const appliedStakingCBORRes = applyMinswapAddressToCBOR(
     stakingValidator.cborHex,
     network

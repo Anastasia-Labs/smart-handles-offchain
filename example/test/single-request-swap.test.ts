@@ -50,7 +50,6 @@ test<LucidContext>("Test - Single Request, Swap", async ({
   const reclaimConfig = unsafeFromOk(
     mkSingleReclaimConfig(
       userRequests[0].outRef,
-      users.adversary.address,
       "Custom"
     )
   );
@@ -60,7 +59,7 @@ test<LucidContext>("Test - Single Request, Swap", async ({
   // Valid Swap
   lucid.selectWallet.fromSeed(users.router.seedPhrase);
   const routeConfig = unsafeFromOk(
-    mkSingleRouteConfig(BigInt(20), userRequests[0].outRef, "Custom")
+    mkSingleRouteConfig(userRequests[0].outRef, "Custom")
   );
 
   const swapTxUnsigned = unsafeFromOk(await singleRoute(lucid, routeConfig));

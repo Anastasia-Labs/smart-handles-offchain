@@ -67,7 +67,6 @@ export const run = async (
     console.log(usersRequests);
 
     const batchRouteConfigRes = mkBatchRouteConfig(
-      BigInt(10),
       usersRequests.map((u) => u.outRef),
       "Preprod"
     );
