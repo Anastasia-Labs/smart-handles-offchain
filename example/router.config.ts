@@ -26,14 +26,21 @@ const config: CliConfig = {
   ): Promise<Result<RouteRequest>> => {
     try {
       const [[fromAssetUnit, fromAssetQty]] = Object.entries(reqInfo.asset);
-      return await mkRouteRequest(
-        {
-          fromAsset: fromAssetUnit,
-          quantity: fromAssetQty,
-          toAsset: reqInfo.extraInfo["toAsset"],
-        },
-        "Preprod"
-      );
+      if (reqInfo.extraConfig && reqInfo.extraConfig["toAsset"]) {
+        return await mkRouteRequest(
+          {
+            fromAsset: fromAssetUnit,
+            quantity: fromAssetQty,
+            toAsset: reqInfo.extraConfig["toAsset"],
+          },
+          "Preprod"
+        );
+      } else {
+        return {
+          type: "error",
+          error: new Error("Extra required config was not provided"),
+        };
+      }
     } catch (e) {
       return genericCatch(e);
     }
