@@ -11,6 +11,7 @@ import {
   OutputDatum,
   Network,
   TxBuilder,
+  selectUTxOs,
 } from "@lucid-evolution/lucid";
 import { LOVELACE_MARGIN, ROUTER_FEE } from "../core/constants.js";
 import {
@@ -51,7 +52,7 @@ const outputHelper = (
   routeAddress: Address,
   outputAssetsRes: Result<Assets>,
   outputDatumRes: Result<OutputDatum>,
-  additionalAction: (tx: TxBuilder, utxo: UTxO) => Result<TxBuilder>
+  additionalAction: (tx: TxBuilder, utxo: UTxO) => Promise<Result<TxBuilder>>
 ): Result<Required<InputUTxOAndItsOutputInfo>> => {
   if (outputAssetsRes.type == "error") return outputAssetsRes;
   if (outputDatumRes.type == "error") return outputDatumRes;
@@ -209,7 +210,7 @@ export const singleRoute = async (
         inOutInfo.scriptOutput!.outputDatum,
         inOutInfo.scriptOutput!.outputAssets
       );
-    const finalTxRes = inOutInfo.additionalAction!(tx, utxoToSpend);
+    const finalTxRes = await inOutInfo.additionalAction!(tx, utxoToSpend);
     if (finalTxRes.type == "error") return finalTxRes;
     return ok(await finalTxRes.data.complete());
   } catch (error) {
@@ -284,13 +285,13 @@ export const batchRoute = async (
         ])
       );
 
-    const feeUTxORes = await getOneUTxOFromWallet(lucid);
-    if (feeUTxORes.type == "error") return feeUTxORes;
+    const walletsUTxOs = await lucid.wallet().getUtxos();
+    const feeUTxOs = selectUTxOs(walletsUTxOs, {lovelace: BigInt(2_000_000)});
 
     let tx = lucid
       .newTx()
       .collectFrom(utxosToSpend, Data.to(new Constr(0, [])))
-      .collectFrom([feeUTxORes.data])
+      .collectFrom(feeUTxOs)
       .attach.SpendingValidator(batchVAs.spendVA.validator)
       .withdraw(batchVAs.stakeVA.address, 0n, {
         kind: "selected",
@@ -299,19 +300,23 @@ export const batchRoute = async (
       })
       .attach.WithdrawalValidator(batchVAs.stakeVA.validator);
 
-    const complementTxErrors: string[] = validateItems(
+    const complementTxErrors: string[] = await asyncValidateItems(
       inUTxOAndOutInfos,
-      (inOutInfo: InputUTxOAndItsOutputInfo) => {
-        const txRes = inOutInfo.additionalAction!(tx, inOutInfo.utxo);
-        if (txRes.type == "error") {
-          return errorToString(txRes.error);
-        } else {
-          tx = txRes.data;
-          tx.pay.ToContract(
-            config.routeAddress,
-            inOutInfo.scriptOutput!.outputDatum,
-            inOutInfo.scriptOutput!.outputAssets
-          );
+      async (inOutInfo: InputUTxOAndItsOutputInfo) => {
+        try {
+          const txRes = await inOutInfo.additionalAction!(tx, inOutInfo.utxo);
+          if (txRes.type == "error") {
+            return errorToString(txRes.error);
+          } else {
+            tx = txRes.data;
+            tx.pay.ToContract(
+              config.routeAddress,
+              inOutInfo.scriptOutput!.outputDatum,
+              inOutInfo.scriptOutput!.outputAssets
+            );
+          }
+        } catch(e) {
+          return errorToString(e);
         }
       },
       true

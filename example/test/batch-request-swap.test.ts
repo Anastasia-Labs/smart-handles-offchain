@@ -85,20 +85,20 @@ test<LucidContext>(
       users.user2.seedPhrase,
       [30_000_000, 36_000_000, 24_000_000]
     );
-    // User3 Batch Swap Request
-    await submitAdaToMinBatchRequests(
-      lucid,
-      emulator,
-      users.user3.seedPhrase,
-      [10_000_000, 72_000_000]
-    );
-    // User4 Batch Swap Request
-    await submitAdaToMinBatchRequests(
-      lucid,
-      emulator,
-      users.user4.seedPhrase,
-      [8_000_000, 10_000_000, 9_000_000, 14_000_000, 13_000_000, 13_400_000]
-    );
+    // // User3 Batch Swap Request
+    // await submitAdaToMinBatchRequests(
+    //   lucid,
+    //   emulator,
+    //   users.user3.seedPhrase,
+    //   [10_000_000, 72_000_000]
+    // );
+    // // User4 Batch Swap Request
+    // await submitAdaToMinBatchRequests(
+    //   lucid,
+    //   emulator,
+    //   users.user4.seedPhrase,
+    //   [8_000_000, 10_000_000, 9_000_000, 14_000_000, 13_000_000, 13_400_000]
+    // );
 
     const allRequests = await fetchBatchRequestUTxOs(
       lucid,

@@ -32,6 +32,7 @@ import {
   SingleReclaimConfig,
   SingleRequestConfig,
   SingleRouteConfig,
+  TxBuilder,
   TxSignBuilder,
   UTxO,
   Unit,
@@ -300,11 +301,25 @@ const mkRouteRequest = async (
 /**
  * Helper function for creating an `AdvancedReclaimConfig`.
  */
-export const mkReclaimConfig = (owner: Address): AdvancedReclaimConfig => {
+export const mkReclaimConfig = (): AdvancedReclaimConfig => {
   return {
     outputDatumMaker: async (_inputAssets, _inputDatum) =>
       ok({ kind: "inline", value: Data.void() }),
-    additionalAction: (tx, _utxo) => ok(tx.addSigner(owner)),
+    additionalAction: async (tx, _utxo) => {
+      try {
+        const owner = await tx.config().lucidConfig.wallet?.address();
+        if (owner) {
+          return ok(tx.addSigner(owner));
+        } else {
+          return {
+            type: "error",
+            error: new Error("Failed to fetch wallet address from partially built transaction to specify as owner"),
+          };
+        }
+      } catch(e) {
+        return genericCatch(e);
+      }
+    },
   };
 };
 
@@ -371,7 +386,7 @@ export const mkRouteConfig = (slippageTolerance: bigint): AdvancedRouteConfig =>
   };
 
   return {
-    additionalAction: (tx, _utxo) => ok(tx),
+    additionalAction: async (tx, _utxo) => ok(tx),
     outputDatumMaker: outputDatumMaker,
   };
   // }}}

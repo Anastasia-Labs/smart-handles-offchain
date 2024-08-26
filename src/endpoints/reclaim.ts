@@ -10,6 +10,7 @@ import {
   TxSignBuilder,
   UTxO,
   paymentCredentialOf,
+  selectUTxOs,
 } from "@lucid-evolution/lucid";
 import {
   asyncValidateItems,
@@ -22,7 +23,6 @@ import {
   ok,
   printUTxOOutRef,
   reduceLovelacesOfAssets,
-  validateItems,
   validateUTxOAndConfig,
 } from "../core/utils/index.js";
 import {
@@ -79,7 +79,7 @@ const utxoToOutputInfo = async (
             kind: "self",
             makeRedeemer: (_ownIndex) => Data.to(new Constr(1, [])),
           },
-          additionalAction: (tx, _utxo) =>
+          additionalAction: async (tx, _utxo) =>
             ok(tx.addSigner(selectedWalletAddress)),
         });
       } else {
@@ -161,14 +161,18 @@ const utxoToOutputInfo = async (
  * outputs, and any additional actions specified by the `advanced` case, and
  * returns the complemented transaction.
  */
-const complementTx = (
+const complementTx = async (
   tx: TxBuilder,
   inOutInfo: InputUTxOAndItsOutputInfo
-): Result<TxBuilder> => {
+): Promise<Result<TxBuilder>> => {
   // {{{
   let finalTx = ok(tx);
   if (inOutInfo.additionalAction) {
-    finalTx = inOutInfo.additionalAction(tx, inOutInfo.utxo);
+    try {
+      finalTx = await inOutInfo.additionalAction(tx, inOutInfo.utxo);
+    } catch(e) {
+      return genericCatch(e);
+    }
   }
   if (finalTx.type == "error") return finalTx;
   if (inOutInfo.outputAddress && inOutInfo.scriptOutput) {
@@ -222,7 +226,7 @@ export const singleReclaim = async (
       .collectFrom([feeUTxORes.data])
       .attach.SpendingValidator(va.validator);
 
-    const finalTxRes: Result<TxBuilder> = complementTx(tx, inOutInfo);
+    const finalTxRes = await complementTx(tx, inOutInfo);
 
     if (finalTxRes.type == "error") return finalTxRes;
 
@@ -289,9 +293,13 @@ export const batchReclaim = async (
         ),
       };
 
+    const walletsUTxOs = await lucid.wallet().getUtxos();
+    const feeUTxOs = selectUTxOs(walletsUTxOs, {lovelace: BigInt(20_000_000)});
+
     let tx = lucid
       .newTx()
       .collectFrom(utxosToSpend, Data.to(new Constr(1, [])))
+      .collectFrom(feeUTxOs)
       .attach.SpendingValidator(batchVAs.spendVA.validator)
       .withdraw(batchVAs.stakeVA.address, 0n, {
         kind: "selected",
@@ -311,15 +319,19 @@ export const batchReclaim = async (
 
     // Add corresponding output UTxOs for each reclaimed UTxO. It'll fail if any
     // irreclaimable UTxOs are encountered.
-    const complementTxErrors: string[] = validateItems(
+    const complementTxErrors: string[] = await asyncValidateItems(
       inUTxOAndOutInfos,
-      (inOutInfo: InputUTxOAndItsOutputInfo) => {
-        const txRes = complementTx(tx, inOutInfo);
-        if (txRes.type == "error") {
-          return errorToString(txRes.error);
-        } else {
-          tx = txRes.data;
-          return undefined;
+      async (inOutInfo: InputUTxOAndItsOutputInfo) => {
+        try {
+          const txRes = await complementTx(tx, inOutInfo);
+          if (txRes.type == "error") {
+            return errorToString(txRes.error);
+          } else {
+            tx = txRes.data;
+            return undefined;
+          }
+        } catch(e) {
+          return errorToString(e);
         }
       },
       true

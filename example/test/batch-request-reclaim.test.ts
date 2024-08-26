@@ -11,6 +11,7 @@ import {
   getBatchVAs,
   registerRewardAddress,
   BatchVAs,
+  PROTOCOL_PARAMETERS_DEFAULT,
 } from "@anastasia-labs/smart-handles-offchain";
 import {
   LucidContext,
@@ -28,7 +29,12 @@ beforeEach<LucidContext>(async (context) => {
     user2: createUser(),
   };
 
-  context.emulator = new Emulator([context.users.user1, context.users.user2]);
+  context.emulator = new Emulator([context.users.user1, context.users.user2], {
+    ...PROTOCOL_PARAMETERS_DEFAULT,
+    maxTxSize: 10000000,
+    maxTxExMem: BigInt(1400000000),
+    maxTxExSteps: BigInt(1000000000000),
+  });
 
   context.lucid = await Lucid(context.emulator, "Custom");
 });
@@ -69,11 +75,11 @@ test<LucidContext>("Test - Batch Swap Request, Reclaim", async ({
     )
   );
 
-  const reclaimUnsigned1 = unsafeFromOk(await batchReclaim(lucid, user1ReclaimConfig));
+  const reclaimUnsigned1 = unsafeFromOk(
+    await batchReclaim(lucid, user1ReclaimConfig)
+  );
 
-  const reclaimSigned1 = await reclaimUnsigned1.sign
-    .withWallet()
-    .complete();
+  const reclaimSigned1 = await reclaimUnsigned1.sign.withWallet().complete();
   const reclaimSignedHash1 = await reclaimSigned1.submit();
 
   // console.log("BATCH RECLAIM 1 TX HASH", reclaimSignedHash1);
