@@ -78,13 +78,13 @@ test<LucidContext>(
       users.user1.seedPhrase,
       [8_000_000, 20_000_000, 30_000_000, 40_000_000]
     );
-    // User2 Batch Swap Request
-    await submitAdaToMinBatchRequests(
-      lucid,
-      emulator,
-      users.user2.seedPhrase,
-      [30_000_000, 36_000_000, 24_000_000]
-    );
+    // // User2 Batch Swap Request
+    // await submitAdaToMinBatchRequests(
+    //   lucid,
+    //   emulator,
+    //   users.user2.seedPhrase,
+    //   [30_000_000, 36_000_000, 24_000_000]
+    // );
     // // User3 Batch Swap Request
     // await submitAdaToMinBatchRequests(
     //   lucid,

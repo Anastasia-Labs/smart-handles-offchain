@@ -1,9 +1,10 @@
 import {
+  AdvancedRouteRequest,
   CliConfig,
   CliRequestInfo,
   Result,
-  RouteRequest,
   genericCatch,
+  ok,
 } from "@anastasia-labs/smart-handles-offchain";
 import { MINSWAP_ADDRESS_PREPROD } from "./src/constants";
 import {
@@ -23,11 +24,11 @@ const config: CliConfig = {
   advancedRouteConfig: mkRouteConfig(),
   advancedRouteRequestMaker: async (
     reqInfo: CliRequestInfo
-  ): Promise<Result<RouteRequest>> => {
+  ): Promise<Result<AdvancedRouteRequest>> => {
     try {
       const [[fromAssetUnit, fromAssetQty]] = Object.entries(reqInfo.asset);
       if (reqInfo.extraConfig && reqInfo.extraConfig["toAsset"]) {
-        return await mkRouteRequest(
+        const rR = await mkRouteRequest(
           {
             fromAsset: fromAssetUnit,
             quantity: fromAssetQty,
@@ -35,6 +36,13 @@ const config: CliConfig = {
           },
           "Preprod"
         );
+        if (rR.type == "error") return rR;
+        if (rR.data.kind == "simple")
+          return {
+            type: "error",
+            error: new Error('Request builder made a "simple" request config'),
+          };
+        return ok(rR.data.data);
       } else {
         return {
           type: "error",
@@ -46,3 +54,5 @@ const config: CliConfig = {
     }
   },
 };
+
+export default config;

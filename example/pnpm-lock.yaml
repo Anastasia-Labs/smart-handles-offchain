@@ -15,7 +15,7 @@ importers:
         specifier: ^5.5.0
         version: 5.5.0
       '@minswap/sdk':
-        specifier: 0.2.2-beta
+        specifier: ^0.2.2-beta
         version: 0.2.2-beta
       chalk:
         specifier: ^5.3.0
@@ -25,13 +25,13 @@ importers:
         version: 12.1.0
     devDependencies:
       '@types/node':
-        specifier: ^20.16.1
+        specifier: ^20.12.12
         version: 20.16.1
       tsup:
-        specifier: ^8.2.4
+        specifier: ^8.0.2
         version: 8.2.4(postcss@8.4.41)(typescript@5.5.4)(yaml@2.5.0)
       typescript:
-        specifier: ^5.5.4
+        specifier: ^5.4.5
         version: 5.5.4
       vitest:
         specifier: ^2.0.5
@@ -50,7 +50,7 @@ packages:
     resolution: {integrity: sha512-2jPbsPErUtPoiqbGZj9D79YYzCotMQ/Gez49p5C1fIcqR4WBNRf3Sq3lyhORdcxcvXVtpHW86mKdj5k5paD7/Q==}
 
   '@anastasia-labs/smart-handles-offchain@file:../anastasia-labs-smart-handles-offchain-0.3.0.tgz':
-    resolution: {integrity: sha512-rathLwSkBbDbSWmpOB2m+7A4xulJw0683s5ldNzlCgL95k+2ONYP6PynKXXChAERHsCJh736ojSTD+qv5sy4AA==, tarball: file:../anastasia-labs-smart-handles-offchain-0.3.0.tgz}
+    resolution: {integrity: sha512-T9CWiN/iREnkehmVZ5+gRVjMqPCYwpg2NIcPop2vIpuDLW68sbEhSOM/lKLdbtPo0gTv/oUBjBtaExAosSpYzg==, tarball: file:../anastasia-labs-smart-handles-offchain-0.3.0.tgz}
     version: 0.3.0
 
   '@blockfrost/blockfrost-js@5.5.0':

@@ -161,5 +161,5 @@ export interface CliConfig {
   advancedRouteConfig?: AdvancedRouteConfig;
   advancedRouteRequestMaker?: (
     requestInfo: CliRequestInfo
-  ) => Promise<Result<RouteRequest>>;
+  ) => Promise<Result<AdvancedRouteRequest>>;
 }
