@@ -304,7 +304,7 @@ export const mkReclaimConfig = (owner: Address): AdvancedReclaimConfig => {
   return {
     outputDatumMaker: async (_inputAssets, _inputDatum) =>
       ok({ kind: "inline", value: Data.void() }),
-    additionalAction: (tx, _utxo) => tx.addSigner(owner),
+    additionalAction: (tx, _utxo) => ok(tx.addSigner(owner)),
   };
 };
 
@@ -371,7 +371,7 @@ export const mkRouteConfig = (slippageTolerance: bigint): AdvancedRouteConfig =>
   };
 
   return {
-    additionalAction: (tx, _utxo) => tx,
+    additionalAction: (tx, _utxo) => ok(tx),
     outputDatumMaker: outputDatumMaker,
   };
   // }}}

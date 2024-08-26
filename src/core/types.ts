@@ -51,7 +51,7 @@ export type InputUTxOAndItsOutputInfo = {
     outputAssets: Assets;
     outputDatum: OutputDatum;
   };
-  additionalAction?: (tx: TxBuilder, utxo: UTxO) => TxBuilder;
+  additionalAction?: (tx: TxBuilder, utxo: UTxO) => Result<TxBuilder>;
 };
 
 /**
@@ -96,7 +96,7 @@ export type AdvancedOutputDatumMaker = (
 
 export type AdvancedReclaimConfig = {
   outputDatumMaker: AdvancedOutputDatumMaker;
-  additionalAction: (tx: TxBuilder, utxo: UTxO) => TxBuilder;
+  additionalAction: (tx: TxBuilder, utxo: UTxO) => Result<TxBuilder>;
 };
 
 export type CommonSingle = {
@@ -118,12 +118,12 @@ export type BatchReclaimConfig = CommonBatch & {
 };
 
 export type SimpleRouteConfig = {
-  additionalAction: (tx: TxBuilder, utxo: UTxO) => TxBuilder;
+  additionalAction: (tx: TxBuilder, utxo: UTxO) => Result<TxBuilder>;
   outputDatumMaker: SimpleOutputDatumMaker;
 };
 
 export type AdvancedRouteConfig = {
-  additionalAction: (tx: TxBuilder, utxo: UTxO) => TxBuilder;
+  additionalAction: (tx: TxBuilder, utxo: UTxO) => Result<TxBuilder>;
   outputDatumMaker: AdvancedOutputDatumMaker;
 };
 

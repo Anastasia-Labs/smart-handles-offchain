@@ -37,6 +37,7 @@ import {
   printUTxOOutRef,
   reduceLovelacesOfAssets,
   selectUtxos,
+  validateItems,
   validateUTxOAndConfig,
 } from "../core/utils/index.js";
 // }}}
@@ -50,7 +51,7 @@ const outputHelper = (
   routeAddress: Address,
   outputAssetsRes: Result<Assets>,
   outputDatumRes: Result<OutputDatum>,
-  additionalAction: (tx: TxBuilder, utxo: UTxO) => TxBuilder
+  additionalAction: (tx: TxBuilder, utxo: UTxO) => Result<TxBuilder>
 ): Result<Required<InputUTxOAndItsOutputInfo>> => {
   if (outputAssetsRes.type == "error") return outputAssetsRes;
   if (outputDatumRes.type == "error") return outputDatumRes;
@@ -208,8 +209,9 @@ export const singleRoute = async (
         inOutInfo.scriptOutput!.outputDatum,
         inOutInfo.scriptOutput!.outputAssets
       );
-    const finalTx = inOutInfo.additionalAction!(tx, utxoToSpend);
-    return ok(await finalTx.complete());
+    const finalTxRes = inOutInfo.additionalAction!(tx, utxoToSpend);
+    if (finalTxRes.type == "error") return finalTxRes;
+    return ok(await finalTxRes.data.complete());
   } catch (error) {
     return genericCatch(error);
   }
@@ -297,16 +299,34 @@ export const batchRoute = async (
       })
       .attach.WithdrawalValidator(batchVAs.stakeVA.validator);
 
-    inUTxOAndOutInfos.map((inOutInfo: InputUTxOAndItsOutputInfo) => {
-      tx = inOutInfo.additionalAction!(tx, inOutInfo.utxo);
-      tx.pay.ToContract(
-        config.routeAddress,
-        inOutInfo.scriptOutput!.outputDatum,
-        inOutInfo.scriptOutput!.outputAssets
-      );
-    });
-
-    return ok(await tx.complete());
+    const complementTxErrors: string[] = validateItems(
+      inUTxOAndOutInfos,
+      (inOutInfo: InputUTxOAndItsOutputInfo) => {
+        const txRes = inOutInfo.additionalAction!(tx, inOutInfo.utxo);
+        if (txRes.type == "error") {
+          return errorToString(txRes.error);
+        } else {
+          tx = txRes.data;
+          tx.pay.ToContract(
+            config.routeAddress,
+            inOutInfo.scriptOutput!.outputDatum,
+            inOutInfo.scriptOutput!.outputAssets
+          );
+        }
+      },
+      true
+    );
+    if (complementTxErrors.length > 0) {
+      return {
+        type: "error",
+        error: collectErrorMsgs(
+          complementTxErrors,
+          "Additional action on one or more of the configs failed"
+        ),
+      };
+    } else {
+      return ok(await tx.complete());
+    }
   } catch (error) {
     return genericCatch(error);
   }

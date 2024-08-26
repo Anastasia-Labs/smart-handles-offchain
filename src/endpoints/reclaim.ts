@@ -22,6 +22,7 @@ import {
   ok,
   printUTxOOutRef,
   reduceLovelacesOfAssets,
+  validateItems,
   validateUTxOAndConfig,
 } from "../core/utils/index.js";
 import {
@@ -78,7 +79,8 @@ const utxoToOutputInfo = async (
             kind: "self",
             makeRedeemer: (_ownIndex) => Data.to(new Constr(1, [])),
           },
-          additionalAction: (tx, _utxo) => tx.addSigner(selectedWalletAddress),
+          additionalAction: (tx, _utxo) =>
+            ok(tx.addSigner(selectedWalletAddress)),
         });
       } else {
         return {
@@ -162,17 +164,20 @@ const utxoToOutputInfo = async (
 const complementTx = (
   tx: TxBuilder,
   inOutInfo: InputUTxOAndItsOutputInfo
-): TxBuilder => {
+): Result<TxBuilder> => {
   // {{{
-  let finalTx = tx;
+  let finalTx = ok(tx);
   if (inOutInfo.additionalAction) {
     finalTx = inOutInfo.additionalAction(tx, inOutInfo.utxo);
   }
+  if (finalTx.type == "error") return finalTx;
   if (inOutInfo.outputAddress && inOutInfo.scriptOutput) {
-    finalTx = finalTx.pay.ToContract(
-      inOutInfo.outputAddress,
-      inOutInfo.scriptOutput.outputDatum,
-      inOutInfo.scriptOutput.outputAssets
+    finalTx = ok(
+      finalTx.data.pay.ToContract(
+        inOutInfo.outputAddress,
+        inOutInfo.scriptOutput.outputDatum,
+        inOutInfo.scriptOutput.outputAssets
+      )
     );
   }
   return finalTx;
@@ -217,9 +222,11 @@ export const singleReclaim = async (
       .collectFrom([feeUTxORes.data])
       .attach.SpendingValidator(va.validator);
 
-    const finalTx: TxBuilder = complementTx(tx, inOutInfo);
+    const finalTxRes: Result<TxBuilder> = complementTx(tx, inOutInfo);
 
-    return ok(await finalTx.complete());
+    if (finalTxRes.type == "error") return finalTxRes;
+
+    return ok(await finalTxRes.data.complete());
   } catch (error) {
     return genericCatch(error);
   }
@@ -304,11 +311,30 @@ export const batchReclaim = async (
 
     // Add corresponding output UTxOs for each reclaimed UTxO. It'll fail if any
     // irreclaimable UTxOs are encountered.
-    inUTxOAndOutInfos.map((inOutInfo: InputUTxOAndItsOutputInfo) => {
-      tx = complementTx(tx, inOutInfo);
-    });
-
-    return ok(await tx.complete());
+    const complementTxErrors: string[] = validateItems(
+      inUTxOAndOutInfos,
+      (inOutInfo: InputUTxOAndItsOutputInfo) => {
+        const txRes = complementTx(tx, inOutInfo);
+        if (txRes.type == "error") {
+          return errorToString(txRes.error);
+        } else {
+          tx = txRes.data;
+          return undefined;
+        }
+      },
+      true
+    );
+    if (complementTxErrors.length > 0) {
+      return {
+        type: "error",
+        error: collectErrorMsgs(
+          complementTxErrors,
+          "Additional action on one or more of the configs failed"
+        ),
+      };
+    } else {
+      return ok(await tx.complete());
+    }
   } catch (error) {
     return genericCatch(error);
   }
