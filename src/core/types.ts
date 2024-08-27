@@ -3,7 +3,6 @@ import {
   Assets,
   CBORHex,
   Data,
-  Network,
   OutRef,
   OutputDatum,
   RedeemerBuilder,
@@ -138,28 +137,3 @@ export type BatchRouteConfig = CommonBatch & {
   simpleRouteConfig?: SimpleRouteConfig;
   advancedRouteConfig?: AdvancedRouteConfig;
 };
-
-export type CliTarget = "Single" | "Batch";
-
-export type CliRequestInfo = {
-  lovelace: bigint;
-  asset: Assets;
-  markOwner?: true;
-  routerFee: bigint;
-  reclaimRouterFee: bigint;
-  extraConfig?: { [key: string]: any };
-};
-
-export interface CliConfig {
-  network?: Network;
-  pollingInterval?: number;
-  scriptCBOR: CBORHex;
-  scriptTarget: CliTarget;
-  routeDestination: Address;
-  advancedReclaimConfig?: AdvancedReclaimConfig;
-  simpleRouteConfig?: SimpleRouteConfig;
-  advancedRouteConfig?: AdvancedRouteConfig;
-  advancedRouteRequestMaker?: (
-    requestInfo: CliRequestInfo
-  ) => Promise<Result<AdvancedRouteRequest>>;
-}

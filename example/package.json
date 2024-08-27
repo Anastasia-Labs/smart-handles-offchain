@@ -2,27 +2,30 @@
   "name": "smart-handles-sdk-example",
   "version": "0.3.0",
   "description": "A set of predefined scenarios for making swaps on preprod testnet via Minswap v1",
-  "main": "./dist/index.js",
+  "main": "dist/index.js",
+  "bin": {
+    "minswap-v1-router": "dist/bin.js"
+  },
   "type": "module",
   "files": [
-    "dist"
+    "/dist/"
   ],
   "scripts": {
     "build": "tsup src/index.ts --minify --format esm",
+    "cli": "tsup src/cli.ts --minify --format esm",
     "quick-test": "tsup src/index.ts --format esm && node dist/index.js --help",
-    "test": "export NODE_ENV='emulator' && vitest run",
-    "test2": "smart-handles-cli"
+    "test": "export NODE_ENV='emulator' && vitest run"
   },
   "author": "Anastasia Labs",
   "license": "ISC",
   "devDependencies": {
-    "@anastasia-labs/smart-handles-cli": "file:anastasia-labs-smart-handles-cli-0.1.0.tgz",
     "@types/node": "^20.12.12",
     "tsup": "^8.0.2",
     "typescript": "^5.4.5",
     "vitest": "^2.0.5"
   },
   "dependencies": {
+    "@anastasia-labs/smart-handles-cli": "file:anastasia-labs-smart-handles-cli-0.1.0.tgz",
     "@anastasia-labs/smart-handles-offchain": "file:anastasia-labs-smart-handles-offchain-0.3.0.tgz",
     "@blockfrost/blockfrost-js": "^5.5.0",
     "@minswap/sdk": "^0.2.2-beta",

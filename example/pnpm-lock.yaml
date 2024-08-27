@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@anastasia-labs/smart-handles-cli':
+        specifier: file:anastasia-labs-smart-handles-cli-0.1.0.tgz
+        version: file:anastasia-labs-smart-handles-cli-0.1.0.tgz(@harmoniclabs/bytestring@1.0.0)(@harmoniclabs/cbor@1.3.0)(@harmoniclabs/crypto@0.2.4)(@harmoniclabs/pair@1.0.0)(fast-check@3.22.0)
       '@anastasia-labs/smart-handles-offchain':
         specifier: file:anastasia-labs-smart-handles-offchain-0.3.0.tgz
         version: file:anastasia-labs-smart-handles-offchain-0.3.0.tgz(@harmoniclabs/bytestring@1.0.0)(@harmoniclabs/cbor@1.3.0)(@harmoniclabs/crypto@0.2.4)(@harmoniclabs/pair@1.0.0)(fast-check@3.22.0)
@@ -15,7 +18,7 @@ importers:
         specifier: ^5.5.0
         version: 5.5.0
       '@minswap/sdk':
-        specifier: 0.2.2-beta
+        specifier: ^0.2.2-beta
         version: 0.2.2-beta
       chalk:
         specifier: ^5.3.0
@@ -24,17 +27,14 @@ importers:
         specifier: ^12.1.0
         version: 12.1.0
     devDependencies:
-      '@anastasia-labs/smart-handles-cli':
-        specifier: file:anastasia-labs-smart-handles-cli-0.1.0.tgz
-        version: file:anastasia-labs-smart-handles-cli-0.1.0.tgz(@harmoniclabs/bytestring@1.0.0)(@harmoniclabs/cbor@1.3.0)(@harmoniclabs/crypto@0.2.4)(@harmoniclabs/pair@1.0.0)(@types/node@20.16.1)(fast-check@3.22.0)(typescript@5.5.4)
       '@types/node':
-        specifier: ^20.16.1
+        specifier: ^20.12.12
         version: 20.16.1
       tsup:
-        specifier: ^8.2.4
+        specifier: ^8.0.2
         version: 8.2.4(postcss@8.4.41)(typescript@5.5.4)(yaml@2.5.0)
       typescript:
-        specifier: ^5.5.4
+        specifier: ^5.4.5
         version: 5.5.4
       vitest:
         specifier: ^2.0.5
@@ -53,9 +53,8 @@ packages:
     resolution: {integrity: sha512-2jPbsPErUtPoiqbGZj9D79YYzCotMQ/Gez49p5C1fIcqR4WBNRf3Sq3lyhORdcxcvXVtpHW86mKdj5k5paD7/Q==}
 
   '@anastasia-labs/smart-handles-cli@file:anastasia-labs-smart-handles-cli-0.1.0.tgz':
-    resolution: {integrity: sha512-AuTn1NsAN0Dd+QrhwUcYMDEdX1JAIWaZow3o1z705PMWDC2+AgYkoQi+16jaCMgoKBOot1wX+zqVupnmw6QRpA==, tarball: file:anastasia-labs-smart-handles-cli-0.1.0.tgz}
+    resolution: {integrity: sha512-CBIeV0ERq07UmBFYSjrXWruSuvQKFRraK0ouEb2ec3GfSVqgSK8gvI+AnwzW23F6Laqju94zvM1Rx8A87OAxhQ==, tarball: file:anastasia-labs-smart-handles-cli-0.1.0.tgz}
     version: 0.1.0
-    hasBin: true
 
   '@anastasia-labs/smart-handles-offchain@file:anastasia-labs-smart-handles-offchain-0.3.0.tgz':
     resolution: {integrity: sha512-T9CWiN/iREnkehmVZ5+gRVjMqPCYwpg2NIcPop2vIpuDLW68sbEhSOM/lKLdbtPo0gTv/oUBjBtaExAosSpYzg==, tarball: file:anastasia-labs-smart-handles-offchain-0.3.0.tgz}
@@ -72,10 +71,6 @@ packages:
     resolution: {integrity: sha512-wf/lwQvWAA0goIghcb91dQYpkLBcyhOhQNqG/VgWhnKzgt+UOMvra7EX/2fv70arm5RW+PUHoQHHDa6/p77Eqg==}
     peerDependencies:
       commander: ~12.1.0
-
-  '@cspotcode/source-map-support@0.8.1':
-    resolution: {integrity: sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw==}
-    engines: {node: '>=12'}
 
   '@effect/platform@0.59.3':
     resolution: {integrity: sha512-DHR4Hl+hhTCzjs1ykRIyzwaala4JMtPVnReLea29hn+M3fKzloic7UpyCkTO7aJdFjthUtAKcW2mr2lDtuqlDA==}
@@ -455,9 +450,6 @@ packages:
   '@jridgewell/trace-mapping@0.3.25':
     resolution: {integrity: sha512-vNk6aEwybGtawWmy/PzwnGDOjCkLWSD2wqvjGGAgOAwCGWySYXfYoxt00IJkTF+8Lb57DwOb3Aa0o9CApepiYQ==}
 
-  '@jridgewell/trace-mapping@0.3.9':
-    resolution: {integrity: sha512-3Belt6tdc8bPgAtbcmdtNJlirVoTmEb5e2gC94PnkwEW9jI6CAHUeoG85tjWP5WquqfavoMtMwiG4P926ZKKuQ==}
-
   '@lucid-evolution/core-types@0.1.14':
     resolution: {integrity: sha512-hki8OdmcdSQwzMFJkieDH++2eH4EoovIANlM03sAFk49sKatR6SxLsXZ592sJBDiO4mKxT1WZodTiCrDal74HA==}
 
@@ -616,18 +608,6 @@ packages:
     resolution: {integrity: sha512-4BAffykYOgO+5nzBWYwE3W90sBgLJoUPRWWcL8wlyiM8IB8ipJz3UMJ9KXQd1RKQXpKp8Tutn80HZtWsu2u76w==}
     engines: {node: '>=10'}
 
-  '@tsconfig/node10@1.0.11':
-    resolution: {integrity: sha512-DcRjDCujK/kCk/cUe8Xz8ZSpm8mS3mNNpta+jGCA6USEDfktlNvm1+IuZ9eTcDbNk41BHwpHHeW+N1lKCz4zOw==}
-
-  '@tsconfig/node12@1.0.11':
-    resolution: {integrity: sha512-cqefuRsh12pWyGsIoBKJA9luFu3mRxCA+ORZvA4ktLSzIuCUtWVxGIuXigEwO5/ywWFMZ2QEGKWvkZG1zDMTag==}
-
-  '@tsconfig/node14@1.0.3':
-    resolution: {integrity: sha512-ysT8mhdixWK6Hw3i1V2AeRqZ5WfXg1G43mqoYlM2nc6388Fq5jcXyr5mRsqViLx/GJYdoL0bfXD8nmF+Zn/Iow==}
-
-  '@tsconfig/node16@1.0.4':
-    resolution: {integrity: sha512-vxhUy4J8lyeyinH7Azl1pdd43GJhZH/tP2weN8TntQblOY+A0XbT8DJk1/oCPuOOyg/Ja757rG0CgHcWC8OfMA==}
-
   '@types/cacheable-request@6.0.3':
     resolution: {integrity: sha512-IQ3EbTzGxIigb1I3qPZc1rWJnH0BmSKv5QYTalEwweFvyBDLSAe24zP0le/hyi7ecGfZVlIVAg4BZqb8WBwKqw==}
 
@@ -664,15 +644,6 @@ packages:
   '@vitest/utils@2.0.5':
     resolution: {integrity: sha512-d8HKbqIcya+GR67mkZbrzhS5kKhtp8dQLcmRZLGTscGVg7yImT82cIrhtn2L8+VujWcy6KZweApgNmPsTAO/UQ==}
 
-  acorn-walk@8.3.3:
-    resolution: {integrity: sha512-MxXdReSRhGO7VlFe1bRG/oI7/mdLV9B9JJT0N8vZOhF7gFRR5l3M8W9G8JxmKV+JC5mGqJ0QvqfSOLsCPa4nUw==}
-    engines: {node: '>=0.4.0'}
-
-  acorn@8.12.1:
-    resolution: {integrity: sha512-tcpGyI9zbizT9JbV6oYE477V6mTlXvvi0T0G3SNIYE2apm/G5huBa1+K89VGeovbg+jycCrfhl3ADxErOuO6Jg==}
-    engines: {node: '>=0.4.0'}
-    hasBin: true
-
   ajv@8.17.1:
     resolution: {integrity: sha512-B/gBuNg5SiMTrPkC+A2+cW0RszwxYmn6VYxB/inlBStS5nx6xHIt/ehKRhIMhqusl7a8LjQoZnjCs5vhwxOQ1g==}
 
@@ -698,9 +669,6 @@ packages:
   anymatch@3.1.3:
     resolution: {integrity: sha512-KMReFUr0B4t+D+OBkjR3KYqvocp2XaSzO55UcB6mgQMd3KbcE+mWTyvVV7D/zsdEbNnV6acZUutkiHQXvTr1Rw==}
     engines: {node: '>= 8'}
-
-  arg@4.1.3:
-    resolution: {integrity: sha512-58S9QDqG0Xx27YwPSt9fJxivjYl432YCwfDMfZ+71RAqUrZef7LrKQZ3LHLOwCS4FLNBplP533Zx895SeOCHvA==}
 
   array-union@2.1.0:
     resolution: {integrity: sha512-HGyxoOTYUyCM6stUe6EJgnd4EoewAI7zMdfqO+kGjnlZmBDz/cR5pf8r/cR4Wq60sL/p0IkcjUEEPwS3GFrIyw==}
@@ -820,9 +788,6 @@ packages:
     resolution: {integrity: sha512-I5qxpzLv+sJhTVEoLYNcTW+bThDCPsit0vLNKShZx6rLtpilNpmmeTPaeqJb9ZE9dV3DGaeby6Vuhrw38WjeyQ==}
     engines: {node: ^14.18.0 || >=16.10.0}
 
-  create-require@1.1.1:
-    resolution: {integrity: sha512-dcKFX3jn0MpIaXjisoRvexIJVEKzaq7z2rZKxf+MSr9TkdmHmsU4m2lcLojrj/FHl8mk5VxMmYA+ftRkP/3oKQ==}
-
   cross-spawn@7.0.3:
     resolution: {integrity: sha512-iRDPJKUPVEND7dHPO8rkbOnPpyDygcDFtWjpeWNCgy8WP2rXcxXL8TskReQl6OrB2G7+UJrags1q15Fudc7G6w==}
     engines: {node: '>= 8'}
@@ -855,10 +820,6 @@ packages:
   delayed-stream@1.0.0:
     resolution: {integrity: sha512-ZySD7Nf91aLB0RxL4KGrKHBXl7Eds1DAmEdcoVawXnLD7SDhpNgtuII2aAkg7a7QS41jxPSZ17p4VdGnMHk3MQ==}
     engines: {node: '>=0.4.0'}
-
-  diff@4.0.2:
-    resolution: {integrity: sha512-58lmxKSA4BNyLz+HHMUzlOEpg09FV+ev6ZMe3vJihgdxzgcwZ8VoEEPmALCZG9LmqfVoNMMKpttIYTVG6uDY7A==}
-    engines: {node: '>=0.3.1'}
 
   dir-glob@3.0.1:
     resolution: {integrity: sha512-WkrWp9GR4KXfKGYzOLmTuGVi1UWFfws377n9cc55/tb6DuqyF6pcQ5AbiHEshaDpY9v6oaSr2XCDidGmMwdzIA==}
@@ -1075,9 +1036,6 @@ packages:
 
   magic-string@0.30.11:
     resolution: {integrity: sha512-+Wri9p0QHMy+545hKww7YAu5NyzF8iomPL/RQazugQ9+Ez4Ic3mERMd8ZTX5rfK944j+560ZJi8iAwgak1Ac7A==}
-
-  make-error@1.3.6:
-    resolution: {integrity: sha512-s8UhlNe7vPKomQhC1qFelMokr/Sc3AgNbso3n74mVPA5LTZwkB9NlXf4XPamLxJE8h0gh73rM94xvwRT2CVInw==}
 
   merge-stream@2.0.0:
     resolution: {integrity: sha512-abv/qOcuPfk3URPfDzmZU1LKmuw8kT+0nIHvKrKgFrwifol/doWcdA4ZqsWQ8ENrFKkd67Mfpo/LovbIUsbt3w==}
@@ -1400,20 +1358,6 @@ packages:
   ts-interface-checker@0.1.13:
     resolution: {integrity: sha512-Y/arvbn+rrz3JCKl9C4kVNfTfSm2/mEp5FSz5EsZSANGPSlQrpRI5M4PKF+mJnE52jOO90PnPSc3Ur3bTQw0gA==}
 
-  ts-node@10.9.2:
-    resolution: {integrity: sha512-f0FFpIdcHgn8zcPSbf1dRevwt047YMnaiJM3u2w2RewrB+fob/zePZcrOyQoLMMO7aBIddLcQIEK5dYjkLnGrQ==}
-    hasBin: true
-    peerDependencies:
-      '@swc/core': '>=1.2.50'
-      '@swc/wasm': '>=1.2.50'
-      '@types/node': '*'
-      typescript: '>=2.7'
-    peerDependenciesMeta:
-      '@swc/core':
-        optional: true
-      '@swc/wasm':
-        optional: true
-
   tslib@2.7.0:
     resolution: {integrity: sha512-gLXCKdN1/j47AiHiOkJN69hJmcbGTHI0ImLmbYLHykhgeN0jVGola9yVjFgzCUklsZQMW55o+dW7IXv3RCXDzA==}
 
@@ -1443,9 +1387,6 @@ packages:
 
   undici-types@6.19.8:
     resolution: {integrity: sha512-ve2KP6f/JnbPBFyobGHuerC9g1FYGn/F8n1LWTwNxCEzd6IfqTwUQcNXgEtmmQ6DlRrC1hrSrBnCZPokRrDHjw==}
-
-  v8-compile-cache-lib@3.0.1:
-    resolution: {integrity: sha512-wa7YjyUGfNZngI/vtK0UHAN+lgDCxBPCylVXGp0zu59Fz5aiGtNXaq3DhIov063MorB+VfufLh3JlF2KdTK3xg==}
 
   vite-node@2.0.5:
     resolution: {integrity: sha512-LdsW4pxj0Ot69FAoXZ1yTnA9bjGohr2yNBU7QKRxpz8ITSkhuDl6h3zS/tvgz4qrNjeRnvrWeXQ8ZF7Um4W00Q==}
@@ -1559,10 +1500,6 @@ packages:
     engines: {node: '>= 14'}
     hasBin: true
 
-  yn@3.1.1:
-    resolution: {integrity: sha512-Ux4ygGWsu2c7isFWe8Yu1YluJmqVhxqK2cLXNQA5AcC3QfbGNpM7fu0Y8b/z16pXLnFxZYvWhd3fhBY9DLmC6Q==}
-    engines: {node: '>=6'}
-
 snapshots:
 
   '@ampproject/remapping@2.3.0':
@@ -1574,23 +1511,18 @@ snapshots:
 
   '@anastasia-labs/cardano-multiplatform-lib-nodejs@5.3.1-7': {}
 
-  '@anastasia-labs/smart-handles-cli@file:anastasia-labs-smart-handles-cli-0.1.0.tgz(@harmoniclabs/bytestring@1.0.0)(@harmoniclabs/cbor@1.3.0)(@harmoniclabs/crypto@0.2.4)(@harmoniclabs/pair@1.0.0)(@types/node@20.16.1)(fast-check@3.22.0)(typescript@5.5.4)':
+  '@anastasia-labs/smart-handles-cli@file:anastasia-labs-smart-handles-cli-0.1.0.tgz(@harmoniclabs/bytestring@1.0.0)(@harmoniclabs/cbor@1.3.0)(@harmoniclabs/crypto@0.2.4)(@harmoniclabs/pair@1.0.0)(fast-check@3.22.0)':
     dependencies:
       '@anastasia-labs/smart-handles-offchain': file:anastasia-labs-smart-handles-offchain-0.3.0.tgz(@harmoniclabs/bytestring@1.0.0)(@harmoniclabs/cbor@1.3.0)(@harmoniclabs/crypto@0.2.4)(@harmoniclabs/pair@1.0.0)(fast-check@3.22.0)
       '@commander-js/extra-typings': 12.1.0(commander@12.1.0)
       chalk: 5.3.0
       commander: 12.1.0
-      ts-node: 10.9.2(@types/node@20.16.1)(typescript@5.5.4)
     transitivePeerDependencies:
       - '@harmoniclabs/bytestring'
       - '@harmoniclabs/cbor'
       - '@harmoniclabs/crypto'
       - '@harmoniclabs/pair'
-      - '@swc/core'
-      - '@swc/wasm'
-      - '@types/node'
       - fast-check
-      - typescript
 
   '@anastasia-labs/smart-handles-offchain@file:anastasia-labs-smart-handles-offchain-0.3.0.tgz(@harmoniclabs/bytestring@1.0.0)(@harmoniclabs/cbor@1.3.0)(@harmoniclabs/crypto@0.2.4)(@harmoniclabs/pair@1.0.0)(fast-check@3.22.0)':
     dependencies:
@@ -1621,10 +1553,6 @@ snapshots:
   '@commander-js/extra-typings@12.1.0(commander@12.1.0)':
     dependencies:
       commander: 12.1.0
-
-  '@cspotcode/source-map-support@0.8.1':
-    dependencies:
-      '@jridgewell/trace-mapping': 0.3.9
 
   '@effect/platform@0.59.3(@effect/schema@0.68.27(effect@3.6.6))(effect@3.6.6)':
     dependencies:
@@ -1873,11 +1801,6 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.0
 
-  '@jridgewell/trace-mapping@0.3.9':
-    dependencies:
-      '@jridgewell/resolve-uri': 3.1.2
-      '@jridgewell/sourcemap-codec': 1.5.0
-
   '@lucid-evolution/core-types@0.1.14':
     dependencies:
       '@anastasia-labs/cardano-multiplatform-lib-browser': 5.3.1-7
@@ -2088,14 +2011,6 @@ snapshots:
     dependencies:
       defer-to-connect: 2.0.1
 
-  '@tsconfig/node10@1.0.11': {}
-
-  '@tsconfig/node12@1.0.11': {}
-
-  '@tsconfig/node14@1.0.3': {}
-
-  '@tsconfig/node16@1.0.4': {}
-
   '@types/cacheable-request@6.0.3':
     dependencies:
       '@types/http-cache-semantics': 4.0.4
@@ -2152,12 +2067,6 @@ snapshots:
       loupe: 3.1.1
       tinyrainbow: 1.2.0
 
-  acorn-walk@8.3.3:
-    dependencies:
-      acorn: 8.12.1
-
-  acorn@8.12.1: {}
-
   ajv@8.17.1:
     dependencies:
       fast-deep-equal: 3.1.3
@@ -2181,8 +2090,6 @@ snapshots:
     dependencies:
       normalize-path: 3.0.0
       picomatch: 2.3.1
-
-  arg@4.1.3: {}
 
   array-union@2.1.0: {}
 
@@ -2298,8 +2205,6 @@ snapshots:
 
   consola@3.2.3: {}
 
-  create-require@1.1.1: {}
-
   cross-spawn@7.0.3:
     dependencies:
       path-key: 3.1.1
@@ -2321,8 +2226,6 @@ snapshots:
   defer-to-connect@2.0.1: {}
 
   delayed-stream@1.0.0: {}
-
-  diff@4.0.2: {}
 
   dir-glob@3.0.1:
     dependencies:
@@ -2598,8 +2501,6 @@ snapshots:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.5.0
 
-  make-error@1.3.6: {}
-
   merge-stream@2.0.0: {}
 
   merge2@1.4.1: {}
@@ -2864,24 +2765,6 @@ snapshots:
 
   ts-interface-checker@0.1.13: {}
 
-  ts-node@10.9.2(@types/node@20.16.1)(typescript@5.5.4):
-    dependencies:
-      '@cspotcode/source-map-support': 0.8.1
-      '@tsconfig/node10': 1.0.11
-      '@tsconfig/node12': 1.0.11
-      '@tsconfig/node14': 1.0.3
-      '@tsconfig/node16': 1.0.4
-      '@types/node': 20.16.1
-      acorn: 8.12.1
-      acorn-walk: 8.3.3
-      arg: 4.1.3
-      create-require: 1.1.1
-      diff: 4.0.2
-      make-error: 1.3.6
-      typescript: 5.5.4
-      v8-compile-cache-lib: 3.0.1
-      yn: 3.1.1
-
   tslib@2.7.0: {}
 
   tsup@8.2.4(postcss@8.4.41)(typescript@5.5.4)(yaml@2.5.0):
@@ -2914,8 +2797,6 @@ snapshots:
   typescript@5.5.4: {}
 
   undici-types@6.19.8: {}
-
-  v8-compile-cache-lib@3.0.1: {}
 
   vite-node@2.0.5(@types/node@20.16.1):
     dependencies:
@@ -3021,5 +2902,3 @@ snapshots:
   ws@8.18.0: {}
 
   yaml@2.5.0: {}
-
-  yn@3.1.1: {}

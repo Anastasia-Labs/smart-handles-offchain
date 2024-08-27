@@ -77,9 +77,21 @@ export const applyMinswapAddressToCBOR = (
     network === "Mainnet" ? MINSWAP_ADDRESS_MAINNET : MINSWAP_ADDRESS_PREPROD
   );
   if (addressRes.type == "error") return addressRes;
+  const finalCBOR = applyParamsToScript(cbor, [addressRes.data]);
+
+  // Uncomment for writing applied CBORs to disk.
+  // const filePath = './applied.cbor';
+  // fs.writeFile(filePath, finalCBOR, (err) => {
+  //   if (err) {
+  //     console.error('Error writing file:', err);
+  //   } else {
+  //     console.log('File written successfully');
+  //   }
+  // });
+
   return {
     type: "ok",
-    data: applyParamsToScript(cbor, [addressRes.data]),
+    data: finalCBOR,
   };
   // }}}
 };
