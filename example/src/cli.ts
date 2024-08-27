@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { main, Config, RequestInfo } from "@anastasia-labs/smart-handles-cli";
+import { main, Config, RequestInfo } from "@anastasia-labs/smart-handles-agent";
 import {
   AdvancedRouteRequest,
   Result,
