@@ -10,18 +10,20 @@
   "scripts": {
     "build": "tsup src/index.ts --minify --format esm",
     "quick-test": "tsup src/index.ts --format esm && node dist/index.js --help",
-    "test": "export NODE_ENV='emulator' && vitest run"
+    "test": "export NODE_ENV='emulator' && vitest run",
+    "test2": "smart-handles-cli"
   },
   "author": "Anastasia Labs",
   "license": "ISC",
   "devDependencies": {
+    "@anastasia-labs/smart-handles-cli": "file:anastasia-labs-smart-handles-cli-0.1.0.tgz",
     "@types/node": "^20.12.12",
     "tsup": "^8.0.2",
     "typescript": "^5.4.5",
     "vitest": "^2.0.5"
   },
   "dependencies": {
-    "@anastasia-labs/smart-handles-offchain": "file:../anastasia-labs-smart-handles-offchain-0.3.0.tgz",
+    "@anastasia-labs/smart-handles-offchain": "file:anastasia-labs-smart-handles-offchain-0.3.0.tgz",
     "@blockfrost/blockfrost-js": "^5.5.0",
     "@minswap/sdk": "^0.2.2-beta",
     "chalk": "^5.3.0",

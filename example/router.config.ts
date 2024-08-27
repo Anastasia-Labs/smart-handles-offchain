@@ -26,12 +26,20 @@ const config: CliConfig = {
     reqInfo: CliRequestInfo
   ): Promise<Result<AdvancedRouteRequest>> => {
     try {
-      const [[fromAssetUnit, fromAssetQty]] = Object.entries(reqInfo.asset);
+      const flattenedAssets = Object.entries(reqInfo.asset);
+      if (flattenedAssets.length > 2)
+        return {
+          type: "error",
+          error: new Error("Too many assets provided"),
+        };
       if (reqInfo.extraConfig && reqInfo.extraConfig["toAsset"]) {
         const rR = await mkRouteRequest(
           {
-            fromAsset: fromAssetUnit,
-            quantity: fromAssetQty,
+            fromAsset: flattenedAssets.length < 1 ? "" : flattenedAssets[0][0],
+            quantity:
+              flattenedAssets.length < 1
+                ? reqInfo.lovelace
+                : flattenedAssets[0][1],
             toAsset: reqInfo.extraConfig["toAsset"],
           },
           "Preprod"
