@@ -269,11 +269,12 @@ export const mkRouteRequest = async (
 
   if (manualMinimumReceive === undefined) {
     const blockfrostKey = process.env.BLOCKFROST_KEY;
-    if (!blockfrostKey)
+    if (!blockfrostKey) {
       return {
         type: "error",
         error: new Error("No Blockfrost API key was found"),
       };
+    }
     const blockfrostAdapter = new BlockfrostAdapter({
       blockFrost: new BlockFrostAPI({
         projectId: blockfrostKey,

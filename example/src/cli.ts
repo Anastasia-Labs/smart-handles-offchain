@@ -3,6 +3,7 @@ import { main, Config, RequestInfo } from "@anastasia-labs/smart-handles-agent";
 import {
   AdvancedRouteRequest,
   Result,
+  errorToString,
   genericCatch,
   ok,
 } from "@anastasia-labs/smart-handles-offchain";
@@ -12,6 +13,7 @@ import {
   mkReclaimConfig,
   mkRouteConfig,
 } from "./minswap-v1.js";
+import { Command } from "@commander-js/extra-typings";
 
 const config: Config = {
   network: "Preprod",
@@ -26,12 +28,13 @@ const config: Config = {
     reqInfo: RequestInfo
   ): Promise<Result<AdvancedRouteRequest>> => {
     try {
-      const flattenedAssets = Object.entries(reqInfo.asset);
-      if (flattenedAssets.length > 2)
+      const flattenedAssets: [string, bigint][] = Object.entries(reqInfo.asset);
+      if (flattenedAssets.length > 2) {
         return {
           type: "error",
           error: new Error("Too many assets provided"),
         };
+      }
       if (reqInfo.extraConfig && reqInfo.extraConfig["toAsset"]) {
         const rR = await mkRouteRequest(
           {
@@ -42,14 +45,18 @@ const config: Config = {
                 : flattenedAssets[0][1],
             toAsset: reqInfo.extraConfig["toAsset"],
           },
-          "Preprod"
+          "Preprod",
+          flattenedAssets.length < 1
+            ? BigInt(Math.round(Number(reqInfo.lovelace) / 40))
+            : flattenedAssets[0][1]
         );
         if (rR.type == "error") return rR;
-        if (rR.data.kind == "simple")
+        if (rR.data.kind == "simple") {
           return {
             type: "error",
             error: new Error('Request builder made a "simple" request config'),
           };
+        }
         return ok(rR.data.data);
       } else {
         return {
@@ -63,4 +70,9 @@ const config: Config = {
   },
 };
 
-main(config);
+const program: Command = main(config);
+
+console.log(process.argv.slice(2));
+await program
+  .parseAsync(process.argv)
+  .catch((e: any) => console.log(errorToString(e)));
