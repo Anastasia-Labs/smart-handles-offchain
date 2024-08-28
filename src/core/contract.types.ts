@@ -1,6 +1,6 @@
 import { Address, Constr, Data, Network } from "@lucid-evolution/lucid";
 import { Result } from "./types.js";
-import { genericCatch, toAddress } from "./utils/utils.js";
+import { fromAddress, fromAddressToData, genericCatch, ok, toAddress } from "./utils/utils.js";
 
 export const OutputReferenceSchema = Data.Object({
   txHash: Data.Object({ hash: Data.Bytes({ minLength: 32, maxLength: 32 }) }),
@@ -85,6 +85,35 @@ export type AdvancedDatumFields = {
   extraInfo: Data;
 };
 
+export const advancedDatumFieldsToCBOR = (
+  aF: AdvancedDatumFields,
+): Result<string> => {
+  let addr;
+  if (aF.mOwner === null) {
+    addr = new Constr(1, []);
+  } else {
+    const addrRes = fromAddressToData(aF.mOwner);
+    if (addrRes.type == "ok") {
+      addr = new Constr(0, [addrRes.data]);
+    } else {
+      return addrRes;
+    }
+  }
+  const constr =
+    new Constr(1, [
+      addr,
+      aF.routerFee,
+      aF.reclaimRouterFee,
+      aF.extraInfo
+    ]);
+  try {
+    const cbor = Data.to(constr);
+    return ok(cbor);
+  } catch(e) {
+    return genericCatch(e);
+  }
+};
+
 export const parseSimpleDatum = (
   cbor: string,
   network: Network
@@ -120,21 +149,18 @@ export const parseAdvancedDatum = (
     const reclaimRouterFee = x1[2] ?? 0n;
     const extraInfo = x1[3];
     try {
-      return {
-        type: "ok",
-        data: {
-          mOwner: initMOwner
-            ? toAddress(Data.from(Data.to(initMOwner), AddressD), network)
-            : null,
-          routerFee,
-          reclaimRouterFee,
-          extraInfo,
-        },
-      };
+      return ok({
+        mOwner: initMOwner
+          ? toAddress(Data.from(Data.to(initMOwner), AddressD), network)
+          : null,
+        routerFee,
+        reclaimRouterFee,
+        extraInfo,
+      });
     } catch (e) {
       return genericCatch(e);
     }
   } else {
-    return genericCatch(Error("Couldn't parse advanced datum"));
+    return {type: "error", error: Error("Couldn't parse advanced datum")};
   }
 };
