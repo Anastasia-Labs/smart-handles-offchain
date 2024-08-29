@@ -41,6 +41,7 @@ export const run = async (
           fromAsset: "lovelace",
           quantity: BigInt(l),
           toAsset: toUnit(MIN_SYMBOL_PREPROD, MIN_TOKEN_NAME),
+          slippageTolerance: 20n,
         })
       ),
       "Preprod"

@@ -40,6 +40,7 @@ export const run = async (
           "e16c2dc8ae937e8d3790c7fd7168d7b994621ba14ca11415f39fed72",
           "74425443"
         ),
+        slippageTolerance: 20n,
       })),
       "Preprod"
     );

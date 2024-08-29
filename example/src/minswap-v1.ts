@@ -217,6 +217,7 @@ export type SwapRequest = {
   fromAsset: Asset;
   quantity: bigint;
   toAsset: Asset;
+  slippageTolerance: bigint;
 };
 
 export const mkMinswapRequestInfo = (
@@ -249,7 +250,7 @@ export const mkMinswapRequestInfo = (
  *        exchange rate (consequently won't query Blockfrost)
  */
 export const mkRouteRequest = async (
-  { fromAsset, quantity, toAsset }: SwapRequest,
+  { fromAsset, quantity, toAsset, slippageTolerance }: SwapRequest,
   network: Network,
   manualMinimumReceive?: bigint
 ): Promise<Result<RouteRequest>> => {
@@ -294,9 +295,11 @@ export const mkRouteRequest = async (
       reserveIn: poolState.reserveA,
       reserveOut: poolState.reserveB,
     });
-    minimumReceive = amountOut;
+    // minimumReceive = amountOut;
+    minimumReceive = (amountOut * (100n - slippageTolerance)) / 100n;
   } else {
-    minimumReceive = manualMinimumReceive;
+    // minimumReceive = manualMinimumReceive;
+    minimumReceive = (manualMinimumReceive * (100n - slippageTolerance)) / 100n;
   }
 
   const { policyId, assetName } =

@@ -12,6 +12,7 @@ import {
   Network,
   TxBuilder,
   selectUTxOs,
+  OutRef,
 } from "@lucid-evolution/lucid";
 import { LOVELACE_MARGIN, ROUTER_FEE } from "../core/constants.js";
 import {
@@ -158,6 +159,14 @@ const utxoToOutputInfo = async (
     network
   );
 };
+
+function ensureArray<T>(input: T[] | { [k: string]: T }): T[] {
+  if (Array.isArray(input)) {
+    return input;
+  } else {
+    return Object.values(input);
+  }
+}
 // }}}
 // ----------------------------------------------------------------------------
 
@@ -229,11 +238,12 @@ export const batchRoute = async (
     lucid.config().network
   );
 
-  if (config.requestOutRefs.length < 1)
-    return { type: "error", error: new Error("No request out refs provided.") };
+  const requestOutRefs: OutRef[] = ensureArray(config.requestOutRefs);
 
+  if (requestOutRefs.length < 1)
+    return { type: "error", error: new Error("No request out refs provided.") };
   try {
-    const utxosToSpend = await lucid.utxosByOutRef(config.requestOutRefs);
+    const utxosToSpend = await lucid.utxosByOutRef(requestOutRefs);
 
     if (!utxosToSpend)
       return {
@@ -286,7 +296,7 @@ export const batchRoute = async (
       );
 
     const walletsUTxOs = await lucid.wallet().getUtxos();
-    const feeUTxOs = selectUTxOs(walletsUTxOs, {lovelace: BigInt(2_000_000)});
+    const feeUTxOs = selectUTxOs(walletsUTxOs, { lovelace: BigInt(2_000_000) });
 
     let tx = lucid
       .newTx()
@@ -315,7 +325,7 @@ export const batchRoute = async (
               inOutInfo.scriptOutput!.outputAssets
             );
           }
-        } catch(e) {
+        } catch (e) {
           return errorToString(e);
         }
       },

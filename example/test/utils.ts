@@ -1,7 +1,4 @@
-import {
-  MIN_SYMBOL_PREPROD,
-  MIN_TOKEN_NAME,
-} from "../src/constants.js";
+import { MIN_SYMBOL_PREPROD, MIN_TOKEN_NAME } from "../src/constants.js";
 import {
   mkBatchRequestConfig,
   mkSingleRequestConfig,
@@ -58,6 +55,7 @@ export const submitAdaToMinSingleRequest = async (
         fromAsset: "lovelace",
         quantity: BigInt(50_000_000),
         toAsset: toUnit(MIN_SYMBOL_PREPROD, MIN_TOKEN_NAME),
+        slippageTolerance: BigInt(20),
       },
       "Custom",
       BigInt(2_500_000)
@@ -92,6 +90,7 @@ export const submitAdaToMinBatchRequests = async (
         fromAsset: "lovelace",
         quantity: BigInt(l),
         toAsset: toUnit(MIN_SYMBOL_PREPROD, MIN_TOKEN_NAME),
+        slippageTolerance: BigInt(20),
       })),
       "Custom",
       lovelaces.map((l) => BigInt(Math.round(l * 0.05)))
