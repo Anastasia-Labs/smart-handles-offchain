@@ -33,13 +33,11 @@ import {
   errorToString,
   genericCatch,
   getBatchVAs,
-  getOneUTxOFromWallet,
   getSingleValidatorVA,
   ok,
   printUTxOOutRef,
   reduceLovelacesOfAssets,
   selectUtxos,
-  validateItems,
   validateUTxOAndConfig,
 } from "../core/utils/index.js";
 // }}}

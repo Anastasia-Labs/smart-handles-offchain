@@ -61,7 +61,7 @@ export type SimpleRouteRequest = {
 };
 
 export type AdvancedRouteRequest = SimpleRouteRequest & {
-  markWalletAsOwner: boolean;
+  owner?: Address;
   routerFee: bigint;
   reclaimRouterFee: bigint;
   extraInfoDataBuilder: () => Data;

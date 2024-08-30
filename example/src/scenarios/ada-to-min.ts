@@ -35,13 +35,16 @@ export const run = async (
 
     lucid.selectWallet.fromSeed(seedPhrase);
 
+    const userAddress = await lucid.wallet().address();
+
     const requestConfigRes = await mkBatchRequestConfig(
+      userAddress,
       [50_000_000, 100_000_000, 150_000_000, 200_000_000, 250_000_000].map(
         (l) => ({
           fromAsset: "lovelace",
           quantity: BigInt(l),
           toAsset: toUnit(MIN_SYMBOL_PREPROD, MIN_TOKEN_NAME),
-          slippageTolerance: 20n,
+          slippageTolerance: 99n,
         })
       ),
       "Preprod"
@@ -69,8 +72,6 @@ export const run = async (
     // await registerRewardAddress(lucid, rewardAddress);
     // console.log(`Staking validator successfully registered: ${rewardAddress}`);
     // -------------------------------------------------------------------------
-
-    const userAddress = await lucid.wallet().address();
 
     lucid.selectWallet.fromSeed(routingAgentsSeedPhrase);
     console.log("(switched to the routing agent's wallet)");

@@ -29,14 +29,21 @@ const config: Config = {
   ): Promise<Result<AdvancedRouteRequest>> => {
     try {
       const flattenedAssets: [string, bigint][] = Object.entries(reqInfo.asset);
-      if (flattenedAssets.length > 2) {
+      if (flattenedAssets.length > 1) {
         return {
           type: "error",
           error: new Error("Too many assets provided"),
         };
       }
-      if (reqInfo.extraConfig && reqInfo.extraConfig["toAsset"]) {
+      if (reqInfo.owner && reqInfo.extraConfig && reqInfo.extraConfig["toAsset"] && reqInfo.extraConfig["slippageTolerance"]) {
+        if (typeof reqInfo.extraConfig["slippageTolerance"] !== "number") {
+          return {
+            type: "error",
+            error: new Error("Invalid slippage tolerance encountered"),
+          };
+        }
         const rR = await mkRouteRequest(
+          reqInfo.owner,
           {
             fromAsset: flattenedAssets.length < 1 ? "" : flattenedAssets[0][0],
             quantity:
@@ -44,6 +51,7 @@ const config: Config = {
                 ? reqInfo.lovelace
                 : flattenedAssets[0][1],
             toAsset: reqInfo.extraConfig["toAsset"],
+            slippageTolerance: BigInt(reqInfo.extraConfig["slippageTolerance"])
           },
           "Preprod",
           flattenedAssets.length < 1

@@ -32,7 +32,10 @@ export const run = async (
 
     lucid.selectWallet.fromSeed(seedPhrase);
 
+    const userAddress = await lucid.wallet().address();
+
     const requestConfigRes = await mkBatchRequestConfig(
+      userAddress,
       [6_000_000, 4_000_000].map((l) => ({
         fromAsset: toUnit(MIN_SYMBOL_PREPROD, MIN_TOKEN_NAME),
         quantity: BigInt(l),
@@ -52,8 +55,6 @@ export const run = async (
     console.log("Submitting the swap requests...");
     const requestTxHash = await signAndSubmitTxRes(lucid, requestTxUnsignedRes);
     console.log(`Request Successfully Submitted: ${requestTxHash}`);
-
-    const userAddress = await lucid.wallet().address();
 
     lucid.selectWallet.fromSeed(routingAgentsSeedPhrase);
     console.log("(switched to the routing agent's wallet)");

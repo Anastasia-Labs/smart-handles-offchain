@@ -239,8 +239,9 @@ export const mkMinswapRequestInfo = (
  * in hex format.
  *
  * This function uses Blockfrost to determine the exchange rate, and stores it
- * in the `minimumReceive` field of `extraInfo`. @private
+ * in the `minimumReceive` field of `extraInfo`.
  *
+ * @param ownerAddress - Address to be stored in the datum as owner
  * @param swapRequest - Consists of 3 fields:
  *   - fromAsset: Unit of the asset A to be converted
  *   - quantity: Amount of asset A
@@ -250,6 +251,7 @@ export const mkMinswapRequestInfo = (
  *        exchange rate (consequently won't query Blockfrost)
  */
 export const mkRouteRequest = async (
+  ownerAddress: Address,
   { fromAsset, quantity, toAsset, slippageTolerance }: SwapRequest,
   network: Network,
   manualMinimumReceive?: bigint
@@ -306,7 +308,7 @@ export const mkRouteRequest = async (
     toAsset === "" ? { policyId: "", assetName: "" } : fromUnit(toAsset);
   const advancedRouteRequest: AdvancedRouteRequest = {
     valueToLock,
-    markWalletAsOwner: true,
+    owner: ownerAddress,
     routerFee: ROUTER_FEE,
     reclaimRouterFee: 0n,
     extraInfoDataBuilder: () => {
@@ -469,6 +471,7 @@ export const signAndSubmitTxRes = async (
 /**
  * Given a `SwapRequest`, this function creates a `SingleRequestConfig` for
  * submitting a swap request.
+ * @param ownerAddress - Address to be stored in the datum as owner
  * @param swapRequest - `SwapRequest` consists of 3 fields:
  *   - fromAsset: Unit of the asset A to be converted
  *   - quantity: Amount of asset A
@@ -478,12 +481,14 @@ export const signAndSubmitTxRes = async (
  *        exchange rate (consequently won't query Blockfrost)
  */
 export const mkSingleRequestConfig = async (
+  ownerAddress: Address,
   swapRequest: SwapRequest,
   network: Network,
   manualMinimumReceive?: bigint
 ): Promise<Result<SingleRequestConfig>> => {
   // {{{
   const routeRequestRes = await mkRouteRequest(
+    ownerAddress,
     swapRequest,
     network,
     manualMinimumReceive
@@ -599,6 +604,7 @@ export const mkSingleRouteConfig = (
  * Given a list of `SwapRequest` values, this function creates a
  * `BatchRequestConfig` for submitting multiple swap requests in a single
  * transaction.
+ * @param ownerAddress - Address to be stored in the datum as owner
  * @param swapRequests - Each `SwapRequest` consists of 3 fields:
  *   - fromAsset: Unit of the asset A to be converted
  *   - quantity: Amount of asset A
@@ -608,6 +614,7 @@ export const mkSingleRouteConfig = (
  *        exchange rates (consequently won't query Blockfrost)
  */
 export const mkBatchRequestConfig = async (
+  ownerAddress: Address,
   swapRequests: SwapRequest[],
   network: Network,
   manualMinimumReceives?: bigint[]
@@ -616,6 +623,7 @@ export const mkBatchRequestConfig = async (
   const allRequestConfigRes = await Promise.all(
     swapRequests.map(async (swapRequest, index) => {
       return await mkRouteRequest(
+        ownerAddress,
         swapRequest,
         network,
         manualMinimumReceives !== undefined

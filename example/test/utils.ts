@@ -49,8 +49,11 @@ export const submitAdaToMinSingleRequest = async (
   lucid: LucidEvolution,
   userSeedPhrase: string
 ) => {
+  lucid.selectWallet.fromSeed(userSeedPhrase);
+  const walletAddr = await lucid.wallet().address();
   const requestConfig = unsafeFromOk(
     await mkSingleRequestConfig(
+      walletAddr,
       {
         fromAsset: "lovelace",
         quantity: BigInt(50_000_000),
@@ -61,8 +64,6 @@ export const submitAdaToMinSingleRequest = async (
       BigInt(2_500_000)
     )
   );
-
-  lucid.selectWallet.fromSeed(userSeedPhrase);
 
   // NOTE: Singular Swap Request 1
   const requestUnsigned = unsafeFromOk(
@@ -84,8 +85,10 @@ export const submitAdaToMinBatchRequests = async (
   lovelaces: number[]
 ) => {
   lucid.selectWallet.fromSeed(userSeedPhrase);
+  const walletAddr = await lucid.wallet().address();
   const requestConfig = unsafeFromOk(
     await mkBatchRequestConfig(
+      walletAddr,
       lovelaces.map((l) => ({
         fromAsset: "lovelace",
         quantity: BigInt(l),

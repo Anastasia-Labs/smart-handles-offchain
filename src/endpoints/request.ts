@@ -67,26 +67,25 @@ const simpleDatumBuilder = (ownAddress: string): string => {
 
 // Types don't seem to work here, for now we're using manual data encoding.
 const advancedDatumBuilder = (
-  ownAddress: string,
   routeRequest: AdvancedRouteRequest
 ): string => {
   // const advancedDatum: SmartHandleDatum = {
-  //   MOwner: routeRequest.markWalletAsOwner ? fromAddress(ownAddress) : null,
+  //   MOwner: routeRequest.owner ? fromAddress(routeRequest.owner) : null,
   //   RouterFee: routeRequest.routerFee,
   //   ReclaimRouterFee: routeRequest.reclaimRouterFee,
   //   ExtraInfo: routeRequest.extraInfo,
   // };
   // return Data.to(advancedDatum, SmartHandleDatum);
-  const addrRes = fromAddressToData(ownAddress);
-  let addr: Data = "";
-  if (addrRes.type == "ok") {
-    addr = addrRes.data;
+  let addr = new Constr(1, []) as Data;
+  if (routeRequest.owner) {
+    const addrRes = fromAddressToData(routeRequest.owner);
+    if (addrRes.type == "ok") {
+      addr = new Constr(0, [addrRes.data]);
+    }
   }
   const constr =
     new Constr(1, [
-      routeRequest.markWalletAsOwner
-        ? new Constr(0, [addr])
-        : new Constr(1, []),
+      addr,
       routeRequest.routerFee,
       routeRequest.reclaimRouterFee,
       routeRequest.extraInfoDataBuilder()
@@ -124,12 +123,12 @@ export const singleRequest = async (
     if (addrRes.type == "error") return addrRes;
 
     // Implicit assumption that who creates the transaction is the owner.
-    // In case of the `Advanced` datum, whether an owner is specified depends on
-    // the `markWalletAsOwner` flag.
+    // In case of the `Advanced` datum, the owner comes from its optional field
+    // and not from the selected wallet..
     const outputDatumData =
       routeRequest.kind == "simple"
         ? simpleDatumBuilder(ownAddress)
-        : advancedDatumBuilder(ownAddress, routeRequest.data);
+        : advancedDatumBuilder(routeRequest.data);
 
     const tx = await lucid
       .newTx()
@@ -178,7 +177,7 @@ export const batchRequest = async (
         const outputDatumData =
           rR.kind == "simple"
             ? simpleDatumBuilder(ownAddress)
-            : advancedDatumBuilder(ownAddress, rR.data);
+            : advancedDatumBuilder(rR.data);
         initTx.pay.ToContract(
           targetAddress,
           { kind: "inline", value: outputDatumData },

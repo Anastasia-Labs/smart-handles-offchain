@@ -21,7 +21,7 @@ importers:
         specifier: ^12.1.0
         version: 12.1.0(commander@12.1.0)
       '@minswap/sdk':
-        specifier: 0.2.2-beta
+        specifier: ^0.2.2-beta
         version: 0.2.2-beta
       chalk:
         specifier: ^5.3.0
@@ -31,13 +31,13 @@ importers:
         version: 12.1.0
     devDependencies:
       '@types/node':
-        specifier: ^20.16.2
+        specifier: ^20.16.1
         version: 20.16.2
       tsup:
-        specifier: ^8.2.4
+        specifier: ^8.0.2
         version: 8.2.4(postcss@8.4.41)(typescript@5.5.4)(yaml@2.5.0)
       typescript:
-        specifier: ^5.5.4
+        specifier: ^5.4.5
         version: 5.5.4
       vitest:
         specifier: ^2.0.5
@@ -56,11 +56,11 @@ packages:
     resolution: {integrity: sha512-2jPbsPErUtPoiqbGZj9D79YYzCotMQ/Gez49p5C1fIcqR4WBNRf3Sq3lyhORdcxcvXVtpHW86mKdj5k5paD7/Q==}
 
   '@anastasia-labs/smart-handles-agent@file:anastasia-labs-smart-handles-agent-0.1.0.tgz':
-    resolution: {integrity: sha512-g+QBg7sfVxk2q75lpw86MjYFHF1Tm8EkItC+D9DulzbTFY2nYaKs9IqjAi5Rm49MXYwcxzaHTUoeiOaXSGA/UQ==, tarball: file:anastasia-labs-smart-handles-agent-0.1.0.tgz}
+    resolution: {integrity: sha512-+ViR4NbII932O1eo2iL8mwUoAuHW+pCIl132rYsKMixPhgaSJ4uh/qKpMSEI+itfWHNRG4fETzt+q3FGsQNR3Q==, tarball: file:anastasia-labs-smart-handles-agent-0.1.0.tgz}
     version: 0.1.0
 
   '@anastasia-labs/smart-handles-offchain@file:anastasia-labs-smart-handles-offchain-0.3.0.tgz':
-    resolution: {integrity: sha512-Ns+E1r6B0F3d1y08avlG7tjuD+ykecUEFM3q7tF0NGCGB7qc70IjRkeOjx58ra2CimrHDUmIGPWYb5WDeIFyUg==, tarball: file:anastasia-labs-smart-handles-offchain-0.3.0.tgz}
+    resolution: {integrity: sha512-/2hrTqQDofpCvPj6hje1q3YI+Q43J7LaKdQFbxY8lGt7pgEO2EYWSFQKWQiEQ+aM2/SJvHa0kS3Zxswim8BVjQ==, tarball: file:anastasia-labs-smart-handles-offchain-0.3.0.tgz}
     version: 0.3.0
 
   '@blockfrost/blockfrost-js@5.5.0':
