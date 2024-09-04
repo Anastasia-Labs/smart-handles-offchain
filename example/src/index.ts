@@ -6,6 +6,7 @@ import * as min2btc from "./scenarios/min-to-tbtc.js";
 import * as packageJson from "../package.json";
 import { Command } from "commander";
 import * as chalk_ from "chalk";
+import {SpendingValidator, validatorToAddress, validatorToScriptHash} from "@anastasia-labs/smart-handles-offchain";
 
 export const minswapv1 = minswap;
 export const chalk = new chalk_.Chalk();
@@ -76,5 +77,21 @@ The router will perform the swap (batch version) using the latest rate
 `
   )
   .action(fromAction(min2btc.run));
+
+program
+  .command("test")
+  .description("<< For testing purposes >>")
+  .action(() => {
+    const validator: SpendingValidator = {
+      type: "PlutusV2",
+      script: "583b010000323232322253330033370e900018021baa001153330034a229309b2b09912999802a5114984d958c018c014dd5000ab9a5573aaae795d081",
+    };
+    const scriptHash = validatorToScriptHash(validator);
+    const scriptAddr = validatorToAddress("Preprod", validator);
+    console.log("Script Hash")
+    console.log(chalk.white(chalk.bold(scriptHash)));
+    console.log("Script Address")
+    console.log(chalk.white(chalk.bold(scriptAddr)));
+  });
 
 program.parse();

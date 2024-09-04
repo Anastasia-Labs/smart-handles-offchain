@@ -1,6 +1,13 @@
 import { Address, Constr, Data, Network } from "@lucid-evolution/lucid";
 import { Result } from "./types.js";
-import { fromAddress, fromAddressToData, genericCatch, ok, toAddress } from "./utils/utils.js";
+import {
+  fromAddress,
+  fromAddressToData,
+  genericCatch,
+  ok,
+  toAddress,
+} from "./utils/utils.js";
+import * as L from "lucid-cardano";
 
 export const OutputReferenceSchema = Data.Object({
   txHash: Data.Object({ hash: Data.Bytes({ minLength: 32, maxLength: 32 }) }),
@@ -87,29 +94,33 @@ export type AdvancedDatumFields = {
 
 export const advancedDatumFieldsToCBOR = (
   aF: AdvancedDatumFields,
+  oldEncoding?: boolean
 ): Result<string> => {
+  const constrFn = oldEncoding
+    ? (i: number, fs: Data[]) => new L.Constr(i, fs)
+    : (i: number, fs: Data[]) => new Constr(i, fs);
   let addr;
   if (aF.mOwner === null) {
-    addr = new Constr(1, []);
+    addr = constrFn(1, []);
   } else {
     const addrRes = fromAddressToData(aF.mOwner);
     if (addrRes.type == "ok") {
-      addr = new Constr(0, [addrRes.data]);
+      addr = constrFn(0, [addrRes.data]);
     } else {
       return addrRes;
     }
   }
-  const constr =
-    new Constr(1, [
-      addr,
-      aF.routerFee,
-      aF.reclaimRouterFee,
-      aF.extraInfo
-    ]);
+  const constr = constrFn(1, [
+    addr,
+    aF.routerFee,
+    aF.reclaimRouterFee,
+    oldEncoding ? L.Data.from(Data.to(aF.extraInfo)) : aF.extraInfo,
+  ]);
   try {
-    const cbor = Data.to(constr);
+    console.log(constr);
+    const cbor = oldEncoding ? L.Data.to(constr) : Data.to(constr);
     return ok(cbor);
-  } catch(e) {
+  } catch (e) {
     return genericCatch(e);
   }
 };
@@ -161,6 +172,6 @@ export const parseAdvancedDatum = (
       return genericCatch(e);
     }
   } else {
-    return {type: "error", error: Error("Couldn't parse advanced datum")};
+    return { type: "error", error: Error("Couldn't parse advanced datum") };
   }
 };

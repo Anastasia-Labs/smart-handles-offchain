@@ -43,7 +43,7 @@ const config: Config = {
           };
         }
         const rR = await mkRouteRequest(
-          reqInfo.owner,
+          reqInfo.owner.address.bech32,
           {
             fromAsset: flattenedAssets.length < 1 ? "" : flattenedAssets[0][0],
             quantity:

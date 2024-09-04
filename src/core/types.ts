@@ -2,7 +2,7 @@ import {
   Address,
   Assets,
   CBORHex,
-  Data,
+  DatumJson,
   OutRef,
   OutputDatum,
   RedeemerBuilder,
@@ -64,7 +64,7 @@ export type AdvancedRouteRequest = SimpleRouteRequest & {
   owner?: Address;
   routerFee: bigint;
   reclaimRouterFee: bigint;
-  extraInfoDataBuilder: () => Data;
+  extraInfoDataBuilder: () => DatumJson;
 };
 
 export type RouteRequest =

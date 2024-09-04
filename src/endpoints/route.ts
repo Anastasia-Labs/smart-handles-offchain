@@ -37,7 +37,6 @@ import {
   ok,
   printUTxOOutRef,
   reduceLovelacesOfAssets,
-  selectUtxos,
   validateUTxOAndConfig,
 } from "../core/utils/index.js";
 // }}}
@@ -187,8 +186,7 @@ export const singleRoute = async (
 
     const walletUTxOs = await lucid.wallet().getUtxos();
 
-    const feeUTxOsRes = selectUtxos(walletUTxOs, { lovelace: LOVELACE_MARGIN });
-    if (feeUTxOsRes.type == "error") return feeUTxOsRes;
+    const feeUTxOs = selectUTxOs(walletUTxOs, { lovelace: LOVELACE_MARGIN });
 
     const inUTxOAndOutInfoRes = await utxoToOutputInfo(
       utxoToSpend,
@@ -210,7 +208,7 @@ export const singleRoute = async (
     const tx = lucid
       .newTx()
       .collectFrom([utxoToSpend], inOutInfo.redeemerBuilder)
-      .collectFrom(feeUTxOsRes.data)
+      .collectFrom(feeUTxOs)
       .attach.SpendingValidator(va.validator)
       .pay.ToContract(
         config.routeAddress,
@@ -294,7 +292,7 @@ export const batchRoute = async (
       );
 
     const walletsUTxOs = await lucid.wallet().getUtxos();
-    const feeUTxOs = selectUTxOs(walletsUTxOs, { lovelace: BigInt(2_000_000) });
+    const feeUTxOs = selectUTxOs(walletsUTxOs, { lovelace: LOVELACE_MARGIN });
 
     let tx = lucid
       .newTx()

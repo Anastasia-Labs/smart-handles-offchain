@@ -15,6 +15,7 @@ import {
   LucidEvolution,
   scriptHashToCredential,
   credentialToAddress,
+  DatumJson,
 } from "@lucid-evolution/lucid";
 import {
   AddressD,
@@ -199,6 +200,46 @@ export const fromAddressToData = (address: Address): Result<Data> => {
   ]);
 
   return { type: "ok", data: new Constr(0, [paymentCred, stakingCred]) };
+};
+
+export const fromAddressToDatumJson = (address: Address): Result<DatumJson> => {
+  const addrDetails = getAddressDetails(address);
+
+  if (!addrDetails.paymentCredential)
+    return { type: "error", error: new Error("undefined paymentCredential") };
+
+  const paymentCred: DatumJson =
+    addrDetails.paymentCredential.type == "Key"
+      ? {constructor: 0, fields: [{bytes: addrDetails.paymentCredential.hash}]}
+      : {constructor: 1, fields: [{bytes: addrDetails.paymentCredential.hash}]}
+
+  if (!addrDetails.stakeCredential) {
+    return {
+      type: "ok",
+      data: {
+        constructor: 0,
+        fields: [
+          paymentCred,
+          {constructor: 1, fields: []}
+        ]
+      },
+    };
+  }
+
+  const stakingCred = {
+    constructor: 0,
+    fields: [
+      {
+        constructor: 0,
+        fields: [{constructor: 0, fields: [{bytes: addrDetails.stakeCredential.hash}]}]
+      }
+    ],
+  };
+
+  return {
+    type: "ok",
+    data: {constructor: 0, fields: [paymentCred, stakingCred]}
+  };
 };
 
 export const chunkArray = <T>(array: T[], chunkSize: number) => {

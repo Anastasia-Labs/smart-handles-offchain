@@ -4,8 +4,10 @@ import {
   Address,
   Constr,
   Data,
+  DatumJson,
   LucidEvolution,
   TxSignBuilder,
+  datumJsonToCbor,
 } from "@lucid-evolution/lucid";
 import { INSUFFICIENT_ADA_ERROR_MSG, ROUTER_FEE } from "../core/constants.js";
 import {
@@ -19,6 +21,7 @@ import {
   collectErrorMsgs,
   enoughLovelacesAreInAssets,
   fromAddressToData,
+  fromAddressToDatumJson,
   genericCatch,
   getBatchVAs,
   getSingleValidatorVA,
@@ -76,21 +79,25 @@ const advancedDatumBuilder = (
   //   ExtraInfo: routeRequest.extraInfo,
   // };
   // return Data.to(advancedDatum, SmartHandleDatum);
-  let addr = new Constr(1, []) as Data;
+  let addr: DatumJson = {constructor: 1, fields: []};
   if (routeRequest.owner) {
-    const addrRes = fromAddressToData(routeRequest.owner);
-    if (addrRes.type == "ok") {
-      addr = new Constr(0, [addrRes.data]);
+    try {
+      const addrRes = fromAddressToDatumJson(routeRequest.owner);
+      if (addrRes.type == "ok") {
+        addr = {constructor: 0, fields: [addrRes.data]};
+      }
+    } catch(e) {
+      console.log(e);
     }
   }
   const constr =
-    new Constr(1, [
+    {constructor: 1, fields: [
       addr,
-      routeRequest.routerFee,
-      routeRequest.reclaimRouterFee,
+      {int: Number(routeRequest.routerFee)},
+      {int: Number(routeRequest.reclaimRouterFee)},
       routeRequest.extraInfoDataBuilder()
-    ])
-  return Data.to(constr);
+    ]};
+  return datumJsonToCbor(constr);
 };
 // }}}
 // ----------------------------------------------------------------------------
@@ -119,7 +126,7 @@ export const singleRequest = async (
 
   try {
     const ownAddress = await lucid.wallet().address();
-    const addrRes = fromAddressToData(ownAddress);
+    const addrRes = fromAddressToDatumJson(ownAddress);
     if (addrRes.type == "error") return addrRes;
 
     // Implicit assumption that who creates the transaction is the owner.

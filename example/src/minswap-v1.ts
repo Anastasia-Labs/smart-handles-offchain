@@ -20,8 +20,8 @@ import {
   BatchRequestConfig,
   BatchRouteConfig,
   CBORHex,
-  Constr,
   Data,
+  DatumJson,
   LucidEvolution,
   Network,
   OutRef,
@@ -224,13 +224,16 @@ export const mkMinswapRequestInfo = (
   policyId: string,
   assetName: string | null,
   minimumReceive: bigint
-): Data => {
-  return new Constr(0, [
-    policyId,
-    assetName ?? "",
-    new Constr(1, []),
-    minimumReceive,
-  ]);
+): DatumJson => {
+  return {
+    constructor: 0,
+    fields: [
+      { bytes: policyId },
+      { bytes: assetName ?? "" },
+      { constructor: 1, fields: [] },
+      { int: Number(minimumReceive) },
+    ],
+  };
 };
 
 /**
