@@ -9,12 +9,14 @@ import {
   TxBuilder,
   TxSignBuilder,
   UTxO,
+  addAssets,
   paymentCredentialOf,
   selectUTxOs,
 } from "@lucid-evolution/lucid";
 import {
   asyncValidateItems,
   collectErrorMsgs,
+  complementAdditionalActionWithRequiredMint,
   errorToString,
   genericCatch,
   getBatchVAs,
@@ -35,6 +37,7 @@ import {
 import {
   AdvancedDatumFields,
   SimpleDatumFields,
+  tsRequiredMintToAssets,
 } from "../core/contract.types.js";
 import { UNAUTHORIZED_OWNER_ERROR_MSG } from "../core/constants.js";
 // }}}
@@ -97,8 +100,11 @@ const utxoToOutputInfo = async (
       // {{{
       if (reclaimConfig) {
         if (advancedFields.mOwner) {
+          const reqMint = advancedFields.reclaimRequiredMint;
           const outputAssetsRes = reduceLovelacesOfAssets(
-            utxo.assets,
+            reqMint
+              ? addAssets(utxo.assets, tsRequiredMintToAssets(reqMint))
+              : utxo.assets,
             advancedFields.reclaimRouterFee
           );
           try {
@@ -127,7 +133,11 @@ const utxoToOutputInfo = async (
                 outputAssets: outputAssetsRes.data,
                 outputDatum: outputDatumRes.data,
               },
-              additionalAction: reclaimConfig.additionalAction,
+              additionalAction: complementAdditionalActionWithRequiredMint(
+                reqMint,
+                reclaimConfig.additionalAction,
+                reclaimConfig.requiredMintConfig
+              )
             });
           } catch (e) {
             return genericCatch(e);

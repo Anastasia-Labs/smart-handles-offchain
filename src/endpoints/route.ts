@@ -13,11 +13,13 @@ import {
   TxBuilder,
   selectUTxOs,
   OutRef,
+  addAssets,
 } from "@lucid-evolution/lucid";
 import { LOVELACE_MARGIN, ROUTER_FEE } from "../core/constants.js";
 import {
   AdvancedDatumFields,
   SimpleDatumFields,
+  tsRequiredMintToAssets,
 } from "../core/contract.types.js";
 import {
   BatchRouteConfig,
@@ -28,8 +30,10 @@ import {
   AdvancedRouteConfig,
 } from "../core/types.js";
 import {
+  addMint,
   asyncValidateItems,
   collectErrorMsgs,
+  complementAdditionalActionWithRequiredMint,
   errorToString,
   genericCatch,
   getBatchVAs,
@@ -126,21 +130,30 @@ const utxoToOutputInfo = async (
       // {{{
       if (advancedRouteConfig) {
         try {
+          const reqMint = advancedFields.routeRequiredMint;
           const outputAssetsRes = reduceLovelacesOfAssets(
-            utxo.assets,
+            reqMint
+              ? addAssets(utxo.assets, tsRequiredMintToAssets(reqMint))
+              : utxo.assets,
             advancedFields.routerFee
           );
           const outputDatumRes = await advancedRouteConfig.outputDatumMaker(
             u.assets,
             advancedFields
           );
+          const finalAdditionalAction =
+            complementAdditionalActionWithRequiredMint(
+              reqMint,
+              advancedRouteConfig.additionalAction,
+              advancedRouteConfig.requiredMintConfig
+            );
           return outputHelper(
             u,
             forSingle,
             routeAddress,
             outputAssetsRes,
             outputDatumRes,
-            advancedRouteConfig.additionalAction
+            finalAdditionalAction
           );
         } catch (e) {
           return genericCatch(e);

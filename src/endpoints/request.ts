@@ -27,6 +27,7 @@ import {
   getSingleValidatorVA,
   validateItems,
 } from "../core/utils/index.js";
+import { TSRequiredMint } from "../index.js";
 // }}}
 // ----------------------------------------------------------------------------
 
@@ -69,9 +70,7 @@ const simpleDatumBuilder = (ownAddress: string): string => {
 };
 
 // Types don't seem to work here, for now we're using manual data encoding.
-const advancedDatumBuilder = (
-  routeRequest: AdvancedRouteRequest
-): string => {
+const advancedDatumBuilder = (routeRequest: AdvancedRouteRequest): string => {
   // const advancedDatum: SmartHandleDatum = {
   //   MOwner: routeRequest.owner ? fromAddress(routeRequest.owner) : null,
   //   RouterFee: routeRequest.routerFee,
@@ -79,24 +78,45 @@ const advancedDatumBuilder = (
   //   ExtraInfo: routeRequest.extraInfo,
   // };
   // return Data.to(advancedDatum, SmartHandleDatum);
-  let addr: DatumJson = {constructor: 1, fields: []};
+  let addr: DatumJson = { constructor: 1, fields: [] };
   if (routeRequest.owner) {
     try {
       const addrRes = fromAddressToDatumJson(routeRequest.owner);
       if (addrRes.type == "ok") {
-        addr = {constructor: 0, fields: [addrRes.data]};
+        addr = { constructor: 0, fields: [addrRes.data] };
       }
-    } catch(e) {
+    } catch (e) {
       console.log(e);
     }
   }
-  const constr =
-    {constructor: 1, fields: [
+  const reqMintToConstr = (reqMint: TSRequiredMint | null): DatumJson => {
+    if (reqMint === null) {
+      return {
+        constructor: 1,
+        fields: [],
+      };
+    } else {
+      return {
+        constructor: 0,
+        fields: [
+          { bytes: reqMint[0] },
+          { bytes: reqMint[1] },
+          { int: Number(reqMint[2]) },
+        ],
+      };
+    }
+  };
+  const constr = {
+    constructor: 1,
+    fields: [
       addr,
-      {int: Number(routeRequest.routerFee)},
-      {int: Number(routeRequest.reclaimRouterFee)},
-      routeRequest.extraInfoDataBuilder()
-    ]};
+      { int: Number(routeRequest.routerFee) },
+      { int: Number(routeRequest.reclaimRouterFee) },
+      reqMintToConstr(routeRequest.routeRequiredMint),
+      reqMintToConstr(routeRequest.reclaimRequiredMint),
+      routeRequest.extraInfoDataBuilder(),
+    ],
+  };
   return datumJsonToCbor(constr);
 };
 // }}}

@@ -1,7 +1,14 @@
-import { Address, Constr, Data, Network } from "@lucid-evolution/lucid";
+import {
+  Address,
+  Assets,
+  Constr,
+  Data,
+  Network,
+  PolicyId,
+  toUnit,
+} from "@lucid-evolution/lucid";
 import { Result } from "./types.js";
 import {
-  fromAddress,
   fromAddressToData,
   genericCatch,
   ok,
@@ -66,6 +73,17 @@ export const ValueSchema = Data.Map(
 export type Value = Data.Static<typeof ValueSchema>;
 export const Value = ValueSchema as unknown as Value;
 
+export const RequiredMintSchema = Data.Enum([
+  Data.Object({
+    Policy: Data.Bytes(),
+    Name: Data.Bytes(),
+    Quantity: Data.Integer(),
+  }),
+  Data.Object({}),
+]);
+export type RequiredMint = Data.Static<typeof RequiredMintSchema>;
+export const RequiredMint = RequiredMintSchema as unknown as RequiredMint;
+
 export const SmartHandleDatumSchema = Data.Enum([
   Data.Object({
     Owner: AddressSchema,
@@ -74,12 +92,22 @@ export const SmartHandleDatumSchema = Data.Enum([
     MOwner: Data.Nullable(AddressSchema),
     RouterFee: Data.Integer(),
     ReclaimRouterFee: Data.Integer(),
+    RouteRequiredMint: RequiredMintSchema,
+    ReclaimRequiredMint: RequiredMintSchema,
     ExtraInfo: Data.Any(),
   }),
 ]);
 export type SmartHandleDatum = Data.Static<typeof SmartHandleDatumSchema>;
 export const SmartHandleDatum =
   SmartHandleDatumSchema as unknown as SmartHandleDatum;
+
+export type TSRequiredMint = [PolicyId, string, bigint];
+
+export const tsRequiredMintToAssets = (
+  singleton: [PolicyId, string, bigint]
+): Assets => {
+  return {[toUnit(singleton[0], singleton[1])]: singleton[2]};
+};
 
 export type SimpleDatumFields = {
   owner: Address;
@@ -89,6 +117,8 @@ export type AdvancedDatumFields = {
   mOwner: Address | null;
   routerFee: bigint;
   reclaimRouterFee: bigint;
+  routeRequiredMint: TSRequiredMint | null;
+  reclaimRequiredMint: TSRequiredMint | null;
   extraInfo: Data;
 };
 
@@ -110,10 +140,24 @@ export const advancedDatumFieldsToCBOR = (
       return addrRes;
     }
   }
+  let routeRM;
+  let reclaimRM;
+  if (aF.routeRequiredMint === null) {
+    routeRM = constrFn(1, []);
+  } else {
+    routeRM = constrFn(0, [aF.routeRequiredMint[0], aF.routeRequiredMint[1], aF.routeRequiredMint[2]]);
+  }
+  if (aF.reclaimRequiredMint === null) {
+    reclaimRM = constrFn(1, []);
+  } else {
+    reclaimRM = constrFn(0, [aF.reclaimRequiredMint[0], aF.reclaimRequiredMint[1], aF.reclaimRequiredMint[2]]);
+  }
   const constr = constrFn(1, [
     addr,
     aF.routerFee,
     aF.reclaimRouterFee,
+    routeRM,
+    reclaimRM,
     oldEncoding ? L.Data.from(Data.to(aF.extraInfo)) : aF.extraInfo,
   ]);
   try {
@@ -149,7 +193,7 @@ export const parseAdvancedDatum = (
 ): Result<AdvancedDatumFields> => {
   const x0 = Data.from(cbor, Constr<Data>);
   const x1 = x0 instanceof Constr && x0.index === 1 ? x0.fields : [];
-  if ((x1[1] || x1[1] === 0n) && (x1[2] || x1[2] === 0n) && x1[3]) {
+  if ((x1[1] || x1[1] === 0n) && (x1[2] || x1[2] === 0n) && x1[3] && x1[4] && x1[5]) {
     const initMOwner =
       x1[0] instanceof Constr
         ? x1[0].index === 0
@@ -158,7 +202,27 @@ export const parseAdvancedDatum = (
         : null;
     const routerFee = x1[1] ?? 0n;
     const reclaimRouterFee = x1[2] ?? 0n;
-    const extraInfo = x1[3];
+    const routeRequiredMint: TSRequiredMint | null =
+      x1[3] instanceof Constr
+        ? x1[3].index === 0
+          ? [
+              x1[3].fields[0],
+              x1[3].fields[1],
+              x1[3].fields[2],
+            ] as TSRequiredMint
+          : null
+        : null;
+    const reclaimRequiredMint: TSRequiredMint | null =
+      x1[4] instanceof Constr
+        ? x1[4].index === 0
+          ? [
+              x1[4].fields[0],
+              x1[4].fields[1],
+              x1[4].fields[2],
+            ] as TSRequiredMint
+          : null
+        : null;
+    const extraInfo = x1[5];
     try {
       return ok({
         mOwner: initMOwner
@@ -166,6 +230,8 @@ export const parseAdvancedDatum = (
           : null,
         routerFee,
         reclaimRouterFee,
+        routeRequiredMint,
+        reclaimRequiredMint,
         extraInfo,
       });
     } catch (e) {

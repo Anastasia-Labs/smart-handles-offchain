@@ -6,11 +6,12 @@ import {
   OutRef,
   OutputDatum,
   RedeemerBuilder,
+  Script,
   TxBuilder,
   UTxO,
   Unit,
 } from "@lucid-evolution/lucid";
-import { AdvancedDatumFields, SimpleDatumFields } from "./contract.types.js";
+import { AdvancedDatumFields, SimpleDatumFields, TSRequiredMint } from "./contract.types.js";
 
 export type RawHex = string;
 export type POSIXTime = number;
@@ -53,6 +54,11 @@ export type InputUTxOAndItsOutputInfo = {
   additionalAction?: (tx: TxBuilder, utxo: UTxO) => Promise<Result<TxBuilder>>;
 };
 
+export type RequiredMintConfig = {
+  mintRedeemer: string,
+  mintScript: Script
+};
+
 /**
  * Assumes selected wallet as `owner`
  */
@@ -64,6 +70,8 @@ export type AdvancedRouteRequest = SimpleRouteRequest & {
   owner?: Address;
   routerFee: bigint;
   reclaimRouterFee: bigint;
+  routeRequiredMint: TSRequiredMint | null;
+  reclaimRequiredMint: TSRequiredMint | null;
   extraInfoDataBuilder: () => DatumJson;
 };
 
@@ -95,6 +103,7 @@ export type AdvancedOutputDatumMaker = (
 
 export type AdvancedReclaimConfig = {
   outputDatumMaker: AdvancedOutputDatumMaker;
+  requiredMintConfig?: RequiredMintConfig;
   additionalAction: (tx: TxBuilder, utxo: UTxO) => Promise<Result<TxBuilder>>;
 };
 
@@ -122,8 +131,9 @@ export type SimpleRouteConfig = {
 };
 
 export type AdvancedRouteConfig = {
-  additionalAction: (tx: TxBuilder, utxo: UTxO) => Promise<Result<TxBuilder>>;
   outputDatumMaker: AdvancedOutputDatumMaker;
+  requiredMintConfig?: RequiredMintConfig;
+  additionalAction: (tx: TxBuilder, utxo: UTxO) => Promise<Result<TxBuilder>>;
 };
 
 export type SingleRouteConfig = CommonSingle & {

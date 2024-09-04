@@ -16,19 +16,24 @@ import {
   scriptHashToCredential,
   credentialToAddress,
   DatumJson,
+  TxBuilder,
+  Script,
 } from "@lucid-evolution/lucid";
 import {
   AddressD,
   AdvancedDatumFields,
   SimpleDatumFields,
+  TSRequiredMint,
   Value,
   parseAdvancedDatum,
   parseSimpleDatum,
+  tsRequiredMintToAssets,
 } from "../contract.types.js";
 import {
   Either,
   InputUTxOAndItsOutputInfo,
   ReadableUTxO,
+  RequiredMintConfig,
   Result,
 } from "../types.js";
 import { INSUFFICIENT_ADA_ERROR_MSG, LOVELACE_MARGIN } from "../constants.js";
@@ -634,4 +639,44 @@ export const getOneUTxOFromWallet = async (lucid: LucidEvolution): Promise<Resul
   } catch(e) {
     return genericCatch(e);
   }
+};
+
+export const addMint = (
+  tx: TxBuilder,
+  requiredMint: TSRequiredMint,
+  mintScript: Script,
+  mintRedeemer: string
+): TxBuilder => {
+  const txWithMint = tx
+    .mintAssets(tsRequiredMintToAssets(requiredMint), mintRedeemer)
+    .attach.MintingPolicy(mintScript);
+  return txWithMint;
+};
+
+export const complementAdditionalActionWithRequiredMint = (
+  reqMint: TSRequiredMint | null,
+  additionalAction: (tx: TxBuilder, utxo: UTxO) => Promise<Result<TxBuilder>>,
+  requiredMintConfig?: RequiredMintConfig,
+): (tx: TxBuilder, utxo: UTxO) => Promise<Result<TxBuilder>> => {
+  return requiredMintConfig ?
+    async (tx: TxBuilder, utxo: UTxO) => {
+      try {
+        const initTxRes = await additionalAction(tx, utxo);
+        if (initTxRes.type == "error") return initTxRes;
+        const initTx = initTxRes.data;
+        if (reqMint) {
+          return ok(addMint(
+            initTx,
+            reqMint,
+            requiredMintConfig.mintScript,
+            requiredMintConfig.mintRedeemer
+          ));
+        } else {
+          return ok(initTx);
+        }
+      } catch (e) {
+        return genericCatch(e);
+      }
+    }
+    : additionalAction;
 };
