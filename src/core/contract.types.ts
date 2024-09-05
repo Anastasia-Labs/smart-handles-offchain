@@ -73,13 +73,9 @@ export const ValueSchema = Data.Map(
 export type Value = Data.Static<typeof ValueSchema>;
 export const Value = ValueSchema as unknown as Value;
 
-export const RequiredMintSchema = Data.Enum([
-  Data.Object({
-    Policy: Data.Bytes(),
-    Name: Data.Bytes(),
-  }),
-  Data.Literal("None"),
-]);
+export const RequiredMintSchema = Data.Nullable(
+  Data.Array(Data.Bytes(), { minItems: 2, maxItems: 2 })
+);
 export type RequiredMint = Data.Static<typeof RequiredMintSchema>;
 export const RequiredMint = RequiredMintSchema as unknown as RequiredMint;
 
@@ -101,8 +97,8 @@ export const SmartHandleDatum =
   SmartHandleDatumSchema as unknown as SmartHandleDatum;
 
 export type TSRequiredMint = {
-  policyId: PolicyId,
-  tokenName: string
+  policyId: PolicyId;
+  tokenName: string;
 };
 
 export const tsRequiredMintToAssets = (
@@ -220,13 +216,19 @@ export const parseAdvancedDatum = (
     const routeRequiredMint: TSRequiredMint | null =
       x1[3] instanceof Constr
         ? x1[3].index === 0
-          ? ({policyId: x1[3].fields[0], tokenName: x1[3].fields[1]} as TSRequiredMint)
+          ? ({
+              policyId: x1[3].fields[0],
+              tokenName: x1[3].fields[1],
+            } as TSRequiredMint)
           : null
         : null;
     const reclaimRequiredMint: TSRequiredMint | null =
       x1[4] instanceof Constr
         ? x1[4].index === 0
-          ? ({policyId: x1[4].fields[0], tokenName: x1[4].fields[1]} as TSRequiredMint)
+          ? ({
+              policyId: x1[4].fields[0],
+              tokenName: x1[4].fields[1],
+            } as TSRequiredMint)
           : null
         : null;
     const extraInfo = x1[5];
