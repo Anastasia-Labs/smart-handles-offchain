@@ -215,18 +215,21 @@ export const fromAddressToDatumJson = (address: Address): Result<DatumJson> => {
 
   const paymentCred: DatumJson =
     addrDetails.paymentCredential.type == "Key"
-      ? {constructor: 0, fields: [{bytes: addrDetails.paymentCredential.hash}]}
-      : {constructor: 1, fields: [{bytes: addrDetails.paymentCredential.hash}]}
+      ? {
+          constructor: 0,
+          fields: [{ bytes: addrDetails.paymentCredential.hash }],
+        }
+      : {
+          constructor: 1,
+          fields: [{ bytes: addrDetails.paymentCredential.hash }],
+        };
 
   if (!addrDetails.stakeCredential) {
     return {
       type: "ok",
       data: {
         constructor: 0,
-        fields: [
-          paymentCred,
-          {constructor: 1, fields: []}
-        ]
+        fields: [paymentCred, { constructor: 1, fields: [] }],
       },
     };
   }
@@ -236,14 +239,19 @@ export const fromAddressToDatumJson = (address: Address): Result<DatumJson> => {
     fields: [
       {
         constructor: 0,
-        fields: [{constructor: 0, fields: [{bytes: addrDetails.stakeCredential.hash}]}]
-      }
+        fields: [
+          {
+            constructor: 0,
+            fields: [{ bytes: addrDetails.stakeCredential.hash }],
+          },
+        ],
+      },
     ],
   };
 
   return {
     type: "ok",
-    data: {constructor: 0, fields: [paymentCred, stakingCred]}
+    data: { constructor: 0, fields: [paymentCred, stakingCred] },
   };
 };
 
@@ -622,7 +630,9 @@ export const registerRewardAddress = async (
  * @param lucid - Lucid Evolution API object, note that the wallet must be
  *        already selected
  */
-export const getOneUTxOFromWallet = async (lucid: LucidEvolution): Promise<Result<UTxO>> => {
+export const getOneUTxOFromWallet = async (
+  lucid: LucidEvolution
+): Promise<Result<UTxO>> => {
   try {
     const walletsUTxOs = await lucid.wallet().getUtxos();
 
@@ -636,7 +646,7 @@ export const getOneUTxOFromWallet = async (lucid: LucidEvolution): Promise<Resul
     } else {
       return ok(walletsUTxOs[0]);
     }
-  } catch(e) {
+  } catch (e) {
     return genericCatch(e);
   }
 };
@@ -644,39 +654,87 @@ export const getOneUTxOFromWallet = async (lucid: LucidEvolution): Promise<Resul
 export const addMint = (
   tx: TxBuilder,
   requiredMint: TSRequiredMint,
+  mintQty: bigint,
   mintScript: Script,
   mintRedeemer: string
 ): TxBuilder => {
   const txWithMint = tx
-    .mintAssets(tsRequiredMintToAssets(requiredMint), mintRedeemer)
+    .mintAssets(tsRequiredMintToAssets(requiredMint, mintQty), mintRedeemer)
     .attach.MintingPolicy(mintScript);
   return txWithMint;
 };
 
-export const complementAdditionalActionWithRequiredMint = (
+const complementAdditionalActionWithRequiredMint = (
   reqMint: TSRequiredMint | null,
   additionalAction: (tx: TxBuilder, utxo: UTxO) => Promise<Result<TxBuilder>>,
-  requiredMintConfig?: RequiredMintConfig,
-): (tx: TxBuilder, utxo: UTxO) => Promise<Result<TxBuilder>> => {
-  return requiredMintConfig ?
-    async (tx: TxBuilder, utxo: UTxO) => {
-      try {
-        const initTxRes = await additionalAction(tx, utxo);
-        if (initTxRes.type == "error") return initTxRes;
-        const initTx = initTxRes.data;
-        if (reqMint) {
-          return ok(addMint(
-            initTx,
-            reqMint,
-            requiredMintConfig.mintScript,
-            requiredMintConfig.mintRedeemer
-          ));
-        } else {
-          return ok(initTx);
+  requiredMintConfigAndQty?: [RequiredMintConfig, bigint]
+): ((tx: TxBuilder, utxo: UTxO) => Promise<Result<TxBuilder>>) => {
+  return requiredMintConfigAndQty
+    ? async (tx: TxBuilder, utxo: UTxO) => {
+        try {
+          const initTxRes = await additionalAction(tx, utxo);
+          if (initTxRes.type == "error") return initTxRes;
+          const initTx = initTxRes.data;
+          if (reqMint) {
+            return ok(
+              addMint(
+                initTx,
+                reqMint,
+                requiredMintConfigAndQty[1],
+                requiredMintConfigAndQty[0].mintScript,
+                requiredMintConfigAndQty[0].mintRedeemer
+              )
+            );
+          } else {
+            return ok(initTx);
+          }
+        } catch (e) {
+          return genericCatch(e);
         }
-      } catch (e) {
-        return genericCatch(e);
       }
-    }
     : additionalAction;
+};
+
+export const applyRequiredMint = async (
+  utxoAssets: Assets,
+  additionalAction: (tx: TxBuilder, utxo: UTxO) => Promise<Result<TxBuilder>>,
+  advancedFields: AdvancedDatumFields,
+  reqMint: TSRequiredMint | null,
+  reqMintConfig?: RequiredMintConfig
+): Promise<
+  Result<{
+    mintAppliedInputAssets: Assets;
+    complementedAddtionalAction: (
+      tx: TxBuilder,
+      utxo: UTxO
+    ) => Promise<Result<TxBuilder>>;
+  }>
+> => {
+  let mintQty: bigint | undefined = undefined;
+  try {
+    let mintAppliedInputAssets: Assets = utxoAssets;
+    if (reqMint && reqMintConfig) {
+      const mintQtyRes = await reqMintConfig?.mintQuantityFinder(
+        utxoAssets,
+        advancedFields
+      );
+      if (mintQtyRes.type == "error") return mintQtyRes;
+      mintQty = mintQtyRes.data;
+      mintAppliedInputAssets = addAssets(
+        utxoAssets,
+        tsRequiredMintToAssets(reqMint, mintQty)
+      );
+    }
+    const complementedAddtionalAction =
+      complementAdditionalActionWithRequiredMint(
+        reqMint,
+        additionalAction,
+        reqMintConfig && mintQty !== undefined
+          ? [reqMintConfig, mintQty]
+          : undefined
+      );
+    return ok({ mintAppliedInputAssets, complementedAddtionalAction });
+  } catch (e) {
+    return genericCatch(e);
+  }
 };

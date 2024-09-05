@@ -99,9 +99,8 @@ const advancedDatumBuilder = (routeRequest: AdvancedRouteRequest): string => {
       return {
         constructor: 0,
         fields: [
-          { bytes: reqMint[0] },
-          { bytes: reqMint[1] },
-          { int: Number(reqMint[2]) },
+          { bytes: reqMint.policyId },
+          { bytes: reqMint.tokenName },
         ],
       };
     }

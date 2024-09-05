@@ -314,6 +314,8 @@ export const mkRouteRequest = async (
     owner: ownerAddress,
     routerFee: ROUTER_FEE,
     reclaimRouterFee: 0n,
+    routeRequiredMint: null,
+    reclaimRequiredMint: null,
     extraInfoDataBuilder: () => {
       return mkMinswapRequestInfo(policyId, assetName, minimumReceive);
     },

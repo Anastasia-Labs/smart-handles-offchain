@@ -13,13 +13,11 @@ import {
   TxBuilder,
   selectUTxOs,
   OutRef,
-  addAssets,
 } from "@lucid-evolution/lucid";
 import { LOVELACE_MARGIN, ROUTER_FEE } from "../core/constants.js";
 import {
   AdvancedDatumFields,
   SimpleDatumFields,
-  tsRequiredMintToAssets,
 } from "../core/contract.types.js";
 import {
   BatchRouteConfig,
@@ -30,10 +28,9 @@ import {
   AdvancedRouteConfig,
 } from "../core/types.js";
 import {
-  addMint,
+  applyRequiredMint,
   asyncValidateItems,
   collectErrorMsgs,
-  complementAdditionalActionWithRequiredMint,
   errorToString,
   genericCatch,
   getBatchVAs,
@@ -130,30 +127,31 @@ const utxoToOutputInfo = async (
       // {{{
       if (advancedRouteConfig) {
         try {
-          const reqMint = advancedFields.routeRequiredMint;
+          const mintApplicationRes = await applyRequiredMint(
+            u.assets,
+            advancedRouteConfig.additionalAction,
+            advancedFields,
+            advancedFields.reclaimRequiredMint,
+            advancedRouteConfig.requiredMintConfig
+          );
+          if (mintApplicationRes.type == "error") return mintApplicationRes;
+          const { mintAppliedInputAssets, complementedAddtionalAction } =
+            mintApplicationRes.data;
           const outputAssetsRes = reduceLovelacesOfAssets(
-            reqMint
-              ? addAssets(utxo.assets, tsRequiredMintToAssets(reqMint))
-              : utxo.assets,
+            mintAppliedInputAssets,
             advancedFields.routerFee
           );
           const outputDatumRes = await advancedRouteConfig.outputDatumMaker(
             u.assets,
             advancedFields
           );
-          const finalAdditionalAction =
-            complementAdditionalActionWithRequiredMint(
-              reqMint,
-              advancedRouteConfig.additionalAction,
-              advancedRouteConfig.requiredMintConfig
-            );
           return outputHelper(
             u,
             forSingle,
             routeAddress,
             outputAssetsRes,
             outputDatumRes,
-            finalAdditionalAction
+            complementedAddtionalAction
           );
         } catch (e) {
           return genericCatch(e);

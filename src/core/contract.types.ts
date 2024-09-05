@@ -77,9 +77,8 @@ export const RequiredMintSchema = Data.Enum([
   Data.Object({
     Policy: Data.Bytes(),
     Name: Data.Bytes(),
-    Quantity: Data.Integer(),
   }),
-  Data.Object({}),
+  Data.Literal("None"),
 ]);
 export type RequiredMint = Data.Static<typeof RequiredMintSchema>;
 export const RequiredMint = RequiredMintSchema as unknown as RequiredMint;
@@ -101,12 +100,16 @@ export type SmartHandleDatum = Data.Static<typeof SmartHandleDatumSchema>;
 export const SmartHandleDatum =
   SmartHandleDatumSchema as unknown as SmartHandleDatum;
 
-export type TSRequiredMint = [PolicyId, string, bigint];
+export type TSRequiredMint = {
+  policyId: PolicyId,
+  tokenName: string
+};
 
 export const tsRequiredMintToAssets = (
-  singleton: [PolicyId, string, bigint]
+  singleton: TSRequiredMint,
+  qty: bigint
 ): Assets => {
-  return {[toUnit(singleton[0], singleton[1])]: singleton[2]};
+  return { [toUnit(singleton.policyId, singleton.tokenName)]: qty };
 };
 
 export type SimpleDatumFields = {
@@ -145,12 +148,18 @@ export const advancedDatumFieldsToCBOR = (
   if (aF.routeRequiredMint === null) {
     routeRM = constrFn(1, []);
   } else {
-    routeRM = constrFn(0, [aF.routeRequiredMint[0], aF.routeRequiredMint[1], aF.routeRequiredMint[2]]);
+    routeRM = constrFn(0, [
+      aF.routeRequiredMint.policyId,
+      aF.routeRequiredMint.tokenName,
+    ]);
   }
   if (aF.reclaimRequiredMint === null) {
     reclaimRM = constrFn(1, []);
   } else {
-    reclaimRM = constrFn(0, [aF.reclaimRequiredMint[0], aF.reclaimRequiredMint[1], aF.reclaimRequiredMint[2]]);
+    reclaimRM = constrFn(0, [
+      aF.reclaimRequiredMint.policyId,
+      aF.reclaimRequiredMint.tokenName,
+    ]);
   }
   const constr = constrFn(1, [
     addr,
@@ -193,7 +202,13 @@ export const parseAdvancedDatum = (
 ): Result<AdvancedDatumFields> => {
   const x0 = Data.from(cbor, Constr<Data>);
   const x1 = x0 instanceof Constr && x0.index === 1 ? x0.fields : [];
-  if ((x1[1] || x1[1] === 0n) && (x1[2] || x1[2] === 0n) && x1[3] && x1[4] && x1[5]) {
+  if (
+    (x1[1] || x1[1] === 0n) &&
+    (x1[2] || x1[2] === 0n) &&
+    x1[3] &&
+    x1[4] &&
+    x1[5]
+  ) {
     const initMOwner =
       x1[0] instanceof Constr
         ? x1[0].index === 0
@@ -205,21 +220,13 @@ export const parseAdvancedDatum = (
     const routeRequiredMint: TSRequiredMint | null =
       x1[3] instanceof Constr
         ? x1[3].index === 0
-          ? [
-              x1[3].fields[0],
-              x1[3].fields[1],
-              x1[3].fields[2],
-            ] as TSRequiredMint
+          ? ({policyId: x1[3].fields[0], tokenName: x1[3].fields[1]} as TSRequiredMint)
           : null
         : null;
     const reclaimRequiredMint: TSRequiredMint | null =
       x1[4] instanceof Constr
         ? x1[4].index === 0
-          ? [
-              x1[4].fields[0],
-              x1[4].fields[1],
-              x1[4].fields[2],
-            ] as TSRequiredMint
+          ? ({policyId: x1[4].fields[0], tokenName: x1[4].fields[1]} as TSRequiredMint)
           : null
         : null;
     const extraInfo = x1[5];

@@ -11,7 +11,11 @@ import {
   UTxO,
   Unit,
 } from "@lucid-evolution/lucid";
-import { AdvancedDatumFields, SimpleDatumFields, TSRequiredMint } from "./contract.types.js";
+import {
+  AdvancedDatumFields,
+  SimpleDatumFields,
+  TSRequiredMint,
+} from "./contract.types.js";
 
 export type RawHex = string;
 export type POSIXTime = number;
@@ -55,8 +59,12 @@ export type InputUTxOAndItsOutputInfo = {
 };
 
 export type RequiredMintConfig = {
-  mintRedeemer: string,
-  mintScript: Script
+  mintQuantityFinder: (
+    inputAssets: Assets,
+    inputDatum: AdvancedDatumFields
+  ) => Promise<Result<bigint>>;
+  mintRedeemer: string;
+  mintScript: Script;
 };
 
 /**

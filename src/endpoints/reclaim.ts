@@ -9,14 +9,13 @@ import {
   TxBuilder,
   TxSignBuilder,
   UTxO,
-  addAssets,
   paymentCredentialOf,
   selectUTxOs,
 } from "@lucid-evolution/lucid";
 import {
+  applyRequiredMint,
   asyncValidateItems,
   collectErrorMsgs,
-  complementAdditionalActionWithRequiredMint,
   errorToString,
   genericCatch,
   getBatchVAs,
@@ -37,7 +36,6 @@ import {
 import {
   AdvancedDatumFields,
   SimpleDatumFields,
-  tsRequiredMintToAssets,
 } from "../core/contract.types.js";
 import { UNAUTHORIZED_OWNER_ERROR_MSG } from "../core/constants.js";
 // }}}
@@ -100,14 +98,22 @@ const utxoToOutputInfo = async (
       // {{{
       if (reclaimConfig) {
         if (advancedFields.mOwner) {
-          const reqMint = advancedFields.reclaimRequiredMint;
-          const outputAssetsRes = reduceLovelacesOfAssets(
-            reqMint
-              ? addAssets(utxo.assets, tsRequiredMintToAssets(reqMint))
-              : utxo.assets,
-            advancedFields.reclaimRouterFee
-          );
           try {
+            const mintApplicationRes =
+              await applyRequiredMint(
+                u.assets,
+                reclaimConfig.additionalAction,
+                advancedFields,
+                advancedFields.reclaimRequiredMint,
+                reclaimConfig.requiredMintConfig
+              );
+            if (mintApplicationRes.type == "error") return mintApplicationRes;
+            const {mintAppliedInputAssets, complementedAddtionalAction} =
+              mintApplicationRes.data;
+            const outputAssetsRes = reduceLovelacesOfAssets(
+              mintAppliedInputAssets,
+              advancedFields.reclaimRouterFee
+            );
             const outputDatumRes = await reclaimConfig.outputDatumMaker(
               utxo.assets,
               advancedFields
@@ -133,11 +139,7 @@ const utxoToOutputInfo = async (
                 outputAssets: outputAssetsRes.data,
                 outputDatum: outputDatumRes.data,
               },
-              additionalAction: complementAdditionalActionWithRequiredMint(
-                reqMint,
-                reclaimConfig.additionalAction,
-                reclaimConfig.requiredMintConfig
-              )
+              additionalAction: complementedAddtionalAction,
             });
           } catch (e) {
             return genericCatch(e);
@@ -180,7 +182,7 @@ const complementTx = async (
   if (inOutInfo.additionalAction) {
     try {
       finalTx = await inOutInfo.additionalAction(tx, inOutInfo.utxo);
-    } catch(e) {
+    } catch (e) {
       return genericCatch(e);
     }
   }
@@ -304,7 +306,9 @@ export const batchReclaim = async (
       };
 
     const walletsUTxOs = await lucid.wallet().getUtxos();
-    const feeUTxOs = selectUTxOs(walletsUTxOs, {lovelace: BigInt(20_000_000)});
+    const feeUTxOs = selectUTxOs(walletsUTxOs, {
+      lovelace: BigInt(20_000_000),
+    });
 
     let tx = lucid
       .newTx()
@@ -340,7 +344,7 @@ export const batchReclaim = async (
             tx = txRes.data;
             return undefined;
           }
-        } catch(e) {
+        } catch (e) {
           return errorToString(e);
         }
       },
