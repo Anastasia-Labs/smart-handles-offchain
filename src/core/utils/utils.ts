@@ -483,6 +483,12 @@ export function printUTxOOutRef(u: UTxO): `${string}#${string}` {
   return `${u.txHash}#${u.outputIndex.toString()}`;
 }
 
+export function mergeUTxOs(utxos0: UTxO[], utxos1: UTxO[]): UTxO[] {
+  const uniques0 = new Set(utxos0.map(printUTxOOutRef));
+  const filtered1 = utxos1.filter(u => !uniques0.has(printUTxOOutRef(u)));
+  return [...utxos0, ...filtered1];
+}
+
 /**
  * Applies the validator function to each element of the list to collect
  * potential failure messages.

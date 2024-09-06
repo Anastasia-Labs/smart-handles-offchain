@@ -21,7 +21,7 @@ importers:
         specifier: ^12.1.0
         version: 12.1.0(commander@12.1.0)
       '@minswap/sdk':
-        specifier: ^0.2.2-beta
+        specifier: 0.2.2-beta
         version: 0.2.2-beta
       chalk:
         specifier: ^5.3.0
@@ -31,13 +31,13 @@ importers:
         version: 12.1.0
     devDependencies:
       '@types/node':
-        specifier: ^20.16.1
+        specifier: ^20.16.5
         version: 20.16.5
       tsup:
-        specifier: ^8.0.2
+        specifier: ^8.2.4
         version: 8.2.4(postcss@8.4.45)(typescript@5.5.4)(yaml@2.5.1)
       typescript:
-        specifier: ^5.4.5
+        specifier: ^5.5.4
         version: 5.5.4
       vitest:
         specifier: ^2.0.5
@@ -56,11 +56,11 @@ packages:
     resolution: {integrity: sha512-pZhWWVy7E4zUR4Ic79uXhpMxgX2fEomOlqkM5UnbeBwXvYCZ8sd191sGlmbe6Sx30cqiqbjx/cc3R5JYRxk8yw==}
 
   '@anastasia-labs/smart-handles-agent@file:anastasia-labs-smart-handles-agent-0.1.0.tgz':
-    resolution: {integrity: sha512-uXCCyeVB+ghOzUBwb9jHQaD8nu5rfP2Qe1YdxO9Lzw6ajs2cE2/fmnexWXmJbQzyt5kvJbYEX2lflwV/DXpeXA==, tarball: file:anastasia-labs-smart-handles-agent-0.1.0.tgz}
+    resolution: {integrity: sha512-Id6tUQabHeP2LglbK5qKuHUpFoGVSxxp/TnbNoSj0329J0jcJF4KlxKQCGWVFy9dff99xNj5tITdz++CbwYsxQ==, tarball: file:anastasia-labs-smart-handles-agent-0.1.0.tgz}
     version: 0.1.0
 
   '@anastasia-labs/smart-handles-offchain@file:anastasia-labs-smart-handles-offchain-0.3.0.tgz':
-    resolution: {integrity: sha512-OncI+PoWqCpRM2wsQnmU2qBDTxiWfzBnl6WTlqJdVuA3Zo5ytNjVnRR7Ug/GmBNRnK9+hHtXXgDAmbNvwBhy7g==, tarball: file:anastasia-labs-smart-handles-offchain-0.3.0.tgz}
+    resolution: {integrity: sha512-1kR3HS3rkhw8ABfeQwJ+aPE1kwNX456Pz7QefHq6cpPtLpZeFwZjU4UbuSH9RGrPQiBR1N/QcIpwSl9DOayvYg==, tarball: file:anastasia-labs-smart-handles-offchain-0.3.0.tgz}
     version: 0.3.0
 
   '@blockfrost/blockfrost-js@5.5.0':
@@ -462,14 +462,14 @@ packages:
   '@lucid-evolution/crc8@0.1.8':
     resolution: {integrity: sha512-88+/S6n+sPgxYtG05rvbJDVb8MoFGzckkR3p26uGrzngYzlJGfxBWIzNhVwfI2mgINPo2C5lkZW3GYnfY0MjuA==}
 
-  '@lucid-evolution/lucid@0.3.22':
-    resolution: {integrity: sha512-Ath72gKq3IMX5/mkWWyWOLddqaMZi3c307Iyqj7fUx/1Wm/ePVpkRvF4l4QtmwWI/hzSAy36iIU34FZNaSf91w==}
+  '@lucid-evolution/lucid@0.3.25':
+    resolution: {integrity: sha512-wzNgBw0qTwEv2ViM3vM/+QV+f1etRRe2e7huHFqBbZFN4fJfJShO+8qfHKWqk2LfsZJz30Zz0msdfpmm5pDKpA==}
 
   '@lucid-evolution/plutus@0.1.22':
     resolution: {integrity: sha512-8g9vm/4rv+v1i9lVGlWQZYqxDey4u+jdOoaGh7PSeztVkIAopmq32Id6qdCCKJvsss9/OantMrFouaptq66Q1Q==}
 
-  '@lucid-evolution/provider@0.1.49':
-    resolution: {integrity: sha512-GOCH4QWwAwyJohZqg8/vLDOjfJ+iHWcCp57h2Bv+HUitjWtnh1QlIg1xZPq+/FtZvE4HDF81O/0Qki6WiA/RAg==}
+  '@lucid-evolution/provider@0.1.51':
+    resolution: {integrity: sha512-HoiOoKAiDbHyCV1qd0qJ2/EEYDr4t2ULHmMmpjpEa+oXwWvPP9fBzKl4c7x/0CMcpN/uD+k/GkY/ErCB5zjW/g==}
 
   '@lucid-evolution/sign_data@0.1.19':
     resolution: {integrity: sha512-+jGLmacSwcOnG4QtIILfpMgEyXlPCTzsZBXdIz0HQywwQ/x0UQ6w5h23MvWXFA/RYumfkiqe6EFgHeCkM+NaCw==}
@@ -799,8 +799,8 @@ packages:
     resolution: {integrity: sha512-0R9ikRb668HB7QDxT1vkpuUBtqc53YyAwMwGeUFKRojY/NWKvdZ+9UYtRfGmhqNbRkTSVpMbmyhXipFFv2cb/A==}
     engines: {node: '>= 12'}
 
-  debug@4.3.6:
-    resolution: {integrity: sha512-O/09Bd4Z1fBrU4VzkhFqVgpPzaGbw6Sm9FEkBT1A/YBXQFGuuSxa1dN2nxgxS34JmKXqYx8CZAwEVoJFImUXIg==}
+  debug@4.3.7:
+    resolution: {integrity: sha512-Er2nc/H7RrMXZBFCEim6TCmMk02Z8vLC2Rbi1KEBggpo0fS6l0S1nnapwmIi3yW/+GOJap1Krg4w0Hg80oCqgQ==}
     engines: {node: '>=6.0'}
     peerDependencies:
       supports-color: '*'
@@ -1083,8 +1083,8 @@ packages:
     resolution: {integrity: sha512-qOOzS1cBTWYF4BH8fVePDBOO9iptMnGUEZwNc/cMWnTV2nVLZ7VoNWEPHkYczZA0pdoA7dl6e7FL659nX9S2aw==}
     engines: {node: '>=16 || 14 >=14.17'}
 
-  ms@2.1.2:
-    resolution: {integrity: sha512-sGkPx+VjMtmA6MX27oA4FBFELFCZZ4S4XqeGOXCv68tT+jb3vk/RyaKWP0PTKyWtmLSM0b+adUTEvbs1PEaH2w==}
+  ms@2.1.3:
+    resolution: {integrity: sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==}
 
   multipasta@0.2.5:
     resolution: {integrity: sha512-c8eMDb1WwZcE02WVjHoOmUVk7fnKU/RmUcosHACglrWAuPQsEJv+E8430sXj6jNc1jHw0zrS16aCjQh4BcEb4A==}
@@ -1531,7 +1531,7 @@ snapshots:
 
   '@anastasia-labs/smart-handles-offchain@file:anastasia-labs-smart-handles-offchain-0.3.0.tgz(@harmoniclabs/bytestring@1.0.0)(@harmoniclabs/cbor@1.3.0)(@harmoniclabs/crypto@0.2.4)(@harmoniclabs/pair@1.0.0)(fast-check@3.22.0)':
     dependencies:
-      '@lucid-evolution/lucid': 0.3.22(@harmoniclabs/bytestring@1.0.0)(@harmoniclabs/cbor@1.3.0)(@harmoniclabs/crypto@0.2.4)(@harmoniclabs/pair@1.0.0)(fast-check@3.22.0)
+      '@lucid-evolution/lucid': 0.3.25(@harmoniclabs/bytestring@1.0.0)(@harmoniclabs/cbor@1.3.0)(@harmoniclabs/crypto@0.2.4)(@harmoniclabs/pair@1.0.0)(fast-check@3.22.0)
       lucid-cardano: 0.10.10
     transitivePeerDependencies:
       - '@harmoniclabs/bytestring'
@@ -1821,7 +1821,7 @@ snapshots:
 
   '@lucid-evolution/crc8@0.1.8': {}
 
-  '@lucid-evolution/lucid@0.3.22(@harmoniclabs/bytestring@1.0.0)(@harmoniclabs/cbor@1.3.0)(@harmoniclabs/crypto@0.2.4)(@harmoniclabs/pair@1.0.0)(fast-check@3.22.0)':
+  '@lucid-evolution/lucid@0.3.25(@harmoniclabs/bytestring@1.0.0)(@harmoniclabs/cbor@1.3.0)(@harmoniclabs/crypto@0.2.4)(@harmoniclabs/pair@1.0.0)(fast-check@3.22.0)':
     dependencies:
       '@anastasia-labs/cardano-multiplatform-lib-browser': 6.0.1-2
       '@anastasia-labs/cardano-multiplatform-lib-nodejs': 6.0.1-2
@@ -1830,7 +1830,7 @@ snapshots:
       '@lucid-evolution/core-types': 0.1.16
       '@lucid-evolution/core-utils': 0.1.14
       '@lucid-evolution/plutus': 0.1.22
-      '@lucid-evolution/provider': 0.1.49(@harmoniclabs/bytestring@1.0.0)(@harmoniclabs/cbor@1.3.0)(@harmoniclabs/crypto@0.2.4)(@harmoniclabs/pair@1.0.0)
+      '@lucid-evolution/provider': 0.1.51(@harmoniclabs/bytestring@1.0.0)(@harmoniclabs/cbor@1.3.0)(@harmoniclabs/crypto@0.2.4)(@harmoniclabs/pair@1.0.0)
       '@lucid-evolution/sign_data': 0.1.19
       '@lucid-evolution/uplc': 0.2.11
       '@lucid-evolution/utils': 0.1.38(@harmoniclabs/bytestring@1.0.0)(@harmoniclabs/cbor@1.3.0)(@harmoniclabs/crypto@0.2.4)(@harmoniclabs/pair@1.0.0)
@@ -1851,7 +1851,7 @@ snapshots:
       '@lucid-evolution/core-utils': 0.1.14
       '@sinclair/typebox': 0.32.35
 
-  '@lucid-evolution/provider@0.1.49(@harmoniclabs/bytestring@1.0.0)(@harmoniclabs/cbor@1.3.0)(@harmoniclabs/crypto@0.2.4)(@harmoniclabs/pair@1.0.0)':
+  '@lucid-evolution/provider@0.1.51(@harmoniclabs/bytestring@1.0.0)(@harmoniclabs/cbor@1.3.0)(@harmoniclabs/crypto@0.2.4)(@harmoniclabs/pair@1.0.0)':
     dependencies:
       '@anastasia-labs/cardano-multiplatform-lib-browser': 6.0.1-2
       '@anastasia-labs/cardano-multiplatform-lib-nodejs': 6.0.1-2
@@ -2221,9 +2221,9 @@ snapshots:
 
   data-uri-to-buffer@4.0.1: {}
 
-  debug@4.3.6:
+  debug@4.3.7:
     dependencies:
-      ms: 2.1.2
+      ms: 2.1.3
 
   decompress-response@6.0.0:
     dependencies:
@@ -2538,7 +2538,7 @@ snapshots:
 
   minipass@7.1.2: {}
 
-  ms@2.1.2: {}
+  ms@2.1.3: {}
 
   multipasta@0.2.5: {}
 
@@ -2781,7 +2781,7 @@ snapshots:
       cac: 6.7.14
       chokidar: 3.6.0
       consola: 3.2.3
-      debug: 4.3.6
+      debug: 4.3.7
       esbuild: 0.23.1
       execa: 5.1.1
       globby: 11.1.0
@@ -2809,7 +2809,7 @@ snapshots:
   vite-node@2.0.5(@types/node@20.16.5):
     dependencies:
       cac: 6.7.14
-      debug: 4.3.6
+      debug: 4.3.7
       pathe: 1.1.2
       tinyrainbow: 1.2.0
       vite: 5.4.3(@types/node@20.16.5)
@@ -2843,7 +2843,7 @@ snapshots:
       '@vitest/spy': 2.0.5
       '@vitest/utils': 2.0.5
       chai: 5.1.1
-      debug: 4.3.6
+      debug: 4.3.7
       execa: 8.0.1
       magic-string: 0.30.11
       pathe: 1.1.2

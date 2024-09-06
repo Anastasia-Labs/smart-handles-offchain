@@ -262,7 +262,7 @@ export const mkRouteRequest = async (
   // {{{
   const minLovelaces = MINSWAP_BATCHER_FEE + MINSWAP_DEPOSIT + ROUTER_FEE;
   const valueToLock =
-    fromAsset === "lovelace"
+    fromAsset === "lovelace" || fromAsset === ""
       ? {
           lovelace: minLovelaces + quantity,
         }
@@ -362,43 +362,47 @@ export const mkRouteConfig = (): AdvancedRouteConfig => {
     inputDatum: AdvancedDatumFields
   ): Promise<Result<OutputDatum>> => {
     // {{{
-    const units = Object.keys(inputAssets);
+    try {
+      const units = Object.keys(inputAssets);
 
-    if (units.length > 2)
-      return {
-        type: "error",
-        error: new Error("More than 2 assets were found in the smart UTxO"),
+      if (units.length > 2)
+        return {
+          type: "error",
+          error: new Error("More than 2 assets were found in the smart UTxO"),
+        };
+
+      const minswapRequestInfo = parseSafeDatum(
+        Data.to(inputDatum.extraInfo),
+        MinswapRequestInfo
+      );
+
+      if (minswapRequestInfo.type == "left")
+        return { type: "error", error: new Error(minswapRequestInfo.value) };
+
+      if (inputDatum.mOwner === null)
+        return {
+          type: "error",
+          error: new Error("Locked UTxO encountered: no owners are specified"),
+        };
+
+      const orderDatum = makeOrderDatum(
+        {
+          policyId: minswapRequestInfo.value.desiredAssetSymbol,
+          tokenName: minswapRequestInfo.value.desiredAssetTokenName,
+        },
+        inputDatum.mOwner,
+        minswapRequestInfo.value.minimumReceive
+        // (minswapRequestInfo.value.minimumReceive * (100n - slippageTolerance)) /
+        //   100n
+      );
+      const outputDatum: OutputDatum = {
+        kind: "inline",
+        value: Data.to(orderDatum, OrderDatum),
       };
-
-    const minswapRequestInfo = parseSafeDatum(
-      Data.to(inputDatum.extraInfo),
-      MinswapRequestInfo
-    );
-
-    if (minswapRequestInfo.type == "left")
-      return { type: "error", error: new Error(minswapRequestInfo.value) };
-
-    if (inputDatum.mOwner === null)
-      return {
-        type: "error",
-        error: new Error("Locked UTxO encountered: no owners are specified"),
-      };
-
-    const orderDatum = makeOrderDatum(
-      {
-        policyId: minswapRequestInfo.value.desiredAssetSymbol,
-        tokenName: minswapRequestInfo.value.desiredAssetTokenName,
-      },
-      inputDatum.mOwner,
-      minswapRequestInfo.value.minimumReceive
-      // (minswapRequestInfo.value.minimumReceive * (100n - slippageTolerance)) /
-      //   100n
-    );
-    const outputDatum: OutputDatum = {
-      kind: "inline",
-      value: Data.to(orderDatum, OrderDatum),
-    };
-    return ok(outputDatum);
+      return ok(outputDatum);
+    } catch (e) {
+      return genericCatch(e);
+    }
     // }}}
   };
 

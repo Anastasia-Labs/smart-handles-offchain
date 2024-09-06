@@ -312,7 +312,7 @@ export const batchRoute = async (
       .attach.SpendingValidator(batchVAs.spendVA.validator)
       .withdraw(batchVAs.stakeVA.address, 0n, {
         kind: "selected",
-        inputs: utxosToSpend.concat(feeUTxOs),
+        inputs: utxosToSpend,
         makeRedeemer: redeemerBuilder,
       })
       .attach.WithdrawalValidator(batchVAs.stakeVA.validator);
