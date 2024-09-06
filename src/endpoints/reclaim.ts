@@ -317,7 +317,7 @@ export const batchReclaim = async (
       .attach.SpendingValidator(batchVAs.spendVA.validator)
       .withdraw(batchVAs.stakeVA.address, 0n, {
         kind: "selected",
-        inputs: utxosToSpend,
+        inputs: utxosToSpend.concat(feeUTxOs),
         makeRedeemer: (inputIndices) =>
           Data.to(
             new Constr(0, [
