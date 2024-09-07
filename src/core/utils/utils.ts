@@ -16,6 +16,7 @@ import {
   scriptHashToCredential,
   credentialToAddress,
   DatumJson,
+  toUnit,
   TxBuilder,
   Script,
 } from "@lucid-evolution/lucid";
@@ -730,6 +731,12 @@ export const applyRequiredMint = async (
         utxoAssets,
         tsRequiredMintToAssets(reqMint, mintQty)
       );
+      // TODO: Remove after fix to lucid-evolution -----------------------------
+      const reqMintUnit = toUnit(reqMint.policyId, reqMint.tokenName);
+      if (mintAppliedInputAssets[reqMintUnit] === BigInt(0)) {
+        delete mintAppliedInputAssets[reqMintUnit];
+      }
+      // -----------------------------------------------------------------------
     }
     const complementedAddtionalAction =
       complementAdditionalActionWithRequiredMint(

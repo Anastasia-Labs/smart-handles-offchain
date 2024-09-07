@@ -37,7 +37,7 @@ import {
   AdvancedDatumFields,
   SimpleDatumFields,
 } from "../core/contract.types.js";
-import { UNAUTHORIZED_OWNER_ERROR_MSG } from "../core/constants.js";
+import { LOVELACE_MARGIN, UNAUTHORIZED_OWNER_ERROR_MSG } from "../core/constants.js";
 // }}}
 // ----------------------------------------------------------------------------
 
@@ -212,11 +212,9 @@ export const singleReclaim = async (
   try {
     const [utxoToSpend] = await lucid.utxosByOutRef([config.requestOutRef]);
 
-    if (!utxoToSpend)
-      return { type: "error", error: new Error("No UTxO with that TxOutRef") };
+    const walletUTxOs = await lucid.wallet().getUtxos();
 
-    const feeUTxORes = await getOneUTxOFromWallet(lucid);
-    if (feeUTxORes.type == "error") return feeUTxORes;
+    const feeUTxOs = selectUTxOs(walletUTxOs, { lovelace: LOVELACE_MARGIN });
 
     const walletAddress = await lucid.wallet().address();
 
@@ -235,7 +233,7 @@ export const singleReclaim = async (
     const tx = lucid
       .newTx()
       .collectFrom([utxoToSpend], inOutInfo.redeemerBuilder)
-      .collectFrom([feeUTxORes.data])
+      .collectFrom(feeUTxOs)
       .attach.SpendingValidator(va.validator);
 
     const finalTxRes = await complementTx(tx, inOutInfo);

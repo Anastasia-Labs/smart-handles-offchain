@@ -131,7 +131,7 @@ const utxoToOutputInfo = async (
             u.assets,
             advancedRouteConfig.additionalAction,
             advancedFields,
-            advancedFields.reclaimRequiredMint,
+            advancedFields.routeRequiredMint,
             advancedRouteConfig.requiredMintConfig
           );
           if (mintApplicationRes.type == "error") return mintApplicationRes;

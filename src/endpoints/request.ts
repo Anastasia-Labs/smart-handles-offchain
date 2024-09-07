@@ -160,7 +160,6 @@ export const singleRequest = async (
         : advancedDatumBuilder(routeRequest.data);
     if (outputDatumDataRes.type == "error") return outputDatumDataRes;
     const outputDatumData = outputDatumDataRes.data;
-
     const tx = await lucid
       .newTx()
       .pay.ToContract(
