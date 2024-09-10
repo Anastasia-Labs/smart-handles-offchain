@@ -218,8 +218,8 @@ export const singleRoute = async (
     // going to be collected by the routing agent.
     const tx = lucid
       .newTx()
-      .collectFrom([utxoToSpend], inOutInfo.redeemerBuilder)
       .collectFrom(feeUTxOs)
+      .collectFrom([utxoToSpend], inOutInfo.redeemerBuilder)
       .attach.SpendingValidator(va.validator)
       .pay.ToContract(
         config.routeAddress,

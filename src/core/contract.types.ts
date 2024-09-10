@@ -166,7 +166,6 @@ export const advancedDatumFieldsToCBOR = (
     oldEncoding ? L.Data.from(Data.to(aF.extraInfo)) : aF.extraInfo,
   ]);
   try {
-    console.log(constr);
     const cbor = oldEncoding ? L.Data.to(constr) : Data.to(constr);
     return ok(cbor);
   } catch (e) {
