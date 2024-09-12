@@ -422,8 +422,8 @@ const fetchUsersRequestUTxOs = async (
   // {{{
   const network = lucid.config().network;
   const allRequests: UTxO[] = forSingle
-    ? await fetchSingleRequestUTxOs(lucid, scriptCBOR, network)
-    : await fetchBatchRequestUTxOs(lucid, scriptCBOR, network);
+    ? await fetchSingleRequestUTxOs(lucid, scriptCBOR)
+    : await fetchBatchRequestUTxOs(lucid, scriptCBOR);
   const initUsersRequests: (MinswapV1RequestUTxO | undefined)[] =
     allRequests.map((utxo) => {
       if (utxo.datum) {
