@@ -16,9 +16,12 @@ jobs:
         with:
           node-version: 20
           cache: "pnpm"
-      - run: pnpm i
-      - run: pnpm run lint && pnpm run build
-      - run: pnpm test-ci
+      - name: Install dependencies
+        run: pnpm i
+      - name: Build main package
+        run: pnpm run lint && pnpm run build
+      - name: Perform local tests
+        run: pnpm test
 
   publish-gpr:
     needs: build
@@ -36,7 +39,7 @@ jobs:
           node-version: 20
           cache: "pnpm"
           registry-url: 'https://registry.npmjs.org'
-      - run: pnpm i --frozen-lockfile
+      - run: pnpm i --no-frozen-lockfile
       - name: Build 🔨
         run: pnpm build
       - run: pnpm publish --no-git-checks --access public

@@ -22,7 +22,8 @@
     "vitest": "^2.0.5"
   },
   "dependencies": {
-    "@anastasia-labs/smart-handles-offchain": "file:../anastasia-labs-smart-handles-offchain-0.3.0.tgz",
+    "@anastasia-labs/smart-handles-agent": "^0.3.0",
+    "@anastasia-labs/smart-handles-offchain": "^0.3.0",
     "@blockfrost/blockfrost-js": "^5.5.0",
     "@commander-js/extra-typings": "^12.1.0",
     "@minswap/sdk": "^0.2.2-beta",

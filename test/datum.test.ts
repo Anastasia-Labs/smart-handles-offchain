@@ -1,5 +1,9 @@
-import {Constr, Data} from "@lucid-evolution/lucid";
-import {AdvancedDatumFields, advancedDatumFieldsToCBOR, parseAdvancedDatum} from "../src/core/contract.types.js";
+import { Constr, Data } from "@lucid-evolution/lucid";
+import {
+  AdvancedDatumFields,
+  advancedDatumFieldsToCBOR,
+  parseAdvancedDatum,
+} from "../src/core/contract.types.js";
 import { expect, test } from "vitest";
 
 test("CBOR Encoding/Decoding of `AdvancedDatumFields` Values", () => {
@@ -7,26 +11,34 @@ test("CBOR Encoding/Decoding of `AdvancedDatumFields` Values", () => {
     "29d222ce763455e3d7a09a665ce554f00ac89d2e99a1a83d267170c6",
     "4d494e",
     new Constr(1, []),
-    BigInt(40_000_000)
+    BigInt(40_000_000),
   ]);
   const info1 = new Constr(1, []);
   const info2 = "29d222ce763455e3d7a09a665ce554f00ac89d2e99a1a83d267170c6";
   const aF0: AdvancedDatumFields = {
-    mOwner: "addr1zxn9efv2f6w82hagxqtn62ju4m293tqvw0uhmdl64ch8uw6j2c79gy9l76sdg0xwhd7r0c0kna0tycz4y5s6mlenh8pq6s3z70",
+    mOwner:
+      "addr1zxn9efv2f6w82hagxqtn62ju4m293tqvw0uhmdl64ch8uw6j2c79gy9l76sdg0xwhd7r0c0kna0tycz4y5s6mlenh8pq6s3z70",
     routerFee: BigInt(1_000_000),
     reclaimRouterFee: BigInt(500_000),
+    routeRequiredMint: {policyId: "29d222ce763455e3d7a09a665ce554f00ac89d2e99a1a83d267170c6", tokenName: "46726565555344"},
+    reclaimRequiredMint: {policyId: "29d222ce763455e3d7a09a665ce554f00ac89d2e99a1a83d267170c6", tokenName: "46726565425443"},
     extraInfo: info0,
   };
   const aF1: AdvancedDatumFields = {
     mOwner: null,
     routerFee: BigInt(2_000_000),
     reclaimRouterFee: BigInt(0),
+    routeRequiredMint: null,
+    reclaimRequiredMint: null,
     extraInfo: info1,
   };
   const aF2: AdvancedDatumFields = {
-    mOwner: "addr_test1zzn9efv2f6w82hagxqtn62ju4m293tqvw0uhmdl64ch8uwurajt8r8wqtygrfduwgukk73m5gcnplmztc5tl5ngy0upq932hcy",
+    mOwner:
+      "addr_test1zzn9efv2f6w82hagxqtn62ju4m293tqvw0uhmdl64ch8uwurajt8r8wqtygrfduwgukk73m5gcnplmztc5tl5ngy0upq932hcy",
     routerFee: BigInt(0),
     reclaimRouterFee: BigInt(0),
+    routeRequiredMint: null,
+    reclaimRequiredMint: {policyId: "29d222ce763455e3d7a09a665ce554f00ac89d2e99a1a83d267170c6", tokenName: "46726565425443"},
     extraInfo: info2,
   };
   const cborRes0 = advancedDatumFieldsToCBOR(aF0);
@@ -50,13 +62,19 @@ test("CBOR Encoding/Decoding of `AdvancedDatumFields` Values", () => {
   expect(aF0ParseRes.data.mOwner).toBe(aF0.mOwner);
   expect(aF0ParseRes.data.routerFee).toBe(aF0.routerFee);
   expect(aF0ParseRes.data.reclaimRouterFee).toBe(aF0.reclaimRouterFee);
-  expect(Data.to(aF0ParseRes.data.extraInfo)).toBe(Data.to(aF0.extraInfo))
+  expect(aF0ParseRes.data.routeRequiredMint?.policyId).toBe(aF0.routeRequiredMint?.policyId);
+  expect(aF0ParseRes.data.routeRequiredMint?.tokenName).toBe(aF0.routeRequiredMint?.tokenName);
+  expect(Data.to(aF0ParseRes.data.extraInfo)).toBe(Data.to(aF0.extraInfo));
   expect(aF1ParseRes.data.mOwner).toBe(aF1.mOwner);
   expect(aF1ParseRes.data.routerFee).toBe(aF1.routerFee);
   expect(aF1ParseRes.data.reclaimRouterFee).toBe(aF1.reclaimRouterFee);
-  expect(Data.to(aF1ParseRes.data.extraInfo)).toBe(Data.to(aF1.extraInfo))
+  expect(aF1ParseRes.data.routeRequiredMint?.policyId).toBe(aF1.routeRequiredMint?.policyId);
+  expect(aF1ParseRes.data.routeRequiredMint?.tokenName).toBe(aF1.routeRequiredMint?.tokenName);
+  expect(Data.to(aF1ParseRes.data.extraInfo)).toBe(Data.to(aF1.extraInfo));
   expect(aF2ParseRes.data.mOwner).toBe(aF2.mOwner);
   expect(aF2ParseRes.data.routerFee).toBe(aF2.routerFee);
   expect(aF2ParseRes.data.reclaimRouterFee).toBe(aF2.reclaimRouterFee);
-  expect(Data.to(aF2ParseRes.data.extraInfo)).toBe(Data.to(aF2.extraInfo))
+  expect(aF2ParseRes.data.routeRequiredMint?.policyId).toBe(aF2.routeRequiredMint?.policyId);
+  expect(aF2ParseRes.data.routeRequiredMint?.tokenName).toBe(aF2.routeRequiredMint?.tokenName);
+  expect(Data.to(aF2ParseRes.data.extraInfo)).toBe(Data.to(aF2.extraInfo));
 });
