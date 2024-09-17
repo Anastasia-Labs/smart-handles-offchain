@@ -96,7 +96,7 @@ upon in the next section.
 
 ### Routing and Advanced Reclaim
 
-Before going over the configs themself, let's look at some other common
+Before going over the configs themselves, let's look at some other common
 interfaces:
 
 #### Simple & Advanced Output Datum Makers
