@@ -7,7 +7,7 @@
         * [Fetch Requests](#fetch-requests)
         * [Request](#request)
         * [Simple Reclaim](#simple-reclaim)
-        * [Routing and Advanced Reclaim](#routing-and-advanced-reclaim)
+        * [Routing & Advanced Reclaim](#routing--advanced-reclaim)
             * [Simple & Advanced Output Datum Makers](#simple--advanced-output-datum-makers)
             * [Required Mint Config](#required-mint-config)
             * [Additional Action](#additional-action)
@@ -94,7 +94,7 @@ Reclaiming a simple request only requires the signature of its owner.
 Advanced reclaim is very similar to an advanced route, and therefore is expanded
 upon in the next section.
 
-### Routing and Advanced Reclaim
+### Routing & Advanced Reclaim
 
 Before going over the configs themselves, let's look at some other common
 interfaces:
@@ -230,3 +230,5 @@ The bulk of the implementation resides at [`minswap-v1.ts`](./example/src/minswa
 Additionally, there are also two preprod scenarios implemented
 at `./example/src/scenarios/` which should give you a more practical usage of
 this SDK.
+
+Its sample transactions on preprod are linked in its [`README.md`](./example/README.md).
