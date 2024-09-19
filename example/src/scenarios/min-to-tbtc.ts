@@ -4,30 +4,17 @@ import {
   Blockfrost,
   Lucid,
   toUnit,
-  MIN_SYMBOL_PREPROD,
-  MIN_TOKEN_NAME,
-  batchSwap,
-  SwapConfig,
-  fetchUsersBatchRequestUTxOs,
-  BatchSwapConfig,
-  Result,
-  TxComplete,
+  batchRoute,
+  errorToString,
 } from "@anastasia-labs/smart-handles-offchain";
-
-const signAndSubmitTxRes = async (
-  lucid: Lucid,
-  txRes: Result<TxComplete>
-): Promise<string> => {
-  if (txRes.type == "error") throw txRes.error;
-
-  const txSigned = await txRes.data.sign().complete();
-
-  const txHash = await txSigned.submit();
-
-  await lucid.awaitTx(txHash);
-
-  return txHash;
-};
+import { MIN_SYMBOL_PREPROD, MIN_TOKEN_NAME } from "../constants.js";
+import {
+  fetchUsersBatchRequestUTxOs,
+  mkBatchRequestConfig,
+  mkBatchRouteConfig,
+  signAndSubmitTxRes,
+} from "../minswap-v1.js";
+import { MinswapV1RequestUTxO } from "../types.js";
 
 export const run = async (
   blockfrostKey: string,
@@ -35,65 +22,65 @@ export const run = async (
   routingAgentsSeedPhrase: string
 ): Promise<Error | void> => {
   try {
-    const lucid = await Lucid.new(
+    const lucid = await Lucid(
       new Blockfrost(
         "https://cardano-preprod.blockfrost.io/api/v0",
         blockfrostKey
       ),
       "Preprod"
     );
-  
-    lucid.selectWalletFromSeed(seedPhrase);
-  
-    const requestConfig: BatchRequestConfig = {
-      swapRequests: [6_000_000, 4_000_000].map((l) => ({
+
+    lucid.selectWallet.fromSeed(seedPhrase);
+
+    const userAddress = await lucid.wallet().address();
+
+    const requestConfigRes = await mkBatchRequestConfig(
+      userAddress,
+      [6_000_000, 4_000_000].map((l) => ({
         fromAsset: toUnit(MIN_SYMBOL_PREPROD, MIN_TOKEN_NAME),
         quantity: BigInt(l),
         toAsset: toUnit(
           "e16c2dc8ae937e8d3790c7fd7168d7b994621ba14ca11415f39fed72",
           "74425443"
         ),
+        slippageTolerance: 20n,
       })),
-      testnet: true,
-    };
-  
+      "Preprod"
+    );
+    if (requestConfigRes.type == "error") return requestConfigRes.error;
+    const requestConfig: BatchRequestConfig = requestConfigRes.data;
+
     const requestTxUnsignedRes = await batchRequest(lucid, requestConfig);
-  
+
     console.log("Submitting the swap requests...");
     const requestTxHash = await signAndSubmitTxRes(lucid, requestTxUnsignedRes);
     console.log(`Request Successfully Submitted: ${requestTxHash}`);
-  
-    const userAddress = await lucid.wallet.address();
-  
-    lucid.selectWalletFromSeed(routingAgentsSeedPhrase);
+
+    lucid.selectWallet.fromSeed(routingAgentsSeedPhrase);
     console.log("(switched to the routing agent's wallet)");
-  
+
     console.log("Fetching user's batch requests...");
-    const usersRequests = await fetchUsersBatchRequestUTxOs(
+    const usersRequestsRes = await fetchUsersBatchRequestUTxOs(
       lucid,
-      userAddress,
-      true
+      userAddress
     );
-    console.log("Fetch completed:");
+    if (usersRequestsRes.type == "error") return usersRequestsRes.error;
+    const usersRequests: MinswapV1RequestUTxO[] = usersRequestsRes.data;
     console.log(usersRequests);
-  
-    const swapConfig: SwapConfig = {
-      blockfrostKey,
-      slippageTolerance: BigInt(10),
-    };
-  
-    const batchSwapConfig: BatchSwapConfig = {
-      swapConfig,
-      requestOutRefs: usersRequests.map((u) => u.outRef),
-      testnet: true,
-    };
-  
-    const swapTxUnsigned = await batchSwap(lucid, batchSwapConfig);
-  
+
+    const batchRouteConfigRes = mkBatchRouteConfig(
+      usersRequests.map((u) => u.outRef),
+      "Preprod"
+    );
+
+    if (batchRouteConfigRes.type == "error") return batchRouteConfigRes.error;
+
+    const swapTxUnsigned = await batchRoute(lucid, batchRouteConfigRes.data);
+
     console.log("Submitting the swap transaction...");
     const swapTxHash = await signAndSubmitTxRes(lucid, swapTxUnsigned);
     console.log(`Swap successfully performed: ${swapTxHash}`);
-  } catch(e) {
-    return e;
+  } catch (e) {
+    return new Error(errorToString(e));
   }
 };

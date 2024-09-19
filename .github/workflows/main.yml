@@ -15,8 +15,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'pnpm'
-      - run: pnpm i
-      - run: pnpm run lint && pnpm run build
-      - run: pnpm test-ci
-
+          cache: "pnpm"
+      - name: Install dependencies
+        run: pnpm i
+      - name: Build main package
+        run: pnpm run lint && pnpm run build
+      - name: Perform local tests
+        run: pnpm test

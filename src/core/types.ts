@@ -1,6 +1,22 @@
-import { Address, Assets, OutRef, Unit } from "@anastasia-labs/lucid-cardano-fork";
+import {
+  Address,
+  Assets,
+  CBORHex,
+  DatumJson,
+  OutRef,
+  OutputDatum,
+  RedeemerBuilder,
+  Script,
+  TxBuilder,
+  UTxO,
+  Unit,
+} from "@lucid-evolution/lucid";
+import {
+  AdvancedDatumFields,
+  SimpleDatumFields,
+  TSRequiredMint,
+} from "./contract.types.js";
 
-export type CborHex = string;
 export type RawHex = string;
 export type POSIXTime = number;
 
@@ -25,47 +41,117 @@ export type ReadableUTxO<T> = {
   assets: Assets;
 };
 
-export type SwapRequest = {
-  fromAsset: Asset;
-  quantity: bigint;
-  toAsset: Asset;
-}
+/**
+ * Intermediary datatype for mapping an input UTxO to its corresponding output
+ * datum and output assets.
+ *
+ * If `outputAssets` is not set, it'll be handled by change output.
+ */
+export type InputUTxOAndItsOutputInfo = {
+  utxo: UTxO;
+  redeemerBuilder: RedeemerBuilder;
+  outputAddress?: Address;
+  scriptOutput?: {
+    outputAssets: Assets;
+    outputDatum: OutputDatum;
+  };
+  additionalAction?: (tx: TxBuilder, utxo: UTxO) => Promise<Result<TxBuilder>>;
+};
+
+export type RequiredMintConfig = {
+  mintQuantityFinder: (
+    inputAssets: Assets,
+    inputDatum: AdvancedDatumFields
+  ) => Promise<Result<bigint>>;
+  mintRedeemer: string;
+  mintScript: Script;
+};
+
+/**
+ * Assumes selected wallet as `owner`
+ */
+export type SimpleRouteRequest = {
+  valueToLock: Assets;
+};
+
+export type AdvancedRouteRequest = SimpleRouteRequest & {
+  owner?: Address;
+  routerFee: bigint;
+  reclaimRouterFee: bigint;
+  routeRequiredMint: TSRequiredMint | null;
+  reclaimRequiredMint: TSRequiredMint | null;
+  extraInfoDataBuilder: () => DatumJson;
+};
+
+export type RouteRequest =
+  | { kind: "simple"; data: SimpleRouteRequest }
+  | { kind: "advanced"; data: AdvancedRouteRequest };
 
 export type SingleRequestConfig = {
-  swapRequest: SwapRequest;
-  testnet: boolean;
+  scriptCBOR: CBORHex;
+  routeRequest: RouteRequest;
+  additionalRequiredLovelaces: bigint;
 };
 
 export type BatchRequestConfig = {
-  swapRequests: SwapRequest[];
-  testnet: boolean;
+  stakingScriptCBOR: CBORHex;
+  routeRequests: RouteRequest[];
+  additionalRequiredLovelaces: bigint;
 };
 
-export type SingleReclaimConfig = {
+export type SimpleOutputDatumMaker = (
+  inputAssets: Assets,
+  inputDatum: SimpleDatumFields
+) => Promise<Result<OutputDatum>>;
+
+export type AdvancedOutputDatumMaker = (
+  inputAssets: Assets,
+  inputDatum: AdvancedDatumFields
+) => Promise<Result<OutputDatum>>;
+
+export type AdvancedReclaimConfig = {
+  outputDatumMaker: AdvancedOutputDatumMaker;
+  requiredMintConfig?: RequiredMintConfig;
+  additionalAction: (tx: TxBuilder, utxo: UTxO) => Promise<Result<TxBuilder>>;
+};
+
+export type CommonSingle = {
+  scriptCBOR: CBORHex;
   requestOutRef: OutRef;
-  testnet: boolean;
 };
 
-export type BatchReclaimConfig = {
+export type CommonBatch = {
+  stakingScriptCBOR: CBORHex;
   requestOutRefs: OutRef[];
-  testnet: boolean;
 };
 
-export type SwapConfig = {
-  blockfrostKey: string;
-  poolId?: string;
-  slippageTolerance: bigint;
+export type SingleReclaimConfig = CommonSingle & {
+  advancedReclaimConfig?: AdvancedReclaimConfig;
 };
 
-export type SingleSwapConfig = {
-  swapConfig: SwapConfig;
-  requestOutRef: OutRef;
-  testnet: boolean;
+export type BatchReclaimConfig = CommonBatch & {
+  advancedReclaimConfig?: AdvancedReclaimConfig;
 };
 
-// Same `slippageTolerance` for all request outrefs. TODO?
-export type BatchSwapConfig = {
-  swapConfig: SwapConfig;
-  requestOutRefs: OutRef[];
-  testnet: boolean;
+export type SimpleRouteConfig = {
+  additionalAction: (tx: TxBuilder, utxo: UTxO) => Promise<Result<TxBuilder>>;
+  outputDatumMaker: SimpleOutputDatumMaker;
+};
+
+export type AdvancedRouteConfig = {
+  outputDatumMaker: AdvancedOutputDatumMaker;
+  requiredMintConfig?: RequiredMintConfig;
+  additionalAction: (tx: TxBuilder, utxo: UTxO) => Promise<Result<TxBuilder>>;
+};
+
+export type SingleRouteConfig = CommonSingle & {
+  routeAddress: Address;
+  simpleRouteConfig?: SimpleRouteConfig;
+  advancedRouteConfig?: AdvancedRouteConfig;
+};
+
+export type BatchRouteConfig = CommonBatch & {
+  routeAddress: Address;
+  simpleRouteConfig?: SimpleRouteConfig;
+  advancedRouteConfig?: AdvancedRouteConfig;
 };

@@ -1,6 +1,6 @@
 {
   "name": "@anastasia-labs/smart-handles-offchain",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "https://docs.github.com/en/packages/quickstart",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -9,12 +9,11 @@
     "dist"
   ],
   "scripts": {
-    "test-ci": "export NODE_ENV='CI' && vitest run",
-    "test": "export NODE_ENV='emulator' && vitest run",
     "build": "tsup src/index.ts --minify --format esm,cjs --dts --clean",
     "lint": "eslint",
     "repack": "pnpm run build  && pnpm pack",
-    "ts-node": "ts-node"
+    "ts-node": "ts-node",
+    "test": "vitest run"
   },
   "keywords": [],
   "author": "",
@@ -29,15 +28,11 @@
     "ts-node": "^10.9.2",
     "tsup": "^8.0.2",
     "typescript": "^5.4.2",
-    "vitest": "0.34.6"
-  },
-  "directories": {
-    "test": "test"
+    "vitest": "^2.0.5"
   },
   "dependencies": {
-    "@anastasia-labs/lucid-cardano-fork": "^0.10.8-rc.3",
-    "@blockfrost/blockfrost-js": "^5.5.0",
-    "@minswap/sdk": "^0.2.2-beta"
+    "@lucid-evolution/lucid": "^0.3.27",
+    "lucid-cardano": "^0.10.9"
   },
   "packageManager": "pnpm@9.0.4+sha1.b198ac6d38244fd829253720f9daafd6a606834d"
 }

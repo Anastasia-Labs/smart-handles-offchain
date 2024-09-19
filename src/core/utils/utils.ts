@@ -4,20 +4,52 @@ import {
   Assets,
   Constr,
   Data,
-  generateSeedPhrase,
   getAddressDetails,
-  Lucid,
   SpendingValidator,
   UTxO,
   addAssets,
   OutRef,
-} from "@anastasia-labs/lucid-cardano-fork";
-import { AddressD, Value } from "../contract.types.js";
-import { Either, ReadableUTxO, Result } from "../types.js";
+  validatorToAddress,
+  keyHashToCredential,
+  Network,
+  LucidEvolution,
+  scriptHashToCredential,
+  credentialToAddress,
+  DatumJson,
+  toUnit,
+  TxBuilder,
+  Script,
+} from "@lucid-evolution/lucid";
+import {
+  AddressD,
+  AdvancedDatumFields,
+  SimpleDatumFields,
+  TSRequiredMint,
+  Value,
+  parseAdvancedDatum,
+  parseSimpleDatum,
+  tsRequiredMintToAssets,
+} from "../contract.types.js";
+import {
+  Either,
+  InputUTxOAndItsOutputInfo,
+  ReadableUTxO,
+  RequiredMintConfig,
+  Result,
+} from "../types.js";
+import { INSUFFICIENT_ADA_ERROR_MSG, LOVELACE_MARGIN } from "../constants.js";
+
+export function ok<T>(x: T): Result<T> {
+  return {
+    type: "ok",
+    data: x,
+  };
+}
 
 export const utxosAtScript = async (
-  lucid: Lucid,
+  lucid: LucidEvolution,
   script: string,
+  network: Network,
   stakeCredentialHash?: string
 ) => {
   const scriptValidator: SpendingValidator = {
@@ -26,17 +58,17 @@ export const utxosAtScript = async (
   };
 
   const scriptValidatorAddr = stakeCredentialHash
-    ? lucid.utils.validatorToAddress(
+    ? validatorToAddress(
+        network,
         scriptValidator,
-        lucid.utils.keyHashToCredential(stakeCredentialHash)
+        keyHashToCredential(stakeCredentialHash)
       )
-    : lucid.utils.validatorToAddress(scriptValidator);
+    : validatorToAddress(network, scriptValidator);
 
   return lucid.utxosAt(scriptValidatorAddr);
 };
 
 export const parseSafeDatum = <T>(
-  _lucid: Lucid,
   datum: string | null | undefined,
   datumType: T
 ): Either<string, T> => {
@@ -56,43 +88,41 @@ export const parseSafeDatum = <T>(
 };
 
 export const parseUTxOsAtScript = async <T>(
-  lucid: Lucid,
+  lucid: LucidEvolution,
   script: string,
   datumType: T,
+  network: Network,
   stakeCredentialHash?: string
 ): Promise<ReadableUTxO<T>[]> => {
-  //FIX: this can throw an error if script is empty or not initialized
-  const utxos = await utxosAtScript(lucid, script, stakeCredentialHash);
-  return utxos.flatMap((utxo) => {
-    const result = parseSafeDatum<T>(lucid, utxo.datum, datumType);
-    if (result.type == "right") {
-      return {
-        outRef: {
-          txHash: utxo.txHash,
-          outputIndex: utxo.outputIndex,
-        },
-        datum: result.value,
-        assets: utxo.assets,
-      };
-    } else {
-      return [];
-    }
-  });
+  try {
+    const utxos = await utxosAtScript(
+      lucid,
+      script,
+      network,
+      stakeCredentialHash
+    );
+    return utxos.flatMap((utxo) => {
+      const result = parseSafeDatum<T>(utxo.datum, datumType);
+      if (result.type == "right") {
+        return {
+          outRef: {
+            txHash: utxo.txHash,
+            outputIndex: utxo.outputIndex,
+          },
+          datum: result.value,
+          assets: utxo.assets,
+        };
+      } else {
+        return [];
+      }
+    });
+  } catch (e) {
+    return [];
+  }
 };
 
 export const toCBORHex = (rawHex: string) => {
   return applyDoubleCborEncoding(rawHex);
-};
-
-export const generateAccountSeedPhrase = async (assets: Assets) => {
-  const seedPhrase = generateSeedPhrase();
-  return {
-    seedPhrase,
-    address: await (await Lucid.new(undefined, "Custom"))
-      .selectWalletFromSeed(seedPhrase)
-      .wallet.address(),
-    assets,
-  };
 };
 
 export function fromAddress(address: Address): AddressD {
@@ -123,14 +153,14 @@ export function fromAddress(address: Address): AddressD {
   };
 }
 
-export function toAddress(address: AddressD, lucid: Lucid): Address {
+export function toAddress(address: AddressD, network: Network): Address {
   const paymentCredential = (() => {
     if ("PublicKeyCredential" in address.paymentCredential) {
-      return lucid.utils.keyHashToCredential(
+      return keyHashToCredential(
         address.paymentCredential.PublicKeyCredential[0]
       );
     } else {
-      return lucid.utils.scriptHashToCredential(
+      return scriptHashToCredential(
         address.paymentCredential.ScriptCredential[0]
       );
     }
@@ -139,11 +169,11 @@ export function toAddress(address: AddressD, lucid: Lucid): Address {
     if (!address.stakeCredential) return undefined;
     if ("Inline" in address.stakeCredential) {
       if ("PublicKeyCredential" in address.stakeCredential.Inline[0]) {
-        return lucid.utils.keyHashToCredential(
+        return keyHashToCredential(
           address.stakeCredential.Inline[0].PublicKeyCredential[0]
         );
       } else {
-        return lucid.utils.scriptHashToCredential(
+        return scriptHashToCredential(
           address.stakeCredential.Inline[0].ScriptCredential[0]
         );
       }
@@ -151,7 +181,7 @@ export function toAddress(address: AddressD, lucid: Lucid): Address {
       return undefined;
     }
   })();
-  return lucid.utils.credentialToAddress(paymentCredential, stakeCredential);
+  return credentialToAddress(network, paymentCredential, stakeCredential);
 }
 
 export const fromAddressToData = (address: Address): Result<Data> => {
@@ -176,6 +206,54 @@ export const fromAddressToData = (address: Address): Result<Data> => {
   ]);
 
   return { type: "ok", data: new Constr(0, [paymentCred, stakingCred]) };
+};
+
+export const fromAddressToDatumJson = (address: Address): Result<DatumJson> => {
+  const addrDetails = getAddressDetails(address);
+
+  if (!addrDetails.paymentCredential)
+    return { type: "error", error: new Error("undefined paymentCredential") };
+
+  const paymentCred: DatumJson =
+    addrDetails.paymentCredential.type == "Key"
+      ? {
+          constructor: 0,
+          fields: [{ bytes: addrDetails.paymentCredential.hash }],
+        }
+      : {
+          constructor: 1,
+          fields: [{ bytes: addrDetails.paymentCredential.hash }],
+        };
+
+  if (!addrDetails.stakeCredential) {
+    return {
+      type: "ok",
+      data: {
+        constructor: 0,
+        fields: [paymentCred, { constructor: 1, fields: [] }],
+      },
+    };
+  }
+
+  const stakingCred = {
+    constructor: 0,
+    fields: [
+      {
+        constructor: 0,
+        fields: [
+          {
+            constructor: 0,
+            fields: [{ bytes: addrDetails.stakeCredential.hash }],
+          },
+        ],
+      },
+    ],
+  };
+
+  return {
+    type: "ok",
+    data: { constructor: 0, fields: [paymentCred, stakingCred] },
+  };
 };
 
 export const chunkArray = <T>(array: T[], chunkSize: number) => {
@@ -244,6 +322,42 @@ export function toAssets(value: Value): Assets {
     }
   }
   return result;
+}
+
+export function getLovelacesFromAssets(assets: Assets): bigint {
+  const qty = assets.lovelace;
+  if (qty) {
+    return qty;
+  } else {
+    return BigInt(0);
+  }
+}
+
+export function enoughLovelacesAreInAssets(
+  assets: Assets,
+  extraLovelaces: bigint
+): boolean {
+  const lovelaceCount = getLovelacesFromAssets(assets);
+  return lovelaceCount >= extraLovelaces + LOVELACE_MARGIN;
+}
+
+export function reduceLovelacesOfAssets(
+  assets: Assets,
+  reduction: bigint,
+  extraLovelacesToBeLocked?: bigint
+): Result<Assets> {
+  const newLovelaceCount = getLovelacesFromAssets(assets) - reduction;
+  if (newLovelaceCount >= (extraLovelacesToBeLocked ?? 0n) + LOVELACE_MARGIN) {
+    return {
+      type: "ok",
+      data: { ...assets, lovelace: newLovelaceCount },
+    };
+  } else {
+    return {
+      type: "error",
+      error: new Error(INSUFFICIENT_ADA_ERROR_MSG),
+    };
+  }
 }
 
 /**
@@ -370,9 +484,15 @@ export function printUTxOOutRef(u: UTxO): `${string}#${string}` {
   return `${u.txHash}#${u.outputIndex.toString()}`;
 }
 
+export function mergeUTxOs(utxos0: UTxO[], utxos1: UTxO[]): UTxO[] {
+  const uniques0 = new Set(utxos0.map(printUTxOOutRef));
+  const filtered1 = utxos1.filter(u => !uniques0.has(printUTxOOutRef(u)));
+  return [...utxos0, ...filtered1];
+}
+
 /**
  * Applies the validator function to each element of the list to collect
- * potential failur messages.
+ * potential failure messages.
  * @param items - Items to perform validation for each.
  * @param validator - A validation function that if failed, returns a failure
  * message, otherwise returns and `undefined`.
@@ -450,3 +570,184 @@ export function genericCatch(error: any): Result<any> {
     error: new Error(errorToString(error)),
   };
 }
+
+/**
+ * An abstract helper, primarily implemented because of types failing to cast
+ * our "enum" smart handle datum.
+ */
+export const validateUTxOAndConfig = async (
+  utxo: UTxO,
+  simpleOutputBuilder: (
+    u: UTxO,
+    sF: SimpleDatumFields
+  ) => Promise<Result<InputUTxOAndItsOutputInfo>>,
+  advancedOutputBuilder: (
+    u: UTxO,
+    aF: AdvancedDatumFields
+  ) => Promise<Result<InputUTxOAndItsOutputInfo>>,
+  network: Network
+): Promise<Result<InputUTxOAndItsOutputInfo>> => {
+  // {{{
+  if (utxo.datum) {
+    const simpleFieldsRes = parseSimpleDatum(utxo.datum, network);
+    if (simpleFieldsRes.type == "ok") {
+      return simpleOutputBuilder(utxo, simpleFieldsRes.data);
+    } else {
+      const advancedFieldsRes = parseAdvancedDatum(utxo.datum, network);
+      if (advancedFieldsRes.type == "ok") {
+        return advancedOutputBuilder(utxo, advancedFieldsRes.data);
+      } else {
+        return {
+          type: "error",
+          error: new Error(
+            "Failed to parse the UTxO's datum to either simple or advanced datum."
+          ),
+        };
+      }
+    }
+  } else {
+    return {
+      type: "error",
+      error: new Error("Specified UTxO doesn't have a datum"),
+    };
+  }
+  // }}}
+};
+
+/**
+ * Helper function for submitting a reward address registration contract. Costs
+ * about 2.2 ADA.
+ * @param lucid - Lucid Evolution API object, selected wallet will sign/pay
+ * @param rewardAddress - Bech32 address of the staking key about to be
+ *        registered
+ */
+export const registerRewardAddress = async (
+  lucid: LucidEvolution,
+  rewardAddress: string
+): Promise<void> => {
+  const tx = await lucid.newTx().registerStake(rewardAddress).complete();
+  const signedTx = await tx.sign.withWallet().complete();
+  const txHash = await signedTx.submit();
+  await lucid.awaitTx(txHash);
+};
+
+/**
+ * Helper function for grabbing a single UTxO from the previously selected
+ * wallet, in order to be used for covering fees.
+ * @param lucid - Lucid Evolution API object, note that the wallet must be
+ *        already selected
+ */
+export const getOneUTxOFromWallet = async (
+  lucid: LucidEvolution
+): Promise<Result<UTxO>> => {
+  try {
+    const walletsUTxOs = await lucid.wallet().getUtxos();
+
+    if (walletsUTxOs.length < 1) {
+      return {
+        type: "error",
+        error: new Error(
+          "Selected wallet has no UTxOs to cover the fees and/or collateral"
+        ),
+      };
+    } else {
+      return ok(walletsUTxOs[0]);
+    }
+  } catch (e) {
+    return genericCatch(e);
+  }
+};
+
+export const addMint = (
+  tx: TxBuilder,
+  requiredMint: TSRequiredMint,
+  mintQty: bigint,
+  mintScript: Script,
+  mintRedeemer: string
+): TxBuilder => {
+  const txWithMint = tx
+    .mintAssets(tsRequiredMintToAssets(requiredMint, mintQty), mintRedeemer)
+    .attach.MintingPolicy(mintScript);
+  return txWithMint;
+};
+
+const complementAdditionalActionWithRequiredMint = (
+  reqMint: TSRequiredMint | null,
+  additionalAction: (tx: TxBuilder, utxo: UTxO) => Promise<Result<TxBuilder>>,
+  requiredMintConfigAndQty?: [RequiredMintConfig, bigint]
+): ((tx: TxBuilder, utxo: UTxO) => Promise<Result<TxBuilder>>) => {
+  return requiredMintConfigAndQty
+    ? async (tx: TxBuilder, utxo: UTxO) => {
+        try {
+          const initTxRes = await additionalAction(tx, utxo);
+          if (initTxRes.type == "error") return initTxRes;
+          const initTx = initTxRes.data;
+          if (reqMint) {
+            return ok(
+              addMint(
+                initTx,
+                reqMint,
+                requiredMintConfigAndQty[1],
+                requiredMintConfigAndQty[0].mintScript,
+                requiredMintConfigAndQty[0].mintRedeemer
+              )
+            );
+          } else {
+            return ok(initTx);
+          }
+        } catch (e) {
+          return genericCatch(e);
+        }
+      }
+    : additionalAction;
+};
+
+export const applyRequiredMint = async (
+  utxoAssets: Assets,
+  additionalAction: (tx: TxBuilder, utxo: UTxO) => Promise<Result<TxBuilder>>,
+  advancedFields: AdvancedDatumFields,
+  reqMint: TSRequiredMint | null,
+  reqMintConfig?: RequiredMintConfig
+): Promise<
+  Result<{
+    mintAppliedInputAssets: Assets;
+    complementedAddtionalAction: (
+      tx: TxBuilder,
+      utxo: UTxO
+    ) => Promise<Result<TxBuilder>>;
+  }>
+> => {
+  let mintQty: bigint | undefined = undefined;
+  try {
+    let mintAppliedInputAssets: Assets = utxoAssets;
+    if (reqMint && reqMintConfig) {
+      const mintQtyRes = await reqMintConfig?.mintQuantityFinder(
+        utxoAssets,
+        advancedFields
+      );
+      if (mintQtyRes.type == "error") return mintQtyRes;
+      mintQty = mintQtyRes.data;
+      mintAppliedInputAssets = addAssets(
+        utxoAssets,
+        tsRequiredMintToAssets(reqMint, mintQty)
+      );
+      // TODO: Remove after fix to lucid-evolution -----------------------------
+      const reqMintUnit = toUnit(reqMint.policyId, reqMint.tokenName);
+      if (mintAppliedInputAssets[reqMintUnit] === BigInt(0)) {
+        delete mintAppliedInputAssets[reqMintUnit];
+      }
+      // -----------------------------------------------------------------------
+    }
+    const complementedAddtionalAction =
+      complementAdditionalActionWithRequiredMint(
+        reqMint,
+        additionalAction,
+        reqMintConfig && mintQty !== undefined
+          ? [reqMintConfig, mintQty]
+          : undefined
+      );
+    return ok({ mintAppliedInputAssets, complementedAddtionalAction });
+  } catch (e) {
+    return genericCatch(e);
+  }
+};

@@ -2,18 +2,18 @@ import {
   Address,
   Constr,
   Credential,
-  Lucid,
   SpendingValidator,
   Script,
   WithdrawalValidator,
   applyParamsToScript,
-} from "@anastasia-labs/lucid-cardano-fork";
-import { fromAddressToData } from "../utils/index.js";
-import { Result } from "../types.js";
-import { MINSWAP_ADDRESS_MAINNET, MINSWAP_ADDRESS_PREPROD } from "../constants.js";
-import singleSpendingValidator from "../../uplc/smartHandleSimple.json" with { type : "json" };
-import batchSpendingValidator from "../../uplc/smartHandleRouter.json" with { type : "json" };
-import stakingValidator from "../../uplc/smartHandleStake.json" with { type : "json" };
+  validatorToAddress,
+  validatorToRewardAddress,
+  stakeCredentialOf,
+  validatorToScriptHash,
+  Network,
+  CBORHex,
+} from "@lucid-evolution/lucid";
+import batchSpendingValidator from "../../uplc/smartHandleRouter.json";
 
 export type ValidatorAndAddress = {
   validator: Script;
@@ -27,71 +27,49 @@ export type BatchVAs = {
 };
 
 /**
- * Returns smart handle's validator and address for Minswap. "VA" is short for
- * "validator and address."
- * @param lucid - Lucid API object
- * @param testnet - Flag to use preprod or not
+ * Given a fully applied script CBOR (presumably an instance of smart-handles),
+ * returns "validator and address" of the script, based on the network.
+ * @param scriptCBOR - Fully applied UPLC script CBOR
+ * @param network - Target network
  */
 export const getSingleValidatorVA = (
-  lucid: Lucid,
-  testnet: boolean
-): Result<ValidatorAndAddress> => {
-  const swapAddress = testnet
-    ? MINSWAP_ADDRESS_PREPROD
-    : MINSWAP_ADDRESS_MAINNET;
-
-  const addressRes = fromAddressToData(swapAddress);
-
-  if (addressRes.type == "error") return addressRes;
-
-  const validatorScript = applyParamsToScript(singleSpendingValidator.cborHex, [
-    addressRes.data,
-  ]);
-
+  scriptCBOR: CBORHex,
+  network: Network
+): ValidatorAndAddress => {
   const validator: SpendingValidator = {
     type: "PlutusV2",
-    script: validatorScript,
+    script: scriptCBOR,
   };
 
   return {
-    type: "ok",
-    data: { validator, address: lucid.utils.validatorToAddress(validator) },
+    validator,
+    address: validatorToAddress(network, validator),
   };
 };
 
 /**
- * Returns validators and addresses of batch smart handles (both the spending
- * part and the staking part).
- * @param lucid - Lucid's API object
- * @param testnet - Flag to use preprod or not
+ * Given a fully applied staking script CBOR (presumably an instance of
+ * smart-handles), applies it to the generic batch spend from smart-handles, and
+ * returns "validator and address" of both spend and staking scripts,
+ * accompanied by the combined address, based on the network.
+ * @param stakingScriptCBOR - Fully applied UPLC withdrawal script CBOR
+ * @param network - Target network
  */
 export const getBatchVAs = (
-  lucid: Lucid,
-  testnet: boolean
-): Result<BatchVAs> => {
-  const swapAddress = testnet
-    ? MINSWAP_ADDRESS_PREPROD
-    : MINSWAP_ADDRESS_MAINNET;
-
-  const addressRes = fromAddressToData(swapAddress);
-
-  if (addressRes.type == "error") return addressRes;
-
-  const stakingScript = applyParamsToScript(stakingValidator.cborHex, [
-    addressRes.data,
-  ]);
-
+  stakingScriptCBOR: CBORHex,
+  network: Network
+): BatchVAs => {
   const stakingVal: WithdrawalValidator = {
     type: "PlutusV2",
-    script: stakingScript,
+    script: stakingScriptCBOR,
   };
 
-  const rewardAddress = lucid.utils.validatorToRewardAddress(stakingVal);
+  const rewardAddress = validatorToRewardAddress(network, stakingVal);
 
-  const stakingCred: Credential = lucid.utils.stakeCredentialOf(rewardAddress);
+  const stakingCred: Credential = stakeCredentialOf(rewardAddress);
 
   const stakingCredData = new Constr(0, [
-    new Constr(1, [lucid.utils.validatorToScriptHash(stakingVal)]),
+    new Constr(1, [validatorToScriptHash(stakingVal)]),
   ]);
 
   const spendingVal: SpendingValidator = {
@@ -100,20 +78,17 @@ export const getBatchVAs = (
       stakingCredData,
     ]),
   };
-  const spendingAddress = lucid.utils.validatorToAddress(spendingVal);
+  const spendingAddress = validatorToAddress(network, spendingVal);
 
   return {
-    type: "ok",
-    data: {
-      spendVA: {
-        validator: spendingVal,
-        address: spendingAddress,
-      },
-      stakeVA: {
-        validator: stakingVal,
-        address: rewardAddress,
-      },
-      fullAddress: lucid.utils.validatorToAddress(spendingVal, stakingCred),
+    spendVA: {
+      validator: spendingVal,
+      address: spendingAddress,
     },
+    stakeVA: {
+      validator: stakingVal,
+      address: rewardAddress,
+    },
+    fullAddress: validatorToAddress(network, spendingVal, stakingCred),
   };
 };

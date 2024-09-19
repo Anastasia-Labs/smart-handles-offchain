@@ -4,44 +4,20 @@ import {
   Blockfrost,
   Lucid,
   toUnit,
-  MIN_SYMBOL_PREPROD,
-  MIN_TOKEN_NAME,
-  batchSwap,
-  SwapConfig,
-  ADA_MIN_LP_TOKEN_NAME_PREPROD,
-  fetchUsersBatchRequestUTxOs,
-  BatchSwapConfig,
-  Result,
-  TxComplete,
+  batchRoute,
+  getBatchVAs,
+  BatchVAs,
+  errorToString,
+  registerRewardAddress,
 } from "@anastasia-labs/smart-handles-offchain";
-
-const registerRewardAddress = async (
-  lucid: Lucid,
-  rewardAddress: string
-): Promise<void> => {
-  const tx = await lucid.newTx().registerStake(rewardAddress).complete();
-
-  const signedTx = await tx.sign().complete();
-
-  const txHash = await signedTx.submit();
-
-  await lucid.awaitTx(txHash);
-};
-
-const signAndSubmitTxRes = async (
-  lucid: Lucid,
-  txRes: Result<TxComplete>
-): Promise<string> => {
-  if (txRes.type == "error") throw txRes.error;
-
-  const txSigned = await txRes.data.sign().complete();
-
-  const txHash = await txSigned.submit();
-
-  await lucid.awaitTx(txHash);
-
-  return txHash;
-};
+import { MIN_SYMBOL_PREPROD, MIN_TOKEN_NAME } from "../constants.js";
+import {
+  fetchUsersBatchRequestUTxOs,
+  mkBatchRequestConfig,
+  mkBatchRouteConfig,
+  signAndSubmitTxRes,
+} from "../minswap-v1.js";
+import { MinswapV1RequestUTxO } from "../types.js";
 
 export const run = async (
   blockfrostKey: string,
@@ -49,7 +25,7 @@ export const run = async (
   routingAgentsSeedPhrase: string
 ): Promise<Error | void> => {
   try {
-    const lucid = await Lucid.new(
+    const lucid = await Lucid(
       new Blockfrost(
         "https://cardano-preprod.blockfrost.io/api/v0",
         blockfrostKey
@@ -57,18 +33,26 @@ export const run = async (
       "Preprod"
     );
 
-    lucid.selectWalletFromSeed(seedPhrase);
+    lucid.selectWallet.fromSeed(seedPhrase);
 
-    const requestConfig: BatchRequestConfig = {
-      swapRequests: [
-        50_000_000, 100_000_000, 150_000_000, 200_000_000, 250_000_000,
-      ].map((l) => ({
-        fromAsset: "lovelace",
-        quantity: BigInt(l),
-        toAsset: toUnit(MIN_SYMBOL_PREPROD, MIN_TOKEN_NAME),
-      })),
-      testnet: true,
-    };
+    const userAddress = await lucid.wallet().address();
+
+    const requestConfigRes = await mkBatchRequestConfig(
+      userAddress,
+      [50_000_000, 100_000_000, 150_000_000, 200_000_000, 250_000_000].map(
+        (l) => ({
+          fromAsset: "lovelace",
+          quantity: BigInt(l),
+          toAsset: toUnit(MIN_SYMBOL_PREPROD, MIN_TOKEN_NAME),
+          slippageTolerance: 99n,
+        })
+      ),
+      "Preprod"
+    );
+
+    if (requestConfigRes.type == "error") return requestConfigRes.error;
+
+    const requestConfig: BatchRequestConfig = requestConfigRes.data;
 
     const requestTxUnsignedRes = await batchRequest(lucid, requestConfig);
 
@@ -76,53 +60,47 @@ export const run = async (
     const requestTxHash = await signAndSubmitTxRes(lucid, requestTxUnsignedRes);
     console.log(`Request Successfully Submitted: ${requestTxHash}`);
 
-    // Commented out as the Minswap version of the smart handles contract is
-    // already registered on preprod.
-
-    // const batchVAsRes = getBatchVAs(lucid, true);
-
-    // if (batchVAsRes.type == "error") return batchVAsRes;
-
-    // const batchVAs: BatchVAs = batchVAsRes.data;
-
+    // --- REWARD ADDRESS REGISTRATION -----------------------------------------
+    // // Commented out as the Minswap version of the smart handles contract is
+    // // already registered on preprod.
+    // const batchVAs: BatchVAs = getBatchVAs(
+    //   requestConfig.stakingScriptCBOR,
+    //   "Preprod"
+    // );
     // const rewardAddress = batchVAs.stakeVA.address;
-
     // console.log("Registering the staking validator...");
     // await registerRewardAddress(lucid, rewardAddress);
     // console.log(`Staking validator successfully registered: ${rewardAddress}`);
+    // -------------------------------------------------------------------------
 
-    const userAddress = await lucid.wallet.address();
-
-    lucid.selectWalletFromSeed(routingAgentsSeedPhrase);
+    lucid.selectWallet.fromSeed(routingAgentsSeedPhrase);
     console.log("(switched to the routing agent's wallet)");
 
     console.log("Fetching user's batch requests...");
-    const usersRequests = await fetchUsersBatchRequestUTxOs(
+    const usersRequestsRes = await fetchUsersBatchRequestUTxOs(
       lucid,
-      userAddress,
-      true
+      userAddress
     );
-    console.log("Fetch completed:");
+    if (usersRequestsRes.type == "error") return usersRequestsRes.error;
+    const usersRequests: MinswapV1RequestUTxO[] = usersRequestsRes.data.slice(
+      0,
+      5
+    );
     console.log(usersRequests);
 
-    const swapConfig: SwapConfig = {
-      blockfrostKey,
-      poolId: ADA_MIN_LP_TOKEN_NAME_PREPROD,
-      slippageTolerance: BigInt(10),
-    };
+    const batchRouteConfigRes = mkBatchRouteConfig(
+      usersRequests.map((u) => u.outRef),
+      "Preprod"
+    );
 
-    const batchSwapConfig: BatchSwapConfig = {
-      swapConfig,
-      requestOutRefs: usersRequests.map((u) => u.outRef),
-      testnet: true,
-    };
+    if (batchRouteConfigRes.type == "error") return batchRouteConfigRes.error;
 
-    const swapTxUnsigned = await batchSwap(lucid, batchSwapConfig);
+    const swapTxUnsigned = await batchRoute(lucid, batchRouteConfigRes.data);
 
     console.log("Submitting the swap transaction...");
     const swapTxHash = await signAndSubmitTxRes(lucid, swapTxUnsigned);
     console.log(`Swap successfully performed: ${swapTxHash}`);
   } catch (e) {
-    return e;
+    return new Error(errorToString(e));
   }
 };
