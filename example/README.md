@@ -24,7 +24,7 @@ export SEED_PHRASE=$(cat ~/preprod_wallet.seed)
 
 ### 3. Submit Your Swap Request
 
-You can read more about how the CLI interface in
+You can read more about how CLI interface in
 [`smart-handles-agent`](https://github.com/Anastasia-Labs/smart-handles-agent) repository.
 
 ```sh
@@ -47,8 +47,8 @@ export SEED_PHRASE=$(cat ~/preprod_wallet_2.seed)
 ### 5. Run the Monitoring Endpoint of CLI
 
 By monitoring the same instance of smart handles to which we just submitted a
-route request, the application can perform the route and collect its 1 ADA
-router fee.
+route request, the application can perform the route to Minswap V1 address and
+collect its 1 ADA router fee.
 
 ```sh
 node dist/cli.js monitor
