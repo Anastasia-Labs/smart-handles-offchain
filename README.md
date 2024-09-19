@@ -231,4 +231,5 @@ Additionally, there are also two preprod scenarios implemented
 at `./example/src/scenarios/` which should give you a more practical usage of
 this SDK.
 
-Its sample transactions on preprod are linked in its [`README.md`](./example/README.md).
+Its sample transactions on preprod are linked in the
+example's [`README.md`](./example/README.md).
