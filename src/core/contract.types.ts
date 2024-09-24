@@ -179,12 +179,11 @@ export const parseSimpleDatum = (
 ): Result<SimpleDatumFields> => {
   const x0 = Data.from(cbor, Constr<Data>);
   const x1 = x0 instanceof Constr && x0.index === 0 ? x0.fields : [];
-  const x2 = x1[0] instanceof Constr ? x1[0].fields : [];
   try {
-    const x3: AddressD = Data.from(Data.to(x2[0]), AddressD);
+    const x2: AddressD = Data.from(Data.to(x1[0]), AddressD);
     return {
       type: "ok",
-      data: { owner: toAddress(x3, network) },
+      data: { owner: toAddress(x2, network) },
     };
   } catch (e) {
     return genericCatch(e);
