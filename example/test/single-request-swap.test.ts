@@ -8,6 +8,7 @@ import {
   Lucid,
   singleReclaim,
   singleRoute,
+  PROTOCOL_PARAMETERS_DEFAULT,
 } from "@anastasia-labs/smart-handles-offchain";
 import {
   LucidContext,
@@ -25,11 +26,13 @@ beforeEach<LucidContext>(async (context) => {
     adversary: createUser(),
   };
 
-  context.emulator = new Emulator([
-    context.users.router,
-    context.users.user,
-    context.users.adversary,
-  ]);
+  context.emulator = new Emulator(
+    [context.users.router, context.users.user, context.users.adversary],
+    {
+      ...PROTOCOL_PARAMETERS_DEFAULT,
+      maxTxSize: 10000000,
+    }
+  );
 
   context.lucid = await Lucid(context.emulator, "Custom");
 });
@@ -48,10 +51,7 @@ test<LucidContext>("Test - Single Request, Swap", async ({
   // Invalid reclaim by adversary
   lucid.selectWallet.fromSeed(users.adversary.seedPhrase);
   const reclaimConfig = unsafeFromOk(
-    mkSingleReclaimConfig(
-      userRequests[0].outRef,
-      "Custom"
-    )
+    mkSingleReclaimConfig(userRequests[0].outRef, "Custom")
   );
   const invalidReclaim = await singleReclaim(lucid, reclaimConfig);
   expect(invalidReclaim.type).toBe("error");

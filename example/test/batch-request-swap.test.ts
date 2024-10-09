@@ -103,7 +103,6 @@ test<LucidContext>(
     const allRequests = await fetchBatchRequestUTxOs(
       lucid,
       minswapStakingScript,
-      "Custom"
     );
 
     // Valid Swap

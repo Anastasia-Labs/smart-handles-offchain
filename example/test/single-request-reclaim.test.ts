@@ -3,6 +3,7 @@ import {
   Lucid,
   singleReclaim,
   paymentCredentialOf,
+  PROTOCOL_PARAMETERS_DEFAULT,
 } from "@anastasia-labs/smart-handles-offchain";
 import { beforeEach, expect, test } from "vitest";
 import {
@@ -22,7 +23,13 @@ beforeEach<LucidContext>(async (context) => {
     user1: createUser(),
     user2: createUser(),
   };
-  context.emulator = new Emulator([context.users.user1, context.users.user2]);
+  context.emulator = new Emulator(
+    [context.users.user1, context.users.user2],
+    {
+      ...PROTOCOL_PARAMETERS_DEFAULT,
+      maxTxSize: 10000000,
+    }
+  );
 
   context.lucid = await Lucid(context.emulator, "Custom");
 });

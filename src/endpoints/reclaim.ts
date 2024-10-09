@@ -37,7 +37,10 @@ import {
   AdvancedDatumFields,
   SimpleDatumFields,
 } from "../core/contract.types.js";
-import { LOVELACE_MARGIN, UNAUTHORIZED_OWNER_ERROR_MSG } from "../core/constants.js";
+import {
+  LOVELACE_MARGIN,
+  UNAUTHORIZED_OWNER_ERROR_MSG,
+} from "../core/constants.js";
 // }}}
 // ----------------------------------------------------------------------------
 
@@ -99,16 +102,15 @@ const utxoToOutputInfo = async (
       if (reclaimConfig) {
         if (advancedFields.mOwner) {
           try {
-            const mintApplicationRes =
-              await applyRequiredMint(
-                u.assets,
-                reclaimConfig.additionalAction,
-                advancedFields,
-                advancedFields.reclaimRequiredMint,
-                reclaimConfig.requiredMintConfig
-              );
+            const mintApplicationRes = await applyRequiredMint(
+              u.assets,
+              reclaimConfig.additionalAction,
+              advancedFields,
+              advancedFields.reclaimRequiredMint,
+              reclaimConfig.requiredMintConfig
+            );
             if (mintApplicationRes.type == "error") return mintApplicationRes;
-            const {mintAppliedInputAssets, complementedAddtionalAction} =
+            const { mintAppliedInputAssets, complementedAddtionalAction } =
               mintApplicationRes.data;
             const outputAssetsRes = reduceLovelacesOfAssets(
               mintAppliedInputAssets,
@@ -127,7 +129,7 @@ const utxoToOutputInfo = async (
                 // If the UTxO is spent from a `single` smart handles, use
                 // `AdvancedReclaim`, Otherwise use `ReclaimSmart` of the batch
                 // spend validator.
-                makeRedeemer: (ownIndex) =>
+                makeRedeemer: (ownIndex: bigint) =>
                   Data.to(
                     forSingle
                       ? new Constr(2, [ownIndex, 0n])
@@ -240,7 +242,9 @@ export const singleReclaim = async (
 
     if (finalTxRes.type == "error") return finalTxRes;
 
-    return ok(await finalTxRes.data.complete());
+    return ok(
+      await finalTxRes.data.complete()
+    );
   } catch (error) {
     return genericCatch(error);
   }
@@ -357,7 +361,9 @@ export const batchReclaim = async (
         ),
       };
     } else {
-      return ok(await tx.complete());
+      return ok(
+        await tx.complete()
+      );
     }
   } catch (error) {
     return genericCatch(error);

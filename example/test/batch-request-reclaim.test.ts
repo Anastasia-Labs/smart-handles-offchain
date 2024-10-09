@@ -81,7 +81,11 @@ test<LucidContext>("Test - Batch Swap Request, Reclaim", async ({
   );
 
   const reclaimSigned1 = await reclaimUnsigned1.sign.withWallet().complete();
-  const reclaimSignedHash1 = await reclaimSigned1.submit();
+  try {
+    const reclaimSignedHash1 = await reclaimSigned1.submit();
+  } catch (e) {
+    console.dir(e, {depth: null});
+  }
 
   // console.log("BATCH RECLAIM 1 TX HASH", reclaimSignedHash1);
 

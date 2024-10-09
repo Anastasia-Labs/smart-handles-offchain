@@ -70,14 +70,16 @@ import stakingValidator from "./uplc/smartHandleStake.json" with {type: "json"};
 // {{{
 export const applyMinswapAddressToCBOR = (
   cbor: string,
-  network: Network
+  _network: Network
 ): Result<string> => {
   // {{{
-  const addressRes = fromAddressToData(
-    network === "Mainnet" ? MINSWAP_ADDRESS_MAINNET : MINSWAP_ADDRESS_PREPROD
-  );
-  if (addressRes.type == "error") return addressRes;
-  const finalCBOR = applyParamsToScript(cbor, [addressRes.data]);
+  // COMMENTED OUT SINCE HASKELL IS NOW GENERATING THEM FULLY APPLIED
+  //
+  // const addressRes = fromAddressToData(
+  //   network === "Mainnet" ? MINSWAP_ADDRESS_MAINNET : MINSWAP_ADDRESS_PREPROD
+  // );
+  // if (addressRes.type == "error") return addressRes;
+  // const finalCBOR = applyParamsToScript(cbor, [addressRes.data]);
 
   // Uncomment for writing applied CBORs to disk.
   // const filePath = './applied.cbor';
@@ -91,7 +93,7 @@ export const applyMinswapAddressToCBOR = (
 
   return {
     type: "ok",
-    data: finalCBOR,
+    data: cbor,
   };
   // }}}
 };
@@ -337,7 +339,8 @@ export const mkReclaimConfig = (): AdvancedReclaimConfig => {
       ok({ kind: "inline", value: Data.void() }),
     additionalAction: async (tx, _utxo) => {
       try {
-        const owner = await tx.config().lucidConfig.wallet?.address();
+        const txConfig = await tx.config();
+        const owner = await txConfig.lucidConfig.wallet?.address();
         if (owner) {
           return ok(tx.addSigner(owner));
         } else {
