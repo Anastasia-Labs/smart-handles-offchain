@@ -3,6 +3,7 @@ import {
   Assets,
   CBORHex,
   DatumJson,
+  Network,
   OutRef,
   OutputDatum,
   RedeemerBuilder,
@@ -88,12 +89,14 @@ export type RouteRequest =
   | { kind: "advanced"; data: AdvancedRouteRequest };
 
 export type SingleRequestConfig = {
+  network: Network;
   scriptCBOR: CBORHex;
   routeRequest: RouteRequest;
   additionalRequiredLovelaces: bigint;
 };
 
 export type BatchRequestConfig = {
+  network: Network;
   stakingScriptCBOR: CBORHex;
   routeRequests: RouteRequest[];
   additionalRequiredLovelaces: bigint;
@@ -116,11 +119,13 @@ export type AdvancedReclaimConfig = {
 };
 
 export type CommonSingle = {
+  network: Network;
   scriptCBOR: CBORHex;
   requestOutRef: OutRef;
 };
 
 export type CommonBatch = {
+  network: Network;
   stakingScriptCBOR: CBORHex;
   requestOutRefs: OutRef[];
 };

@@ -59,7 +59,7 @@ test<LucidContext>("Test - Batch Swap Request, Reclaim", async ({
   );
 
   const user1Requests = unsafeFromOk(
-    await fetchUsersBatchRequestUTxOs(lucid, users.user1.address)
+    await fetchUsersBatchRequestUTxOs("Custom", lucid, users.user1.address)
   );
 
   // Register Staking Validator's Reward Address
@@ -100,7 +100,7 @@ test<LucidContext>("Test - Batch Swap Request, Reclaim", async ({
   );
 
   const user1Requests2 = unsafeFromOk(
-    await fetchUsersBatchRequestUTxOs(lucid, users.user1.address)
+    await fetchUsersBatchRequestUTxOs("Custom", lucid, users.user1.address)
   );
 
   // Attempt Batch Reclaim of user1 UTxOs by user2

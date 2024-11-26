@@ -42,7 +42,7 @@ test<LucidContext>("Test - Single Request, Reclaim", async ({
   await submitAdaToMinSingleRequest(emulator, lucid, users.user1.seedPhrase);
 
   const userRequests1 = unsafeFromOk(
-    await fetchUsersSingleRequestUTxOs(lucid, users.user1.address)
+    await fetchUsersSingleRequestUTxOs("Custom", lucid, users.user1.address)
   );
 
   console.log(

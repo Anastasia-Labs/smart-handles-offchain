@@ -13,7 +13,7 @@ import {
   Network,
   CBORHex,
 } from "@lucid-evolution/lucid";
-import batchSpendingValidator from "../../uplc/smartHandleRouter.json";
+import batchSpendingValidator from "../../uplc/smartHandleRouter.json" with {type: "json"};
 
 export type ValidatorAndAddress = {
   validator: Script;

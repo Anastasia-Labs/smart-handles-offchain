@@ -102,6 +102,7 @@ test<LucidContext>(
 
     const allRequests = await fetchBatchRequestUTxOs(
       lucid,
+      "Custom",
       minswapStakingScript,
     );
 

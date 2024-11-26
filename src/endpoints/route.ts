@@ -183,7 +183,7 @@ export const singleRoute = async (
   config: SingleRouteConfig
 ): Promise<Result<TxSignBuilder>> => {
   // {{{
-  const network = lucid.config().network;
+  const network = config.network;
   const va = getSingleValidatorVA(config.scriptCBOR, network);
 
   try {
@@ -228,7 +228,7 @@ export const singleRoute = async (
       );
     const finalTxRes = await inOutInfo.additionalAction!(tx, utxoToSpend);
     if (finalTxRes.type == "error") return finalTxRes;
-    return ok(await finalTxRes.data.complete());
+    return ok(await finalTxRes.data.complete({localUPLCEval: false}));
   } catch (error) {
     return genericCatch(error);
   }
@@ -242,7 +242,7 @@ export const batchRoute = async (
   // {{{
   const batchVAs = getBatchVAs(
     config.stakingScriptCBOR,
-    lucid.config().network
+    config.network
   );
 
   const requestOutRefs: OutRef[] = ensureArray(config.requestOutRefs);
@@ -270,7 +270,7 @@ export const batchRoute = async (
             config.simpleRouteConfig,
             config.advancedRouteConfig,
             false,
-            lucid.config().network
+            config.network
           );
 
           if (inUTxOAndOutInfoRes.type == "error") {
