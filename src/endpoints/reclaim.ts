@@ -19,7 +19,6 @@ import {
   errorToString,
   genericCatch,
   getBatchVAs,
-  getOneUTxOFromWallet,
   getSingleValidatorVA,
   ok,
   printUTxOOutRef,
@@ -129,12 +128,13 @@ const utxoToOutputInfo = async (
                 // If the UTxO is spent from a `single` smart handles, use
                 // `AdvancedReclaim`, Otherwise use `ReclaimSmart` of the batch
                 // spend validator.
-                makeRedeemer: (ownIndex: bigint) =>
-                  Data.to(
+                makeRedeemer: (ownIndex: bigint) => {
+                  return Data.to(
                     forSingle
                       ? new Constr(2, [ownIndex, 0n])
                       : new Constr(1, [])
-                  ),
+                  );
+                },
               },
               outputAddress: advancedFields.mOwner,
               scriptOutput: {
@@ -209,7 +209,7 @@ export const singleReclaim = async (
   config: SingleReclaimConfig
 ): Promise<Result<TxSignBuilder>> => {
   // {{{
-  const va = getSingleValidatorVA(config.scriptCBOR, lucid.config().network);
+  const va = getSingleValidatorVA(config.scriptCBOR, config.network);
 
   try {
     const [utxoToSpend] = await lucid.utxosByOutRef([config.requestOutRef]);
@@ -225,7 +225,7 @@ export const singleReclaim = async (
       config.advancedReclaimConfig,
       walletAddress,
       true,
-      lucid.config().network
+      config.network
     );
 
     if (inUTxOAndOutInfoRes.type == "error") return inUTxOAndOutInfoRes;
@@ -256,7 +256,7 @@ export const batchReclaim = async (
   config: BatchReclaimConfig
 ): Promise<Result<TxSignBuilder>> => {
   // {{{
-  const network = lucid.config().network;
+  const network = config.network;
 
   const batchVAs = getBatchVAs(config.stakingScriptCBOR, network);
 

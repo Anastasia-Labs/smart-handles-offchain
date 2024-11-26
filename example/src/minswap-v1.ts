@@ -339,7 +339,7 @@ export const mkReclaimConfig = (): AdvancedReclaimConfig => {
       ok({ kind: "inline", value: Data.void() }),
     additionalAction: async (tx, _utxo) => {
       try {
-        const txConfig = await tx.config();
+        const txConfig = tx.rawConfig()
         const owner = await txConfig.lucidConfig.wallet?.address();
         if (owner) {
           return ok(tx.addSigner(owner));
@@ -417,16 +417,16 @@ export const mkRouteConfig = (): AdvancedRouteConfig => {
 };
 
 const fetchUsersRequestUTxOs = async (
+  network: Network,
   forSingle: boolean,
   scriptCBOR: CBORHex,
   lucid: LucidEvolution,
   userAddress: Address
 ): Promise<MinswapV1RequestUTxO[]> => {
   // {{{
-  const network = lucid.config().network;
   const allRequests: UTxO[] = forSingle
-    ? await fetchSingleRequestUTxOs(lucid, scriptCBOR)
-    : await fetchBatchRequestUTxOs(lucid, scriptCBOR);
+    ? await fetchSingleRequestUTxOs(lucid, network, scriptCBOR)
+    : await fetchBatchRequestUTxOs(lucid, network, scriptCBOR);
   const initUsersRequests: (MinswapV1RequestUTxO | undefined)[] =
     allRequests.map((utxo) => {
       if (utxo.datum) {
@@ -512,6 +512,7 @@ export const mkSingleRequestConfig = async (
   );
   if (appliedSpendingCBORRes.type == "error") return appliedSpendingCBORRes;
   return ok({
+    network,
     scriptCBOR: appliedSpendingCBORRes.data,
     routeRequest: routeRequestRes.data,
     additionalRequiredLovelaces: 0n,
@@ -529,17 +530,19 @@ export const mkSingleRequestConfig = async (
  *        instance
  */
 export const fetchUsersSingleRequestUTxOs = async (
+  network: Network,
   lucid: LucidEvolution,
   userAddress: Address
 ): Promise<Result<MinswapV1RequestUTxO[]>> => {
   // {{{
   const appliedSpendingCBORRes = applyMinswapAddressToCBOR(
     singleSpendingValidator.cborHex,
-    lucid.config().network
+    network
   );
   if (appliedSpendingCBORRes.type == "error") return appliedSpendingCBORRes;
   try {
     const userRequests = await fetchUsersRequestUTxOs(
+      network,
       true,
       appliedSpendingCBORRes.data,
       lucid,
@@ -571,6 +574,7 @@ export const mkSingleReclaimConfig = (
   );
   if (appliedSpendingCBORRes.type == "error") return appliedSpendingCBORRes;
   return ok({
+    network,
     requestOutRef,
     scriptCBOR: appliedSpendingCBORRes.data,
     advancedReclaimConfig: mkReclaimConfig(),
@@ -599,10 +603,11 @@ export const mkSingleRouteConfig = (
   );
   if (appliedSpendingCBORRes.type == "error") return appliedSpendingCBORRes;
   return ok({
+    network,
     requestOutRef: outRef,
     scriptCBOR: appliedSpendingCBORRes.data,
     routeAddress:
-      network === "Mainnet" ? MINSWAP_ADDRESS_MAINNET : MINSWAP_ADDRESS_PREPROD,
+      (network === "Mainnet" || network === "Custom") ? MINSWAP_ADDRESS_MAINNET : MINSWAP_ADDRESS_PREPROD,
     advancedRouteConfig: routeConfig,
   });
   // }}}
@@ -668,6 +673,7 @@ export const mkBatchRequestConfig = async (
     );
     if (appliedStakingCBORRes.type == "error") return appliedStakingCBORRes;
     return ok({
+      network,
       stakingScriptCBOR: appliedStakingCBORRes.data,
       routeRequests: allRequestConfigs,
       additionalRequiredLovelaces: 0n,
@@ -686,17 +692,19 @@ export const mkBatchRequestConfig = async (
  *        instance
  */
 export const fetchUsersBatchRequestUTxOs = async (
+  network: Network,
   lucid: LucidEvolution,
   userAddress: Address
 ): Promise<Result<MinswapV1RequestUTxO[]>> => {
   // {{{
   const appliedStakingCBORRes = applyMinswapAddressToCBOR(
     stakingValidator.cborHex,
-    lucid.config().network
+    network
   );
   if (appliedStakingCBORRes.type == "error") return appliedStakingCBORRes;
   try {
     const userRequests = await fetchUsersRequestUTxOs(
+      network,
       false,
       appliedStakingCBORRes.data,
       lucid,
@@ -728,6 +736,7 @@ export const mkBatchReclaimConfig = (
   );
   if (appliedStakingCBORRes.type == "error") return appliedStakingCBORRes;
   return ok({
+    network,
     requestOutRefs,
     stakingScriptCBOR: appliedStakingCBORRes.data,
     advancedReclaimConfig: mkReclaimConfig(),
@@ -757,10 +766,11 @@ export const mkBatchRouteConfig = (
   );
   if (appliedStakingCBORRes.type == "error") return appliedStakingCBORRes;
   return ok({
+    network,
     requestOutRefs: outRefs,
     stakingScriptCBOR: appliedStakingCBORRes.data,
     routeAddress:
-      network === "Mainnet" ? MINSWAP_ADDRESS_MAINNET : MINSWAP_ADDRESS_PREPROD,
+      (network === "Mainnet" || network === "Custom") ? MINSWAP_ADDRESS_MAINNET : MINSWAP_ADDRESS_PREPROD,
     advancedRouteConfig: routeConfig,
   });
   // }}}

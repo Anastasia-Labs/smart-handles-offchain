@@ -1,6 +1,6 @@
 {
   "name": "@anastasia-labs/smart-handles-offchain",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "https://docs.github.com/en/packages/quickstart",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -31,7 +31,7 @@
     "vitest": "^2.0.5"
   },
   "dependencies": {
-    "@lucid-evolution/lucid": "^0.3.27",
+    "@lucid-evolution/lucid": "^0.4.7",
     "lucid-cardano": "^0.10.9"
   },
   "packageManager": "pnpm@9.0.4+sha1.b198ac6d38244fd829253720f9daafd6a606834d"

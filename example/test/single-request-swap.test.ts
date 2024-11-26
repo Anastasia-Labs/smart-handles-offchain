@@ -45,7 +45,7 @@ test<LucidContext>("Test - Single Request, Swap", async ({
   await submitAdaToMinSingleRequest(emulator, lucid, users.user.seedPhrase);
 
   const userRequests = unsafeFromOk(
-    await fetchUsersSingleRequestUTxOs(lucid, users.user.address)
+    await fetchUsersSingleRequestUTxOs("Custom", lucid, users.user.address)
   );
 
   // Invalid reclaim by adversary

@@ -140,7 +140,7 @@ export const singleRequest = async (
       error: new Error(INSUFFICIENT_ADA_ERROR_MSG),
     };
 
-  const va = getSingleValidatorVA(config.scriptCBOR, lucid.config().network);
+  const va = getSingleValidatorVA(config.scriptCBOR, config.network);
 
   const validatorAddress: Address = va.address;
 
@@ -182,7 +182,7 @@ export const batchRequest = async (
   // {{{
   const batchVAs = getBatchVAs(
     config.stakingScriptCBOR,
-    lucid.config().network
+    config.network
   );
   const targetAddress: Address = batchVAs.spendVA.address;
 
