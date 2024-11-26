@@ -347,7 +347,7 @@ export const batchRoute = async (
         ),
       };
     } else {
-      return ok(await tx.complete());
+      return ok(await tx.complete({localUPLCEval: false}));
     }
   } catch (error) {
     return genericCatch(error);
