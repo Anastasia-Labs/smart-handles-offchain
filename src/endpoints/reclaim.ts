@@ -243,7 +243,7 @@ export const singleReclaim = async (
     if (finalTxRes.type == "error") return finalTxRes;
 
     return ok(
-      await finalTxRes.data.complete()
+      await finalTxRes.data.complete({localUPLCEval: false})
     );
   } catch (error) {
     return genericCatch(error);
@@ -362,7 +362,7 @@ export const batchReclaim = async (
       };
     } else {
       return ok(
-        await tx.complete()
+        await tx.complete({localUPLCEval: false})
       );
     }
   } catch (error) {
