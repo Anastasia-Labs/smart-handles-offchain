@@ -9,11 +9,11 @@ importers:
   .:
     dependencies:
       '@anastasia-labs/smart-handles-agent':
-        specifier: file:anastasia-labs-smart-handles-agent-0.3.1.tgz
-        version: file:anastasia-labs-smart-handles-agent-0.3.1.tgz(@harmoniclabs/bytestring@1.0.0)(@harmoniclabs/cbor@1.3.0)(@harmoniclabs/crypto@0.2.4)(@harmoniclabs/pair@1.0.0)(fast-check@3.23.1)
+        specifier: ^0.3.3
+        version: 0.3.3(@harmoniclabs/bytestring@1.0.0)(@harmoniclabs/cbor@1.3.0)(@harmoniclabs/crypto@0.2.4)(@harmoniclabs/pair@1.0.0)(fast-check@3.23.1)
       '@anastasia-labs/smart-handles-offchain':
-        specifier: file:anastasia-labs-smart-handles-offchain-0.3.1.tgz
-        version: file:anastasia-labs-smart-handles-offchain-0.3.1.tgz(@harmoniclabs/bytestring@1.0.0)(@harmoniclabs/cbor@1.3.0)(@harmoniclabs/crypto@0.2.4)(@harmoniclabs/pair@1.0.0)(fast-check@3.23.1)
+        specifier: ^0.3.3
+        version: 0.3.3(@harmoniclabs/bytestring@1.0.0)(@harmoniclabs/cbor@1.3.0)(@harmoniclabs/crypto@0.2.4)(@harmoniclabs/pair@1.0.0)(fast-check@3.23.1)
       '@blockfrost/blockfrost-js':
         specifier: ^5.5.0
         version: 5.7.0
@@ -66,13 +66,11 @@ packages:
   '@anastasia-labs/cardano-multiplatform-lib-nodejs@6.0.2-3':
     resolution: {integrity: sha512-Jy7QKahRQJgX6OFeuQvPXO0ejKfT9cQ8m3PFLBhbM04jjzFnaxlJJJ5+7qNHe3xdy40fMbMMe2SgAYPJ4gZ2Xw==}
 
-  '@anastasia-labs/smart-handles-agent@file:anastasia-labs-smart-handles-agent-0.3.1.tgz':
-    resolution: {integrity: sha512-DyvxEgJQTwSM3i2Vzijlyuyxh3b9FxeQ/erl2B3Iv18ZwBgjlpbWsH9doNsE43kYZck9r7P9vmjk+jSDG68uUQ==, tarball: file:anastasia-labs-smart-handles-agent-0.3.1.tgz}
-    version: 0.3.1
+  '@anastasia-labs/smart-handles-agent@0.3.3':
+    resolution: {integrity: sha512-v/rkltYwKUYwdbR3jPZ9Mpl5nWv2XReNuURMy6JM5WmQvHTZChxijKX/LLHmR1Zkc6Uaj0h3pNl97NR1O9HD7Q==}
 
-  '@anastasia-labs/smart-handles-offchain@file:anastasia-labs-smart-handles-offchain-0.3.1.tgz':
-    resolution: {integrity: sha512-1J8X5lwh7sNqaxghlDyhzR+rgSvtEtgZgsht/NnJ1BZwuDamqEzmdqH1h8V0CYLBn+PEPrwHZ6xdCjf5Nl0mSA==, tarball: file:anastasia-labs-smart-handles-offchain-0.3.1.tgz}
-    version: 0.3.1
+  '@anastasia-labs/smart-handles-offchain@0.3.3':
+    resolution: {integrity: sha512-wLrzeyM7ZP+/barHAxJ43HEv8IUQ5pA5t80l7/io2W5ujP7gbykOr41aMELh/NN8oiCt0wCPEp822rujpNzlYA==}
 
   '@blockfrost/blockfrost-js@5.7.0':
     resolution: {integrity: sha512-Rzw+Ya+LlKJNv9k5g7xW0uM33Xf6Lt3MXANtuwtm7+R9xuMFc7iKocwHSgrGUTTZ1EKou4n4Znai18MdvqG2bw==}
@@ -1335,9 +1333,9 @@ snapshots:
 
   '@anastasia-labs/cardano-multiplatform-lib-nodejs@6.0.2-3': {}
 
-  '@anastasia-labs/smart-handles-agent@file:anastasia-labs-smart-handles-agent-0.3.1.tgz(@harmoniclabs/bytestring@1.0.0)(@harmoniclabs/cbor@1.3.0)(@harmoniclabs/crypto@0.2.4)(@harmoniclabs/pair@1.0.0)(fast-check@3.23.1)':
+  '@anastasia-labs/smart-handles-agent@0.3.3(@harmoniclabs/bytestring@1.0.0)(@harmoniclabs/cbor@1.3.0)(@harmoniclabs/crypto@0.2.4)(@harmoniclabs/pair@1.0.0)(fast-check@3.23.1)':
     dependencies:
-      '@anastasia-labs/smart-handles-offchain': file:anastasia-labs-smart-handles-offchain-0.3.1.tgz(@harmoniclabs/bytestring@1.0.0)(@harmoniclabs/cbor@1.3.0)(@harmoniclabs/crypto@0.2.4)(@harmoniclabs/pair@1.0.0)(fast-check@3.23.1)
+      '@anastasia-labs/smart-handles-offchain': 0.3.3(@harmoniclabs/bytestring@1.0.0)(@harmoniclabs/cbor@1.3.0)(@harmoniclabs/crypto@0.2.4)(@harmoniclabs/pair@1.0.0)(fast-check@3.23.1)
       '@commander-js/extra-typings': 12.1.0(commander@12.1.0)
       chalk: 5.3.0
       commander: 12.1.0
@@ -1350,7 +1348,7 @@ snapshots:
       - fast-check
       - utf-8-validate
 
-  '@anastasia-labs/smart-handles-offchain@file:anastasia-labs-smart-handles-offchain-0.3.1.tgz(@harmoniclabs/bytestring@1.0.0)(@harmoniclabs/cbor@1.3.0)(@harmoniclabs/crypto@0.2.4)(@harmoniclabs/pair@1.0.0)(fast-check@3.23.1)':
+  '@anastasia-labs/smart-handles-offchain@0.3.3(@harmoniclabs/bytestring@1.0.0)(@harmoniclabs/cbor@1.3.0)(@harmoniclabs/crypto@0.2.4)(@harmoniclabs/pair@1.0.0)(fast-check@3.23.1)':
     dependencies:
       '@lucid-evolution/lucid': 0.4.7(@harmoniclabs/bytestring@1.0.0)(@harmoniclabs/cbor@1.3.0)(@harmoniclabs/crypto@0.2.4)(@harmoniclabs/pair@1.0.0)(fast-check@3.23.1)
       lucid-cardano: 0.10.10
