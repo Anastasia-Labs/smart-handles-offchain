@@ -202,7 +202,11 @@ export const fromAddressToData = (address: Address): Result<Data> => {
     };
 
   const stakingCred = new Constr(0, [
-    new Constr(0, [new Constr(0, [addrDetails.stakeCredential.hash])]),
+    new Constr(0, [
+      new Constr(addrDetails.stakeCredential.type === "Key" ? 0 : 1, [
+        addrDetails.stakeCredential.hash,
+      ]),
+    ]),
   ]);
 
   return { type: "ok", data: new Constr(0, [paymentCred, stakingCred]) };
@@ -486,7 +490,7 @@ export function printUTxOOutRef(u: UTxO): `${string}#${string}` {
 
 export function mergeUTxOs(utxos0: UTxO[], utxos1: UTxO[]): UTxO[] {
   const uniques0 = new Set(utxos0.map(printUTxOOutRef));
-  const filtered1 = utxos1.filter(u => !uniques0.has(printUTxOOutRef(u)));
+  const filtered1 = utxos1.filter((u) => !uniques0.has(printUTxOOutRef(u)));
   return [...utxos0, ...filtered1];
 }
 
