@@ -7,3 +7,4 @@ dist
 .direnv
 test/lock.ts
 test/unlock.ts
+src/constant.ts
